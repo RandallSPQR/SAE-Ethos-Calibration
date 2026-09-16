@@ -4,7 +4,7 @@
 set -uo pipefail
 cd /workspace/pipeline
 source /workspace/venv/bin/activate
-export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false
+export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
 RUN_ID=${1:-t1probe}
 mkdir -p runs/$RUN_ID /workspace/logs
 cp -n /workspace/t1/features/model_checksum.json runs/$RUN_ID/ 2>/dev/null; mkdir -p runs/$RUN_ID/features; cp -n /workspace/t1/features/model_checksum.json runs/$RUN_ID/features/ 2>/dev/null

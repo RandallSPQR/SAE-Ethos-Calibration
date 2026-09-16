@@ -6,7 +6,7 @@
 set -uo pipefail
 cd /workspace/pipeline
 source /workspace/venv/bin/activate
-export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false
+export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
 OUT=${1:-/workspace/t1}
 VDTYPE=bfloat16
 if [ "${2:-}" = "--fp32" ]; then

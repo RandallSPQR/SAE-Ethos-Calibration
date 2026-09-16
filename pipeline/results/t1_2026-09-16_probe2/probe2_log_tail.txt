@@ -1,0 +1,30 @@
+== P2: extract
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[lottery] activations: n=1120 layers=[20, 26, 31] d=3584
+[ultimatum] skipped: no dial on this model (see baseline.json)
+== P3: train
+[ultimatum] skipped: no dial on this model (see baseline.json)
+[lottery] layer=31 (fan:48) C=0.1 cv_acc=0.971 heldout_acc=0.986 [level=70] (fan:0.82) n_train=840 n_heldout=280 -> steering vector probe_lottery
+   held-out acc by layer: 20:0.971 26:0.996 31:0.986
+== P4: calibrate
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+  [lottery] lambda=-0.40 sp=72.9 (logistic)
+  [lottery] lambda=-0.20 sp=64.1 (logistic)
+  [lottery] lambda=-0.10 sp=43.9 (logistic)
+  [lottery] lambda=-0.05 sp=47.7 (logistic)
+  [lottery] lambda=-0.02 sp=44.8 (logistic)
+  [lottery] lambda=-0.01 sp=52.3 (logistic)
+  [lottery] lambda=+0.00 sp=48.2 (logistic)
+  [lottery] lambda=+0.01 sp=51.9 (logistic)
+  [lottery] lambda=+0.02 sp=41.1 (logistic)
+  [lottery] lambda=+0.05 sp=47.0 (logistic)
+  [lottery] lambda=+0.10 sp=46.1 (logistic)
+  [lottery] lambda=+0.20 sp=25.8 (logistic)
+  [lottery] lambda=+0.40 sp=24.8 (logistic)
+[lottery] monotone=True mae=3.0220468770121443 (fan:2) range=[45.37940087618594, 60.66469287783835] (fan:[30, 200]) saturated=[]
+[ultimatum] skipped: no dial on this model (see baseline.json)
+[FAIL] G9_probe_external_fixture: rules=2026-09-16.2, lottery=lottery: heldout_acc=0.986 [level=70] (fan:0.82) by_layer=[L20:0.971 L26:0.996 L31:0.986] mae=3.0 (fan:2) baseline_sp=65.5 (fan:125) layer=31 (fan:48) coverage=0.11 range=[45.37940087618594, 60.66469287783835] (fan:[30, 200]) saturated=[], lottery_checks={'coverage_ok': False}, ultimatum=ultimatum: NO DIAL on this model (unsteered sp=0.12491594259886796, graded grid points=1); reported, not gated
+
+full: 0/1 gates passed.
+BLOCKED by: G9_probe_external_fixture
+PROBE_DONE

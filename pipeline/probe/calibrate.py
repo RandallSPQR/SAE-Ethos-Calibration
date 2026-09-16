@@ -138,8 +138,11 @@ def calibrate_task(task, run_dir, pc, gen, mock):
         curve[str(lam)] = r["sp"]; methods[str(lam)] = r["method"]; dropped[str(lam)] = nd
         print(f"  [{task}] lambda={lam:+.2f} sp={None if r['sp'] is None else round(r['sp'], 1)} ({r['method']})")
     xs, ys, monotone, direction = monotone_fit(curve)
+    tr = TASKS[task].get("target_ratios")
+    target_list = ([round(r * TASKS[task]["reference_level"], 1) for r in tr] if tr and TASKS[task]["reference_level"]
+                   else pc["targets"][task])
     targets = {}
-    for tgt in pc["targets"][task]:
+    for tgt in target_list:
         lam = invert(xs, ys, float(tgt))
         if lam is None:
             targets[str(tgt)] = {"lambda": None, "achieved": None, "method": "out_of_range"}
@@ -148,7 +151,9 @@ def calibrate_task(task, run_dir, pc, gen, mock):
         targets[str(tgt)] = {"lambda": float(lam), "achieved": r["sp"], "method": r["method"]}
     errs = [abs(v["achieved"] - float(k)) for k, v in targets.items() if v["achieved"] is not None]
     ach = [v["achieved"] for v in targets.values() if v["achieved"] is not None]
-    rep = {"task": task, "baseline_sp": base["sp"], "reference_level": TASKS[task]["reference_level"],
+    rep = {"task": task, "baseline_sp": base["sp"], "baseline_sp_interp": base.get("sp_interp"),
+           "reference_level": TASKS[task]["reference_level"], "target_list": target_list,
+           "sweep_lambda0_sp": curve.get("0.0"),
            "lambda_sweep": list(pc["lambda_sweep"]), "lambda_curve": curve, "lambda_methods": methods,
            "dropped_per_lambda": dropped, "monotone": monotone, "direction": direction,
            "monotone_fit": {"lambda": xs, "sp": ys}, "targets": targets,

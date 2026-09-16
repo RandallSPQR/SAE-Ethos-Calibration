@@ -1,0 +1,13 @@
+{
+  "task": "lottery",
+  "layers": [
+    20,
+    26,
+    31
+  ],
+  "n": 1120,
+  "position": "prompt_final",
+  "hook_transform": "replay.hooks.resid_post (G2-verified at layer 31)",
+  "mock": false,
+  "model_checksum": null
+}

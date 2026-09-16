@@ -2,6 +2,18 @@
 
 ## 2026-09-16.3 (probe track protocol; G0-G9 criteria unchanged)
 
+Amended after probe run 2 (pod, 2026-09-16 22:49 UTC; artifacts `results/t1_2026-09-16_probe2/`):
+- **Psychometric fit is lapse-aware** (guess/lapse asymptotes from the grid tails); the interpolated
+  0.5 crossing is reported beside it. Run 2's safe-50 curve plateaued at 0.88 and the fixed-asymptote
+  fit put sp at 65.5 where the crossing was ~53; the steered sampler's lambda=0 gave 48.2. The two
+  sampling paths (vLLM T=0.8 for P1, nnsight sampler for P4) must agree at lambda=0; the report now
+  carries both numbers so that checksum is visible.
+- **Targets are ratios of the safe amount** (0.6..2.0 x reference level = 30..100), the construct rather
+  than Llama's absolute list; coverage is measured against them.
+- **Sweep** +-0.1..+-0.8 (sub-noise steps dropped; run 2 was flat inside +-0.05 and unsaturated at +-0.4,
+  moving 73 -> 25 monotonically, MAE 3.0 on reachable targets).
+- Per-layer held-out accuracy on the unseen safe level 70: L20 0.971, L26 0.996, L31 0.986 (Fan: 0.82).
+
 - **Lottery is two-dimensional**: safe amount in {30, 50, 70, 100} x risky reward 10..180. The decision
   variable the probe must find is the gamble's attractiveness relative to the sure thing, not the value
   of n. Safe = 50 is the reference (Fan et al.'s condition) for baselines and calibration.

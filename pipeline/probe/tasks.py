@@ -35,6 +35,9 @@ TASKS = {
         "options": {"high": "Risky Option", "low": "Safe Option"},
         "trait": "risk_taking",
         "decision_variable": "n / safe (attractiveness of the gamble relative to the sure thing)",
+        # calibration targets as RATIOS of the safe amount (the construct), realized at the reference level:
+        # 0.6..2.0 x 50 = 30..100. Fan et al.'s absolute list (40..175) is Llama's scale, where baseline sat at 125.
+        "target_ratios": [0.6, 0.8, 1.0, 1.2, 1.5, 2.0],
         "fan2026_reference": {"baseline_sp": 125, "probe_layer": 48, "heldout_acc": 0.82, "mae": 2,
                               "range": [30, 200], "risk_neutral_sp": 100,
                               "model": "Llama-3.3-70B-Instruct", "arxiv": "2609.16436"},

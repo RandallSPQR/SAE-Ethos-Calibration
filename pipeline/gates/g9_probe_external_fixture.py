@@ -67,7 +67,7 @@ def run(cfg, paths):
         except FileNotFoundError as e:
             return GateResult(NAME, False, {"error": f"{task}: missing {Path(e.filename).name} under {d}"})
         n_eval += 1
-        t_ok, checks, line = _evaluate(task, base, probe, cal, g, pc["targets"][task])
+        t_ok, checks, line = _evaluate(task, base, probe, cal, g, cal.get("target_list") or pc["targets"][task])
         ok = ok and t_ok
         detail[task] = line
         detail[task + "_checks"] = {k: v for k, v in checks.items() if not v} or "all"
