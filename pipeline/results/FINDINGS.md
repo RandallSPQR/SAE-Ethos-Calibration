@@ -32,3 +32,19 @@ produces one at a near-tie. The G1 rule excuses only the latter.
 
 Per-document Pile slices, own BOS, 1024 context, BOS excluded: median L0 86.5 (range 66-101), pooled
 85.8 vs the release's 76. A single-BOS concatenation of documents gave 101 (the first document's own L0).
+
+## The lottery trait is linear, generalizes across safe amounts, and is a working dial (probe run 2)
+
+Two-dimensional lottery (safe 30/50/70/100 x jackpot 10..180, order and unit varied), sampled at T=0.8:
+- Switching point scales with the safe amount: 38 / 54 (lapse-aware; 66 under a fixed-asymptote fit) /
+  95 / 108. The model takes the gamble at roughly 1.1-1.4x the sure thing at every level.
+- Logistic probe on the prompt-final residual, trained on safe 30/50/100 and tested on safe **70, a level
+  it never saw**: held-out accuracy L20 0.971, L26 0.996, L31 0.986 (Fan et al.: 0.82). The direction is
+  the gamble's attractiveness relative to the sure thing, not the digit in the prompt.
+- Steering along the unit probe direction at layer 31 (activation addition, fraction of mean residual
+  norm): switching point at safe 50 moves monotonically 72.9 (lambda -0.4) -> 24.8 (lambda +0.4), flat
+  inside +-0.05, unsaturated at +-0.4; MAE 3.0 tokens on reachable targets (Fan: ~2). The ultimatum has
+  no dial on this model at all (rejects only a zero offer), which is itself the fingerprint above.
+- A methods point for the fit: the safe-50 curve plateaus at 0.88 (a 9% lapse rate), and a logistic with
+  fixed asymptotes put the switching point at 65.5 where the 0.5 crossing was 53. Psychometric fits
+  need lapse parameters (Wichmann & Hill); the interpolated crossing is reported beside every fit.
