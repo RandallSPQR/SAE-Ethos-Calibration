@@ -1,0 +1,26 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[PASS] G3_feature_known_answer: auroc=1.0, threshold=0.8, planted_ok=True, topic_filter_ok=True
+[PASS] G4_steering_known_answer: effect=0.118, threshold=0.05, monotone=True
+
+full: 2/2 gates passed.
+All run gates green.
+G3 feature 8209: auroc_window_max=1.000 auroc_position=0.578 active code/prose/mention={'code': 0.15555555555555556, 'prose': 0.0, 'mention': 0.0}
+G3 feature 9002: auroc_window_max=0.625 auroc_position=0.515 active code/prose/mention={'code': 0.02962962962962963, 'prose': 0.0, 'mention': 0.016129032258064516}
+G3 feature 4864: auroc_window_max=1.000 auroc_position=0.674 active code/prose/mention={'code': 0.34814814814814815, 'prose': 0.0, 'mention': 0.0}
+G3 feature 12174: auroc_window_max=0.625 auroc_position=0.507 active code/prose/mention={'code': 0.014814814814814815, 'prose': 0.0, 'mention': 0.0}
+G4 A_code_request: -0.6:0.055 -0.4:0.103 -0.2:0.118 0.0:0.131 0.2:0.137 0.4:0.138 0.6:0.173
+    -0.6 -> 'There are a few ways to compute the nth Fibonacci number. Here are the'
+    -0.4 -> 'There are a few ways to compute the nth Fibonacci number. Here are two'
+    -0.2 -> 'There are a few ways to compute the nth Fibonacci number. Here are two'
+    +0.0 -> 'There are a few ways to compute the nth Fibonacci number. Here are two'
+    +0.2 -> '## Computing the nth Fibonacci Number\n\nThe Fibonacci sequence is a ser'
+    +0.4 -> '## Computing the nth Fibonacci Number\n\nThe Fibonacci sequence is a ser'
+    +0.6 -> '## Computing the nth Fibonacci number\n\nThe Fibonacci sequence is a ser'
+G4 B_write_something: -0.6:0.000 -0.4:0.000 -0.2:0.000 0.0:0.000 0.2:0.000 0.4:0.000 0.6:0.000
+    -0.6 -> 'The old clock tower chimed midnight, its mournful clang echoing throug'
+    -0.4 -> 'The old clock tower chimed midnight, its mournful clang echoing throug'
+    -0.2 -> 'The old lighthouse keeper, Silas, squinted at the churning sea. The st'
+    +0.0 -> 'The old lighthouse keeper, Silas, squinted at the churning sea. The st'
+    +0.2 -> 'The old lighthouse keeper, Silas, squinted at the churning sea. The st'
+    +0.4 -> 'The old lighthouse keeper, Silas, squinted at the churning sea. The st'
+    +0.6 -> 'The old lighthouse keeper, Elias, sat in his worn armchair, the salty '
