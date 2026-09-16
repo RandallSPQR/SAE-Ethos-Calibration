@@ -66,7 +66,9 @@ cost:
 # Probe track (external fixture, Fan et al. 2026 arXiv:2609.16436). See probe/ and RUNBOOK T1.5.
 probe:
   tasks: [lottery, ultimatum]
-  n_agents: 8                      # seeds per grid point at T=0 (Fan et al.: 40)
+  n_agents: 8                      # sampled agents per grid point (Fan et al.: 40)
+  temperature: 0.8                 # T>0 so the psychometric curve is graded; at T=0 Gemma-2-9B-IT is a hard step (run 1)
+  top_p: 0.95
   layer_candidates: [20, 26, 31]   # 31 is the G2-verified hook; others are the same transform, different index
   c_grid: [0.01, 0.1, 1.0, 10.0]
   heldout_frac: 0.2

@@ -39,7 +39,7 @@ def mock_choice(task, param, seed):
     return {"text": text, "token_ids": ids, "token_logprobs": [-0.1] * 3}
 
 
-def run_task(task, out_dir, n_agents, client, mock):
+def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95):
     t = TASKS[task]
     rows, dropped = [], 0
     for n in t["grid"]:
@@ -48,7 +48,10 @@ def run_task(task, out_dir, n_agents, client, mock):
             if mock:
                 r = mock_choice(task, n, seed)
             else:
-                r = client.complete(msgs, temperature=0.0, top_p=1.0, max_tokens=16, seed=seed)
+                # T>0 across agents is what gives a GRADED psychometric curve (Fan et al. sampled). At T=0 a
+                # deterministic model is a step function and the seed axis is degenerate (run 1: 2 distinct
+                # responses in 280 trials). The temperature is recorded per trial.
+                r = client.complete(msgs, temperature=temperature, top_p=top_p, max_tokens=16, seed=seed)
                 if r.get("token_ids") is None:
                     raise RuntimeError("vLLM returned no token ids (return_token_ids); refusing to retokenize")
             choice = parse_choice(task, r["text"])
@@ -56,6 +59,7 @@ def run_task(task, out_dir, n_agents, client, mock):
             if y is None:
                 dropped += 1
             rows.append({"uid": f"probe:{task}:{n}:{seed}", "task": task, "param": n, "seed": seed,
+                         "sampling": {"temperature": temperature, "top_p": top_p},
                          "text": r["text"], "token_ids": r["token_ids"], "choice": choice, "label": y,
                          "messages": msgs})
     d = Path(out_dir) / "probe" / task
@@ -66,13 +70,24 @@ def run_task(task, out_dir, n_agents, client, mock):
     sp = switching_point([r["param"] for r in rows], [r["label"] for r in rows])
     base = {**sp, "task": task, "trait": t["trait"], "n_trials": len(rows), "n_dropped": dropped,
             "drop_rate": dropped / max(1, len(rows)), "n_agents": n_agents, "grid": t["grid"],
-            "temperature": 0.0, "mock": bool(mock), "fan2026_reference": t["fan2026_reference"]}
+            "temperature": temperature, "top_p": top_p, "mock": bool(mock),
+            "n_distinct_responses": len(set(r["text"] for r in rows)),
+            "n_graded_grid_points": sum(1 for v in sp["curve"].values() if 0.0 < v < 1.0),
+            "fan2026_reference": t["fan2026_reference"]}
     (d / "baseline.json").write_text(json.dumps(base, indent=2))
     print(f"[{task}] n={len(rows)} dropped={dropped} sp={sp['sp']} ({sp['method']})"
           f"  fan2026 baseline_sp={t['fan2026_reference']['baseline_sp']}")
     if base["drop_rate"] > 0.05:
         print(f"STOP: {task} drop rate {base['drop_rate']:.2%} > 5% — the model isn't answering the format; "
               "fix the prompt at T0, not on the meter.")
+        return False
+    if sp["sp"] is None:
+        print(f"STOP: {task} unsteered curve never crosses 0.5 (saturated) — the grid is mis-scaled for this model; "
+              "retune the grid at T0.")
+        return False
+    if base["n_graded_grid_points"] < 2:
+        print(f"STOP: {task} curve is a hard step ({base['n_graded_grid_points']} graded grid points) — no "
+              "within-grid label diversity; raise probe.temperature / n_agents so the psychometric curve is graded.")
         return False
     return True
 
@@ -91,7 +106,8 @@ def main():
     if not a.mock:
         from resample.target_client import TargetClient
         client = TargetClient(mock=False)
-    ok = all([run_task(t, a.run_dir, n_agents, client, a.mock) for t in tasks])
+    ok = all([run_task(t, a.run_dir, n_agents, client, a.mock, temperature=float(pc.get("temperature", 0.8)),
+                       top_p=float(pc.get("top_p", 0.95))) for t in tasks])
     sys.exit(0 if ok else 1)
 
 

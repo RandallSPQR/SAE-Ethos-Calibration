@@ -78,6 +78,19 @@ def train_task(task, run_dir, pc, gc):
     d = Path(run_dir) / "probe" / task
     z = np.load(d / "activations.npz", allow_pickle=False)
     y = z["y"].astype(np.float64)
+    # A probe needs BOTH classes, and the label must not be a deterministic function of the prompt's number
+    # (run 1: ultimatum labels were all 1; lottery labels were a step in `param`, so "held-out 1.0" measured
+    # nothing about the trait). Refuse both cases loudly.
+    frac1 = float(y.mean())
+    if min(frac1, 1 - frac1) < 0.10:
+        print(f"STOP: {task} labels are {frac1:.0%} one class; nothing for a probe to separate. Retune the grid/temperature at T0.")
+        return False
+    params = z["param"]
+    mixed = sum(1 for v in np.unique(params) if 0.0 < y[params == v].mean() < 1.0)
+    if mixed < 2:
+        print(f"STOP: {task} label is a step function of the parameter ({mixed} mixed grid points): the probe would "
+              "learn the number in the prompt, not the trait. Sample at T>0 across agents.")
+        return False
     rng = np.random.default_rng(0)
     idx = rng.permutation(len(y)); n_ho = max(1, int(round(pc["heldout_frac"] * len(y))))
     ho, tr = idx[:n_ho], idx[n_ho:]

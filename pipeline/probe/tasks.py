@@ -32,7 +32,9 @@ TASKS = {
     },
     "ultimatum": {
         "prompt": ULTIMATUM_PROMPT,
-        "grid": list(range(10, 101, 5)),
+        # Run 1 (T=0): Gemma-2-9B-IT accepted every offer from 10 up (all labels one class). The grid must
+        # reach the region where rejection actually happens on this model: start at 0.
+        "grid": list(range(0, 61, 2)),
         "options": {"high": "Accept", "low": "Reject"},
         "trait": "acceptance",           # alias in Fan et al.: "altruism" (see module docstring)
         "numeric_fallback": None,

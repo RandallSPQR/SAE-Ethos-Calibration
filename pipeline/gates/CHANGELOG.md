@@ -7,6 +7,14 @@ as "tuned"; with one it reads as "corrected, and here is why".
 
 ## 2026-09-16.2 (amended after run 2, same version: no gate outcome on run-2 artifacts changes except G2's decoy term)
 
+- **Probe track amendment (P1/P3)** — Trials are sampled at `probe.temperature` (0.8) instead of T=0; the
+  temperature is recorded per trial. P1 STOPs on a saturated or hard-step unsteered curve; P3 refuses a
+  single-class label set or a label that is a step function of the parameter. Ultimatum grid starts at 0.
+  Rationale (run 1 on the pod): at T=0 Gemma-2-9B-IT is a step (Safe <= 50 / Risky >= 55: it switches
+  when the jackpot exceeds the sure amount, ignoring the coin flip; Fan's Llama: 125) and accepts every
+  ultimatum offer from 10 up; the seed axis is degenerate at T=0 (2 distinct responses in 280 trials), so
+  "held-out 1.0" measured the prompt's number, not a trait, and steering could only leave the step or
+  flip the whole grid. G9 itself is unchanged.
 - **G4 amendment** — `coherent()` tolerates single-step reversals up to 10% of the total effect. The
   fp32 run 2 curve (0.057, 0.092, 0.121, 0.131, 0.128, 0.135, 0.172) dipped 0.003 at one step of a
   0.116 effect; the strict rule called that non-monotone. A reversal larger than the tolerance still fails.

@@ -152,9 +152,11 @@ Fan et al. (2026, arXiv:2609.16436) published the target: on Llama-3.3-70B a fin
 the SHAPE on Gemma-2-9B. Their absolute numbers are Llama's; ours are reported beside them, not gated.
 
 P0 (laptop, $0):  make probe RUN_ID=mock MOCK=--mock   → G9 fixture logic green, CPU path end-to-end.
-P1 (pod, minutes): make probe-trials  — 2 tasks × ~35 grid points × 8 seeds at T=0 ≈ 600 short
+P1 (pod, minutes): make probe-trials  — 2 tasks × ~35 grid points × 8 agents at T=0.8 ≈ 600 short
                    completions. STOP if >5% unparsed — fix the prompt offline, not on the meter.
-                   Read baseline.json: the unsteered curve must cross 0.5 inside the grid.
+                   Read baseline.json: the unsteered curve must cross 0.5 inside the grid AND be graded
+                   (>= 2 grid points with 0 < P(high) < 1). At T=0 Gemma-2-9B-IT is a hard step and the
+                   seed axis is degenerate — a step cannot be dialed, only flipped (run 1, 2026-09-16).
 P2 (pod, minutes): make probe-extract — residuals at layers 20/26/31 via the SAME resid_post()
                    transform G2 verified. Never bare output[0].
 P3 (offline, $0):  make probe-train — pick layer/C by CV, report HELD-OUT accuracy.
