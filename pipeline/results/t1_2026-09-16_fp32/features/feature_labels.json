@@ -1,0 +1,38 @@
+{
+  "8209": {
+    "label": " code snippets that involve file handling and subprocess management",
+    "explanations": [
+      " code snippets that involve file handling and subprocess management",
+      "Python code defining functions",
+      "python function definitions"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/8209"
+  },
+  "9002": {
+    "label": "code documentation and comment formats",
+    "explanations": [
+      "code documentation and comment formats",
+      "Start of code or documentation",
+      "code comments and docstrings"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/9002"
+  },
+  "4864": {
+    "label": " references to checking the type of functions and methods in programming, particularly in Python",
+    "explanations": [
+      " references to checking the type of functions and methods in programming, particularly in Python",
+      "Code snippets or program output",
+      "python code examples"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/4864"
+  },
+  "12174": {
+    "label": " JavaScript functions and key structure elements in code",
+    "explanations": [
+      " JavaScript functions and key structure elements in code",
+      "Code snippets containing function definitions",
+      "function definitions"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/12174"
+  }
+}

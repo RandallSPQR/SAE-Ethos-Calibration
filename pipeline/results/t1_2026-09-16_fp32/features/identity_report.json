@@ -1,0 +1,27 @@
+{
+  "rules": "2026-09-16.2",
+  "ref": "transformerlens:from_pretrained_no_processing",
+  "dtype": "torch.float32",
+  "n_tokens": 1024,
+  "resid_post": {
+    "min_cos": 0.9999997615814209,
+    "median_cos": 1.0,
+    "max_norm_rel": 5.125006737216609e-06,
+    "median_norm_rel": 1.8135439461275382e-07,
+    "max_rel_err_elementwise": 1.8532833564677276e-05,
+    "scale_ratio_mean": 1.0
+  },
+  "resid_pre": {
+    "min_cos": 0.9999997615814209,
+    "median_cos": 1.0,
+    "max_norm_rel": 4.441918463271577e-06,
+    "median_norm_rel": 1.5156442145780602e-07,
+    "max_rel_err_elementwise": 1.827522828534711e-05,
+    "scale_ratio_mean": 1.0
+  },
+  "cross_nnpost_vs_tlpre": {
+    "min_cos": 0.9090248942375183,
+    "median_cos": 0.9661559462547302,
+    "note": "must be clearly BELOW the identity tolerance, or the test has no teeth"
+  }
+}

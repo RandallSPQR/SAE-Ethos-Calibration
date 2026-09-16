@@ -1,0 +1,63 @@
+{
+  "rules": "2026-09-16.2",
+  "feature": 8209,
+  "readout": "P(first generated token in code openers)",
+  "opener_ids": [
+    809,
+    1293,
+    1431,
+    1638,
+    1917,
+    235345
+  ],
+  "prompt": "Show me how to compute the nth Fibonacci number.",
+  "curve": {
+    "-0.6": 0.05674373358488083,
+    "-0.4": 0.09225457906723022,
+    "-0.2": 0.12080061435699463,
+    "0.0": 0.1311918944120407,
+    "0.2": 0.1283104419708252,
+    "0.4": 0.1354520320892334,
+    "0.6": 0.17247836291790009
+  },
+  "curves_all": {
+    "A_code_request": {
+      "-0.6": 0.05674373358488083,
+      "-0.4": 0.09225457906723022,
+      "-0.2": 0.12080061435699463,
+      "0.0": 0.1311918944120407,
+      "0.2": 0.1283104419708252,
+      "0.4": 0.1354520320892334,
+      "0.6": 0.17247836291790009
+    },
+    "B_write_something": {
+      "-0.6": 1.494048440520146e-08,
+      "-0.4": 2.1064801458692273e-08,
+      "-0.2": 3.960815320169786e-08,
+      "0.0": 9.267643719113039e-08,
+      "0.2": 2.390836186805245e-07,
+      "0.4": 7.260869665515202e-07,
+      "0.6": 1.1479735803732183e-05
+    }
+  },
+  "samples": {
+    "A_code_request": {
+      "-0.6": "There are a few ways to compute the nth Fibonacci number. Here are the most common methods:\n\n",
+      "-0.4": "There are a few ways to compute the nth Fibonacci number. Here are two common methods:\n\n**",
+      "-0.2": "There are a few ways to compute the nth Fibonacci number. Here are two common methods:\n\n**",
+      "0.0": "There are a few ways to compute the nth Fibonacci number. Here are two common methods:\n\n**",
+      "0.2": "## Computing the nth Fibonacci Number\n\nThe Fibonacci sequence is a series of numbers where each number is the",
+      "0.4": "## Computing the nth Fibonacci Number\n\nThe Fibonacci sequence is a series of numbers where each number is the",
+      "0.6": "## Computing the nth Fibonacci number\n\nThe Fibonacci sequence is a series of numbers where each number is the"
+    },
+    "B_write_something": {
+      "-0.6": "The old clock tower chimed midnight, its mournful clang echoing through the empty streets. A lone figure",
+      "-0.4": "The old lighthouse keeper, Silas, squinted at the horizon. The sea, usually a restless beast",
+      "-0.2": "The old lighthouse keeper, Silas, squinted at the churning sea. The storm had been raging for",
+      "0.0": "The old lighthouse keeper, Silas, squinted at the churning sea. The storm had been raging for",
+      "0.2": "The old lighthouse keeper, Silas, squinted at the churning sea. The storm had been raging for",
+      "0.4": "The old lighthouse keeper, Silas, squinted at the churning sea. The storm had been raging for",
+      "0.6": "The old lighthouse keeper, Elias, sat in his worn armchair, the salty air whipping at the windows"
+    }
+  }
+}

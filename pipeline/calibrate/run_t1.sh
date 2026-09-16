@@ -11,8 +11,8 @@ OUT=${1:-/workspace/t1}
 VDTYPE=bfloat16
 if [ "${2:-}" = "--fp32" ]; then
   VDTYPE=float32; export T1_DTYPE=float32; OUT=${OUT}_fp32
-  # FlashAttention only takes fp16/bf16; vLLM's flex-attention backend handles float32.
-  export VLLM_ATTENTION_BACKEND=FLEX_ATTENTION
+  # FlashAttention only takes fp16/bf16; FlexAttention lacks logit soft-cap; Triton attention handles float32 + soft-cap.
+  export VLLM_ATTENTION_BACKEND=TRITON_ATTN
 fi
 mkdir -p "$OUT" /workspace/logs
 if [ ! -s "$OUT/features/t1_vllm.json" ]; then

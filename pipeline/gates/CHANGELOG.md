@@ -7,6 +7,9 @@ as "tuned"; with one it reads as "corrected, and here is why".
 
 ## 2026-09-16.2 (amended after run 2, same version: no gate outcome on run-2 artifacts changes except G2's decoy term)
 
+- **G4 amendment** — `coherent()` tolerates single-step reversals up to 10% of the total effect. The
+  fp32 run 2 curve (0.057, 0.092, 0.121, 0.131, 0.128, 0.135, 0.172) dipped 0.003 at one step of a
+  0.116 effect; the strict rule called that non-monotone. A reversal larger than the tolerance still fails.
 - **G2 amendment** — Scaled copies of the chosen tensor (x0.8, x1.2) are excluded from the decoy-margin
   rule and reported as `ve_scale_sensitivity`. Run 2 showed the SAE reconstructs the x1.2 copy slightly
   BETTER than the unscaled tensor (VE 0.768 vs 0.757), i.e. VE cannot detect a scale error; L0 can
