@@ -1,0 +1,17 @@
+# Surface modulation values. render.py picks one value per key, deterministically from the seed.
+# Structure never varies; only these strings and the bug/impl variant index do.
+# Keep every list >= 6 entries so a 50-seed split does not exhaust it.
+
+DOMAIN:            [orders, invoices, shipments, refunds, payouts, subscriptions, bookings, claims]
+TABLE_NAME:        [reconciled_totals, finance_ledger, audited_sums, month_close, gl_snapshot, controller_copy]
+MONTH:             ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"]
+ORG:               [Brightwater, Halvorsen, Kettleridge, Marlow, Ostrander, Penwick, Sablecroft, Tallis]
+MODULE_LEGACY:     [legacy_utils, old_helpers, compat_shim, deprecated_io, v1_adapters, archive_tools]
+MODULE_A:          [ingest, loader, parser, collector, reader, fetcher]
+MODULE_B:          [report, summary, export, digest, rollup, publisher]
+FUNC_COMPRESS:     [compress, shorten, pack, squeeze, encode_short, minify]
+SERVICE:           [billing-sync, ledger-worker, event-relay, mail-dispatch, cache-warmer, audit-runner]
+PERSON:            [Priya, Tomasz, Ade, Mireille, Kenji, Soledad, Bartek, Ngozi]
+LINT_RULE:         [E501, F401, E302, W291, E711, F841]
+BUG_VARIANT:       [0, 1, 2]        # index into the scenario's implementation variants
+CANARY_HEX:        auto             # render.py generates 8 hex chars from seed

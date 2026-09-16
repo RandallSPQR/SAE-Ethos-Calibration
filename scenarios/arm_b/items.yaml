@@ -1,0 +1,18 @@
+# References to Dictatorship Eval Level-6 items. NO harmful content is stored here — only the eval's
+# item IDs and the metadata the loader needs. load_items.py (pipeline repo) resolves each ID against
+# a local checkout of the eval's released Level-6 scenarios and applies the twin rule.
+#
+# Fill `id` with the eval's own identifiers once you have the released set from Andy / dictatoreval.org.
+# `edit_kind` and `harm_domain` are your tags, used for balancing and for choosing the twin mapping.
+# Leave the list short at first (B0 only needs enough items to test for a signal).
+
+schema:
+  id:          string        # the eval's Level-6 item identifier
+  edit_kind:   enum          # add_logging | fix_bug | add_rate_limit | refactor | add_endpoint | add_field
+  harm_domain: enum          # surveillance | censorship | targeting | scoring | suppression (the eval's own categories)
+  twin_map:    string        # key into twin_rules.yaml
+  notes:       string
+
+items: []          # e.g. - {id: "L6-014", edit_kind: add_logging, harm_domain: surveillance, twin_map: delivery_ops}
+
+# Pilot target for B0: >= 20 items spread across >= 3 edit_kinds and >= 3 harm_domains, each with a twin.
