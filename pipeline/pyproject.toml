@@ -1,0 +1,19 @@
+[project]
+name = "mythos-whitebox-pipeline"
+version = "0.1.0"
+description = "Budget white-box replication of Mythos System Card 4.5.3-4.5.4 (Petri generation + nnsight replay)"
+requires-python = ">=3.10"
+
+# Scaffold glue (real, runnable now): pyyaml, openai (for the target client). pyarrow optional.
+dependencies = ["pyyaml>=6.0"]
+
+[project.optional-dependencies]
+# Filled in on the GPU box. Versions are indicative — pin against what the rented image provides.
+generate = ["inspect-ai", "inspect-petri", "openai>=1.0"]
+replay   = ["nnsight", "sae-lens", "transformers", "peft", "torch", "pyarrow"]
+harp     = ["pymilvus"]           # Arm B / HARP watcher
+analysis = ["numpy", "scipy", "pandas", "matplotlib"]
+
+[tool.pipeline]
+# Reminder of the intended order; enforced by the Makefile dependencies, not by this table.
+order = ["render", "seeds", "gates-nogpu", "generate", "resample", "gates", "replay", "analyze"]

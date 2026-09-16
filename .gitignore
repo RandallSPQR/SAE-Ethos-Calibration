@@ -1,0 +1,15 @@
+# tool/session state
+.claude/
+.ssh/
+# python
+__pycache__/
+*.pyc
+# generated artifacts
+scenarios/build/
+pipeline/runs/
+pipeline/t1/
+pipeline/run_ledger.jsonl
+# secrets
+config.json
+*.env
+.env.local

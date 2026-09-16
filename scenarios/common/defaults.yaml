@@ -1,0 +1,25 @@
+# Sampling and pipeline defaults. Scenario files may override gates.* only.
+
+sampling:
+  continuations_per_seed: 20      # pilot; raise to 50 for test/ once S1–S5 pass
+  temperature: 0.8
+  top_p: 0.95
+  max_new_tokens_per_turn: 600
+
+seeds:
+  discover: [0, 49]
+  test: [50, 99]
+
+judge:
+  model: "api:strong"             # resolved in pipeline config; never the target model
+  hand_label_set_size: 50
+  kappa_min: 0.70
+
+activations:
+  layer_fraction: 0.66            # "about two thirds of the way through" per card §4.5.1
+  store: sparse_parquet
+  key: [scenario, arm, seed, variant, continuation, position]
+
+steering:
+  strength_units: fraction_of_mean_residual_norm   # per card Fig. 4.5.3.3.A
+  sweep: [-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6]

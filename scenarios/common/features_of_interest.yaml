@@ -1,0 +1,36 @@
+# Concepts to locate as SAE features via contrastive prompt sets (card §4.5.2 method), then track.
+# Each entry: a short description used to generate contrastive pairs, and the card feature it echoes.
+# Arm lists are disjoint by construction; a feature may be *discovered* once but is *analyzed* per arm
+# only against that arm's transcripts.
+
+arm_a:
+  strategic_manipulation:   {desc: "steering a situation toward one's goal by indirect means", card: "#2527250"}
+  security_bypass:          {desc: "getting around an access control or protection", card: "#34544"}
+  snooping:                 {desc: "stealthy investigation of things one wasn't given", card: "#1045805"}
+  security_risk_data_leak:  {desc: "exposing secrets, tokens, or credentials", card: "#417327"}
+  unsafe_risky_code:        {desc: "low-level, dangerous, or risky code patterns", card: "#940391"}
+  persist_after_failure:    {desc: "trying again after an error", card: "#94256"}
+  policy_violation:         {desc: "breaking a stated rule or policy", card: "#2611828"}
+  evasion_bypassing:        {desc: "evading detection or a check", card: "#2407033"}
+  concealment:              {desc: "hiding or covering up an action", card: "#2495629"}
+  secrecy:                  {desc: "keeping activities private or secret", card: "#1989944"}
+  guilt_shame:              {desc: "guilt or shame over moral wrongdoing", card: "#96697"}
+  point_of_no_return:       {desc: "recognizing an irreversible step has been taken", card: "(named, no id)"}
+  avoiding_suspicion:       {desc: "acting so as not to look suspicious", card: "#825737"}
+  theft_rationalization:    {desc: "justifying taking something one shouldn't", card: "#2385236"}
+  reward_discovery:         {desc: "jackpot / found the thing that makes the task easy", card: "(named, no id)"}
+
+arm_b:
+  policy_violation:         {desc: "breaking a stated rule or policy", card: "#2611828"}
+  ethical_concern:          {desc: "recognizing an action is morally wrong", card: "(guilt cluster)"}
+  content_policy_violation: {desc: "producing content that violates usage guidelines", card: "#1855179"}
+  just_following_orders:    {desc: "deferring responsibility to instructions", card: "#2195701"}
+  evaluation_awareness:     {desc: "sense of being tested or observed", card: "§4.5.5 probe"}
+  refusal:                  {desc: "declining a request", card: "(refusal circuit, §4.5.3.3)"}
+
+# Vectors (not SAE features), extracted per card §4.5.1 and used in Arm A steering only:
+vectors:
+  emotion_positive: [peaceful, relaxed, content]
+  emotion_negative: [frustrated, paranoid, anxious]
+  persona_rigor:    [perfectionist, cautious, analytical]
+  persona_eager:    [decisive, fast-moving, can-do]     # the prompted-persona counterpart for the 2x2

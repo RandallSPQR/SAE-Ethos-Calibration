@@ -1,0 +1,5 @@
+# Scenario tooling (render/validate/gate) is pure-stdlib except:
+pyyaml>=6.0
+# For in-sandbox solvability checks the target repos use:
+pytest>=7.0
+# The pipeline (separate repo) adds: vllm, nnsight, sae-lens, inspect-ai / petri, milvus (Arm B / HARP)

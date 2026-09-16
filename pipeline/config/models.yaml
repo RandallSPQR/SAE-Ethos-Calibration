@@ -1,0 +1,98 @@
+# The only file that names models. Switch dev->target by editing `target` + `replay`.
+
+roles:
+  # Petri audit roles (Inspect model strings). Auditor + judge are API models; target is the model
+  # under study, served locally by vLLM behind an OpenAI-compatible endpoint.
+  auditor: "anthropic/claude-sonnet-4-6"     # sets up the obstacle scenario; use your API access
+  judge:   "anthropic/claude-opus-4-6"       # scores transcripts; also the transgression judge
+  target:  "openai-api/local/gemma-2-9b-it"  # resolves to the vLLM endpoint below
+
+# vLLM OpenAI-compatible endpoint. Point Inspect's openai-api provider here (env: LOCAL_BASE_URL).
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"               # vLLM accepts any; set a dummy
+  served_model_name: "gemma-2-9b-it"
+
+# Weights for the local consumers (resample + replay load these directly).
+# revision MUST be a concrete commit SHA for a pinned (T3) run — never a floating branch like "main".
+target_model:
+  hf_id: "google/gemma-2-9b-it"
+  base_hf_id: "google/gemma-2-9b"            # for the base-vs-IT comparison (§4.5.3.4)
+  revision: null                             # pin to a HF commit SHA before T3 (provenance.assert_pinned enforces)
+  dtype: "bfloat16"
+
+# White-box artifacts tied to the target.
+sae:
+  # LOCKED to the canonical released artifact. The 9B-IT residual SAEs exist at layers 9, 20, 31 only —
+  # there is NO layer-32 IT residual SAE. "Layer 32" was 1-based numbering; the model index is 31,
+  # which is also ~0.74 depth (31/42), a fine late-middle location. Do NOT dynamically compute the layer.
+  release: "gemma-scope-9b-it-res-canonical"
+  sae_id: "layer_31/width_16k/canonical"        # 16k for the proof-of-pipeline rig; 131k is a later CHOICE, not a debug variable
+  revision: null                                # pin to the SAE artifact revision/hash before T3
+  layer: 31
+  # The SAELens hook name for this SAE:
+  saelens_hook_name: "blocks.31.hook_resid_post"
+  # CAVEAT that G2 defends against: a Gemma-2 decoder layer returns (hidden_states, residual); the
+  # residual stream LEAVING the block (hook_resid_post) is their sum, NOT simply `layer.output[0]`.
+  # The first GPU calibration must establish the exact tensor transform that equals hook_resid_post and
+  # validate it against the canonical SAE. Identify the hook by reproducing published FVU/L0, never by
+  # asserting a module path.
+  hook_point: "blocks.31.hook_resid_post"       # semantic target; resolve to the real nnsight tensor at calibration
+  hook_candidates:                              # decoys G2 must REJECT (same shape, wrong tensor)
+    - "layers.31.hidden_states_only"            # layer.output[0] alone — the tempting wrong answer
+    - "layers.31.mlp_output"
+    - "layers.31.attn_output"
+    - "layers.31.input_resid"                   # hook_resid_pre
+  published:                                    # Google's reported numbers for THIS canonical SAE
+    # SAELens pretrained_saes.yaml maps layer_31/width_16k/canonical -> google/gemma-scope-9b-it-res
+    # layer_31/width_16k/average_l0_76 (verified 2026-09-10). The folder name IS the published L0.
+    l0: 76
+    # No per-SAE FVU is published for the IT SAEs (paper 2408.05147 §4.5 reports delta-loss only; the HF
+    # card has no metrics table). null -> G2 matches on L0 alone and reports fvu_unverified=true.
+    fvu: null
+    tol: 0.15                                   # relative tolerance for the match
+    # L0 is measured on the SAE's training distribution (monology/pile-uncopyrighted, ctx 1024, BOS
+    # prepended, BOS excluded from stats) — G2 streams a small slice of it for the comparison.
+    dataset: "monology/pile-uncopyrighted"
+    context_size: 1024
+
+oracle:
+  # Activation Oracles (Karvonen et al. 2025, arXiv 2512.15674); the gemma-2-9b-it member of the official
+  # collection. ao_config.json: hook_onto_layer 1, act layers {10,21,31} (25/50/75% of 42), prefix
+  # "Layer: {layer}\n{special_token} * {num_positions} \n", special_token " ?", norm-matched addition.
+  hf_id: "adamkarvonen/checkpoints_latentqa_cls_past_lens_addition_gemma-2-9b-it"
+  inject_layer: 1
+  special_token: " ?"
+  prefix_template: "Layer: {layer}\n{placeholders} \n"
+  question: "What is the text about? Answer in one short sentence."
+  window: 8                                  # consecutive positions injected per query
+  patch_inject_layer: 6                      # patchscopes fallback backend
+  kind: "lora"
+  revision: null                             # pin the oracle adapter revision/hash before T3
+  depths: [0.25, 0.50, 0.75]
+
+# When you move to 27B: target -> gemma-3-27b-it, base -> gemma-3-27b, and re-derive the SAE block:
+#   the 27B SAE lives at a DIFFERENT layer with its own canonical id and its own published FVU/L0.
+#   Re-run the full T1 hook calibration on 27B; the hook is never the "same layer" across models.
+# Model FAMILY is the unit of work. Gemma-2 -> Gemma-3 27B is an adapter (same serializer family, same
+# SAE ecosystem, bigger pod). Llama-3.3-70B is a SECOND family: new serializer (model_io/llama3.py),
+# Goodfire SAE format (layer 50, weights on HF), 2x80GB bf16 (no 4-bit: SAEs were trained on bf16
+# residuals; quantization breaks G0b on its own terms). Do not start a second family until the Gemma
+# results say which questions need it. For Llama exploration before then, use Goodfire's hosted API
+# (steer-by-feature-id) as a separate client — it cannot run G0-G2/G9 and is not a substitute for them.
+
+# T1 calibration inputs (calibrate/t1_ladder.py). Fixed texts live in the script; only knobs here.
+calibration:
+  g0_max_tokens: 32
+  g1_max_tokens: 96
+  g2_max_tokens: 1024
+  # Neuronpedia-labeled code feature at layer 31 / gemmascope-res-16k (verify the index on Neuronpedia
+  # before trusting G3). null -> G3/G4 are skipped and reported as missing.
+  # Verified on Neuronpedia 2026-09-10 (gemma-2-9b-it / 31-gemmascope-res-16k):
+  #   8209  "python function definitions"   (top logits: def, print)
+  #   9002  "code comments and docstrings"  (top logits: allows, takes, returns)
+  #   4864  "python code examples"
+  #   12174 "function definitions"
+  code_feature_index: 8209
+  code_feature_label: "python function definitions"
+  extra_feature_indices: [9002, 4864, 12174]
