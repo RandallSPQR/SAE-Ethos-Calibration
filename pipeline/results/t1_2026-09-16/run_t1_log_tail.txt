@@ -1,0 +1,35 @@
+== stage 2: nnsight
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[PASS] G0_model_checksum: G0a_prompt_identity=True, G0b_computation_identity=True
+[FAIL] G1_replay_fidelity: mode=logprob, worst_logprob_gap=0.17166, tol=0.05, n=1
+[FAIL] G2_sae_health: chosen_hook=blocks.31.hook_resid_post, var_explained=0.733, l0=101.0, matches_published=False, decoys_rejected=False, health_ok=True, fvu_unverified=True
+[FAIL] G3_feature_known_answer: auroc=0.578, threshold=0.8, planted_ok=True, topic_filter_ok=True
+[FAIL] G4_steering_known_answer: effect=0.0, threshold=0.05, monotone=True
+[FAIL] G5_oracle_calibration: accuracy=0.917, confab_rate=1.0, min_acc=0.6, max_confab=0.3
+
+full: 1/6 gates passed.
+BLOCKED by: G1_replay_fidelity, G2_sae_health, G3_feature_known_answer, G4_steering_known_answer, G5_oracle_calibration
+model loaded: layers=42 d_model=3584 hook layer=31
+G0 nnsight: '11, 13, 17'
+G1 diag: {'sampled_len': 46, 'span_len': 46, 'span_ids_equal_sampled': True, 'raw_ids_exact_match': 0.9782608695652174, 'raw_ids_mismatch_positions': [9], 'raw_ids_mismatches': [{'k': 9, 'vllm_id': 573, 'vllm_tok': ' the', 'replay_argmax_id': 4103, 'replay_argmax_tok': ' `', 'replay_logprob_of_vllm_tok': -0.8936370611190796, 'vllm_logprob': -0.7642993927001953}], 'raw_ids_max_logprob_gap': 0.23292505741119385}
+G2 calibration text: 1024 tokens from monology/pile-uncopyrighted
+G2 chosen: {'hook': 'blocks.31.hook_resid_post', 'var_explained': 0.7326, 'fvu': 0.2674, 'l0': 101.0469, 'var_explained_per_token': 0.8776, 'rel_mse': 0.1224, 'n_tokens': 1023}
+   decoy: layers.31.hidden_states_only ve=-0.631 l0=32.6
+   decoy: layers.31.mlp_output ve=-1090.225 l0=17.9
+   decoy: layers.31.attn_output ve=-185.955 l0=18.0
+   decoy: layers.31.input_resid ve=0.601 l0=79.3
+G3: auroc=0.578 code_active=0.16 prose_active=0.00 mention_active=0.00
+G4 curve: {'-0.6': 0.0, '-0.4': 0.0, '-0.2': 0.0, '0.0': 0.0, '0.2': 0.0, '0.4': 0.0, '0.6': 0.0}
+G5 (patchscopes baseline): {'accuracy': 0.583, 'confab_rate': 1.0}
+G5 (karvonen): {'accuracy': 0.917, 'confab_rate': 1.0}
+$ /workspace/venv/bin/python -m gates.run_gates --transcripts /workspace/t1/transcripts --replayed /workspace/t1/replayed --features /workspace/t1/features --gates G0,G1,G2,G3,G4,G5
+== done; artifacts in /workspace/t1/features
+feature_labels.json
+g1_diagnostics.json
+known_answer_report.json
+model_checksum.json
+oracle_calibration.json
+oracle_calibration_patchscopes.json
+sae_health.json
+steering_report.json
+t1_vllm.json

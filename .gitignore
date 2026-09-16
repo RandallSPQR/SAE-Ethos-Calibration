@@ -8,6 +8,7 @@ __pycache__/
 scenarios/build/
 pipeline/runs/
 pipeline/t1/
+!pipeline/results/
 pipeline/run_ledger.jsonl
 # secrets
 config.json

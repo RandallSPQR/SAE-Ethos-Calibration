@@ -1,0 +1,21 @@
+{
+  "sampled_len": 46,
+  "span_len": 46,
+  "span_ids_equal_sampled": true,
+  "raw_ids_exact_match": 0.9782608695652174,
+  "raw_ids_mismatch_positions": [
+    9
+  ],
+  "raw_ids_mismatches": [
+    {
+      "k": 9,
+      "vllm_id": 573,
+      "vllm_tok": " the",
+      "replay_argmax_id": 4103,
+      "replay_argmax_tok": " `",
+      "replay_logprob_of_vllm_tok": -0.8936370611190796,
+      "vllm_logprob": -0.7642993927001953
+    }
+  ],
+  "raw_ids_max_logprob_gap": 0.23292505741119385
+}
