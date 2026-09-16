@@ -4,6 +4,8 @@ consumes, then runs the gates. Two stages so vLLM and the nnsight copy never sha
 
   python -m calibrate.t1_ladder --stage vllm      # vLLM up: greedy G0 completion + greedy G1 transcript
   python -m calibrate.t1_ladder --stage nnsight   # vLLM down: nnsight replay, SAE, G2..G5, run gates
+  python -m calibrate.t1_ladder --stage identity  # TransformerLens (no weight processing) vs the saved nnsight tensor
+Rules: gates/_common.GATE_RULES_VERSION (see gates/CHANGELOG.md). T1_DTYPE=float32 for the fp32 G1 check.
 
 Everything is T=0. Outputs under --out (default t1/): features/, transcripts/, replayed/.
 """
@@ -14,6 +16,7 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 HERE = Path(__file__).resolve().parent
@@ -80,7 +83,7 @@ def _dump(path, obj):
 def _vllm_complete(base_url, model, prompt, max_tokens, logprobs=True):
     import urllib.request
     body = {"model": model, "prompt": prompt, "temperature": 0.0, "max_tokens": max_tokens,
-            "logprobs": 1 if logprobs else None, "return_token_ids": True, "add_special_tokens": True,
+            "logprobs": 2 if logprobs else None, "return_token_ids": True, "add_special_tokens": True,
             "seed": 0}
     req = urllib.request.Request(base_url.rstrip("/") + "/completions", data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json",
@@ -91,8 +94,15 @@ def _vllm_complete(base_url, model, prompt, max_tokens, logprobs=True):
     prompt_ids = ch.get("prompt_token_ids") or d.get("prompt_token_ids")
     gen_ids = ch.get("token_ids")
     lp = ch.get("logprobs") or {}
+    margins = None
+    if lp.get("top_logprobs"):
+        margins = []
+        for d in lp["top_logprobs"]:
+            vals = sorted((d or {}).values(), reverse=True)
+            margins.append(float(vals[0] - vals[1]) if len(vals) >= 2 else None)
     return {"text": ch["text"], "prompt_token_ids": prompt_ids, "token_ids": gen_ids,
-            "token_logprobs": lp.get("token_logprobs"), "finish_reason": ch.get("finish_reason"), "raw_keys": list(ch.keys())}
+            "token_logprobs": lp.get("token_logprobs"), "top2_margin": margins,
+            "finish_reason": ch.get("finish_reason"), "raw_keys": list(ch.keys())}
 
 
 def _wait_server(base_url, timeout=900):
@@ -149,163 +159,188 @@ def _strip_eos(ids, lps):
 def stage_nnsight(out, gates_only=None):
     import numpy as np
     import torch
+    from gates._common import GATE_RULES_VERSION
     from model_io.gemma2 import apply_to_tokenizer
-    from replay.modelload import load_target, HOOK_READERS, hook_reader
-    from replay.hooks import teacher_forced_forward, greedy_generate, build_input_ids
-    from replay.sae import load_sae, sae_health, hook_identification_report, encode_dense, fetch_neuronpedia_labels
+    from replay.modelload import load_target, hook_reader
+    from replay.hooks import teacher_forced_forward, greedy_generate, greedy_generate_at_layer
+    from replay.sae import (load_sae, sae_health, hook_identification_report, encode_dense, fetch_neuronpedia_labels,
+                            jumprelu_integrity, sae_artifact_identity)
     from gates.g3_feature_known_answer import auroc
     out = Path(out)
     feat = out / "features"
     v = json.loads((feat / "t1_vllm.json").read_text())
     lm = load_target("target")
     tok = lm.tokenizer
-    print(f"model loaded: layers={lm.n_layers} d_model={lm.d_model} hook layer={lm.layer}")
+    dtype = str(next(lm.model.model.parameters()).dtype) if hasattr(lm.model, "model") else "?"
+    _dump(feat / "gate_rules.json", {"rules": GATE_RULES_VERSION, "dtype": dtype})
+    print(f"model loaded: layers={lm.n_layers} d_model={lm.d_model} hook layer={lm.layer} dtype={dtype} rules={GATE_RULES_VERSION}")
 
     # ---- G0: prompt identity + computation identity
     ser_ids = apply_to_tokenizer(tok, G0_MESSAGES, add_generation_prompt=True)
     nn_gen = greedy_generate(lm, ser_ids, max_new_tokens=CAL.get("g0_max_tokens", 32))
     vllm_gen, _ = _strip_eos(v["g0"]["token_ids"], None)
     _dump(feat / "model_checksum.json", {
+        "rules": GATE_RULES_VERSION, "dtype": dtype,
         "serializer_prompt_ids": ser_ids, "vllm_prompt_ids": v["g0"]["prompt_token_ids"],
         "nnsight_prompt_ids": ser_ids, "vllm_gen_ids": vllm_gen, "nnsight_gen_ids": nn_gen,
         "vllm_text": v["g0"]["text"], "nnsight_text": tok.decode(nn_gen)})
     print("G0 nnsight:", repr(tok.decode(nn_gen)[:80]))
 
-    # ---- G1: exact replay of the greedy transcript, through the TEXT path (the real replay path)
+    # ---- G1: exact replay of the greedy transcript through the TEXT path (the real replay path)
     from generate.extract_transcripts import fixture_transcript
     row = fixture_transcript()
     dp = v["g1"]["decision_point"]
     s_ids, s_lps = _strip_eos(v["g1"]["token_ids"], v["g1"]["token_logprobs"])
+    margins = (v["g1"].get("top2_margin") or [None] * len(s_ids))[:len(s_ids)]
     gen_text = tok.decode(s_ids)
     msgs = row["messages"][:dp] + [{"role": "assistant", "content": gen_text}]
     row = dict(row, messages=msgs, scored_message_index=dp, uid=row["uid"] + "/t1greedy")
-    row["tokens"] = {"sampled_ids": s_ids, "sampled_logprobs": s_lps}
+    row["sampling"] = {"temperature": 0.0, "top_p": 1.0}          # G1 reads the criterion from HERE
+    row["tokens"] = {"sampled_ids": s_ids, "sampled_logprobs": s_lps, "sampled_top2_margin": margins}
     fr = teacher_forced_forward(lm, msgs, capture_residual=True)
     s, e = fr.assistant_span
     span_ids = fr.token_ids[s:e]
-    g1_diag = {"sampled_len": len(s_ids), "span_len": e - s, "span_ids_equal_sampled": span_ids == s_ids}
-    if span_ids != s_ids:
-        # find first divergence for the report
-        k = next((i for i, (a, b) in enumerate(zip(span_ids, s_ids)) if a != b), min(len(span_ids), len(s_ids)))
-        g1_diag["first_divergence"] = {"k": k, "span": span_ids[max(0, k - 3):k + 3], "sampled": s_ids[max(0, k - 3):k + 3],
-                                       "span_txt": tok.decode(span_ids[max(0, k - 3):k + 3]),
-                                       "sampled_txt": tok.decode(s_ids[max(0, k - 3):k + 3])}
-    # raw-id diagnostic: teacher-force EXACTLY prefix+sampled ids (isolates numerics from retokenization)
+    g1_diag = {"rules": GATE_RULES_VERSION, "dtype": dtype, "sampled_len": len(s_ids), "span_len": e - s,
+               "span_ids_equal_sampled": span_ids == s_ids}
     prefix_ids = apply_to_tokenizer(tok, msgs[:-1], add_generation_prompt=True)
     raw = teacher_forced_forward(lm, None, capture_residual=False, input_ids=prefix_ids + s_ids,
                                  span=(len(prefix_ids), len(prefix_ids) + len(s_ids)))
     rs = len(prefix_ids)
     raw_pred = [raw.logits_argmax[rs - 1 + k] for k in range(len(s_ids))]
     g1_diag["raw_ids_exact_match"] = sum(a == b for a, b in zip(raw_pred, s_ids)) / max(1, len(s_ids))
-    g1_diag["raw_ids_max_logprob_gap"] = (max(abs(a - b) for a, b in zip(raw.input_logprobs[rs:rs + len(s_ids)], s_lps))
-                                          if s_lps else None)
-    # contract arrays, continuation-relative and equal length
+    mism = [k for k, (a, b) in enumerate(zip(raw_pred, s_ids)) if a != b]
+    g1_diag["raw_ids_mismatches"] = [{"k": k, "vllm_id": s_ids[k], "vllm_tok": tok.decode([s_ids[k]]),
+                                      "replay_argmax_id": raw_pred[k], "replay_argmax_tok": tok.decode([raw_pred[k]]),
+                                      "replay_logprob_of_vllm_tok": raw.input_logprobs[rs + k],
+                                      "vllm_logprob": (s_lps[k] if s_lps else None),
+                                      "generation_top2_margin": margins[k] if k < len(margins) else None,
+                                      "replay_top2": raw.logits_top2[rs - 1 + k]} for k in mism[:5]]
     row["tokens"].update({
         "ids": fr.token_ids, "assistant_span": [s, e], "generated_ids": s_ids,
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)],
+        "replay_top2_ids": [fr.logits_top2[s - 1 + k] for k in range(e - s)],
         "replay_logprob": fr.input_logprobs[s:e], "generation_logprob": s_lps,
         "prompt_token_count": s, "decision_token_position": s, "assistant_token_count": e - s})
     tdir, rdir = out / "transcripts" / "arm_a", out / "replayed" / "arm_a"
     tdir.mkdir(parents=True, exist_ok=True); rdir.mkdir(parents=True, exist_ok=True)
     gen_row = {k: val for k, val in row.items() if k != "tokens"}
-    gen_row["tokens"] = {"sampled_ids": s_ids, "sampled_logprobs": s_lps}
+    gen_row["tokens"] = {"sampled_ids": s_ids, "sampled_logprobs": s_lps, "sampled_top2_margin": margins}
     (tdir / "t1.jsonl").write_text(json.dumps(gen_row) + "\n")
     (rdir / "t1.jsonl").write_text(json.dumps({"uid": row["uid"], "tokens": row["tokens"]}) + "\n")
     _dump(feat / "g1_diagnostics.json", g1_diag)
-    print("G1 diag:", g1_diag)
+    print("G1 diag:", {k: g1_diag[k] for k in ("span_ids_equal_sampled", "raw_ids_exact_match")}, "mismatches:", g1_diag["raw_ids_mismatches"])
+    chat_resid = fr.residual
 
-    # ---- G2: hook identification on calibration text (prose + code), chosen hook AND decoys
+    # ---- G2: hook identification. Per-document Pile slices (own BOS, 1024 ctx, BOS excluded), decoys +
+    #      scaled copies, JumpReLU integrity, artifact identity, and the tensor saved for the identity stage.
     sae = load_sae()
+    art = sae_artifact_identity(sae)
+    print("SAE artifact:", art)
     hooks = [MODELS["sae"]["hook_point"]] + list(MODELS["sae"].get("hook_candidates", []))
     readers = {h: hook_reader(h) for h in hooks}
-    cal_ids = _pile_ids(tok, CAL.get("g2_max_tokens", 1024)) or \
-        tok(CALIB_PROSE + "\n" + CODE_TEXT, add_special_tokens=True)["input_ids"][:CAL.get("g2_max_tokens", 1024)]
-    frc = teacher_forced_forward(lm, None, capture_residual=True, input_ids=cal_ids,
-                                 extra_hooks=[r for r in readers.values() if r != "block_output"])
-    res_by_hook = {}
-    for h, r in readers.items():
-        res_by_hook[h] = frc.residual if r == "block_output" else frc.extra[r]
-    rep = hook_identification_report(lm, sae, res_by_hook, feat / "sae_health.json")
-    print("G2 chosen:", {k: (round(val, 4) if isinstance(val, float) else val) for k, val in rep["chosen"].items()})
+    docs = _pile_docs(tok, n_docs=CAL.get("g2_n_docs", 16), ctx=CAL.get("g2_ctx", 1024))
+    if not docs:
+        docs = [tok(CALIB_PROSE, add_special_tokens=True)["input_ids"][:1024], tok(CODE_TEXT, add_special_tokens=True)["input_ids"]]
+    pooled = {h: [] for h in hooks}
+    per_doc_l0, per_doc_ve = [], []
+    for i, ids in enumerate(docs):
+        f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids,
+                                   extra_hooks=[r for r in readers.values() if r != "block_output"])
+        for h, r in readers.items():
+            pooled[h].append((f.residual if r == "block_output" else f.extra[r])[1:])   # drop BOS per doc
+        hd = sae_health(sae, f.residual, skip_bos=True)
+        per_doc_l0.append(hd["l0"]); per_doc_ve.append(hd["var_explained"])
+        if i == 0:
+            np.savez(feat / "identity_input.npz", ids=np.array(ids), resid_post=f.residual.astype(np.float32),
+                     resid_pre=f.extra[readers["layers.31.input_resid"]].astype(np.float32))
+    res_by_hook = {h: np.concatenate(v, 0) for h, v in pooled.items()}
+    chosen_name = MODELS["sae"]["hook_point"]
+    for sc in (0.8, 1.2):
+        res_by_hook[f"{chosen_name}_x{sc}"] = res_by_hook[chosen_name] * sc
+    rep = hook_identification_report(lm, sae, res_by_hook, feat / "sae_health.json", skip_bos=False,
+                                     extra_candidates=[f"{chosen_name}_x0.8", f"{chosen_name}_x1.2"])
+    jr = jumprelu_integrity(sae, res_by_hook[chosen_name])
+    rep.update({"rules": GATE_RULES_VERSION, "dtype": dtype, "per_doc_l0": per_doc_l0, "per_doc_var_explained": per_doc_ve,
+                "n_docs": len(docs), "ctx": CAL.get("g2_ctx", 1024), "bos_excluded": True,
+                "jumprelu_below_threshold_frac": jr["below_threshold_frac"], "jumprelu_n_active": jr["n_active"],
+                "chat_health": sae_health(sae, chat_resid, skip_bos=True), "artifact": art})
+    _dump(feat / "sae_health.json", rep)
+    pd = sorted(per_doc_l0)
+    print("G2 chosen (pooled):", {k: (round(val, 4) if isinstance(val, float) else val) for k, val in rep["chosen"].items()})
+    print("   per-doc L0: median=%.1f min=%.1f max=%.1f | jumprelu below-threshold frac=%.4f | chat L0=%.1f" % (
+        pd[len(pd) // 2], pd[0], pd[-1], jr["below_threshold_frac"], rep["chat_health"]["l0"]))
     for c in rep["candidates"]:
         print("   decoy:", c["hook"], "ve=%.3f l0=%.1f" % (c["var_explained"], c["l0"]))
 
-    # ---- G3: known code feature discriminates code from prose (position-level AUROC)
+    # ---- G3: window-max discrimination on labeled code features
     fidx = CAL.get("code_feature_index")
-    if fidx is None:
-        _dump(feat / "known_answer_report.json", {"error": "calibration.code_feature_index not set in models.yaml"})
-        print("G3: SKIPPED (no code_feature_index)")
-    else:
-        def acts_on(text):
-            ids = tok(text, add_special_tokens=True)["input_ids"]
-            f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids)
-            return encode_dense(sae, f.residual)[1:, fidx]          # drop BOS
-        a_code, a_prose, a_mention = acts_on(CODE_TEXT), acts_on(PROSE_TEXT), acts_on(MENTION_TEXT)
-        a_planted = acts_on(PROSE_TEXT + "\n" + CODE_TEXT)
-        rep3 = {"feature": fidx, "concept_positions": a_code.tolist(), "other_positions": a_prose.tolist(),
-                "planted_secrecy_activation": float(a_planted.mean()),       # planted-concept analog: code planted into prose
-                "baseline_secrecy_activation": float(a_prose.mean()),
-                "mention_behavior_activation": float(a_mention.mean()),      # topic-vs-behavior analog: prose ABOUT code
-                "control_behavior_activation": float(a_prose.mean()),
-                "auroc": auroc(a_code.tolist(), a_prose.tolist()),
-                "frac_active": {"code": float((a_code > 0).mean()), "prose": float((a_prose > 0).mean()),
-                                "mention": float((a_mention > 0).mean())},
-                "note": "planted/mention fields reuse the code feature (code planted in prose; prose that talks about code)"}
-        extra = {}
-        for fx in CAL.get("extra_feature_indices", []) or []:
-            def acts_x(text, fx=fx):
-                ids = tok(text, add_special_tokens=True)["input_ids"]
-                f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids)
-                return encode_dense(sae, f.residual)[1:, fx]
-            c, pr = acts_x(CODE_TEXT), acts_x(PROSE_TEXT)
-            extra[str(fx)] = {"auroc": auroc(c.tolist(), pr.tolist()), "code_active": float((c > 0).mean()),
-                              "prose_active": float((pr > 0).mean())}
-        rep3["extra_features"] = extra
-        _dump(feat / "known_answer_report.json", rep3)
-        try:
-            fetch_neuronpedia_labels([fidx] + list(CAL.get("extra_feature_indices", []) or []), feat / "feature_labels.json")
-        except Exception as ex:
-            print("neuronpedia fetch failed:", ex)
-        print("G3: auroc=%.3f code_active=%.2f prose_active=%.2f mention_active=%.2f" % (
-            rep3["auroc"], rep3["frac_active"]["code"], rep3["frac_active"]["prose"], rep3["frac_active"]["mention"]))
+    feats = [fidx] + list(CAL.get("extra_feature_indices", []) or [])
 
-        # ---- G4: steer along the code feature's decoder direction; readout = P(next token opens code)
-        W = sae.W_dec[fidx].detach().float().cpu().numpy()
-        p_ids = apply_to_tokenizer(tok, STEER_PROMPT, add_generation_prompt=True)
-        code_openers = [t for t in ["```", "def", "import", "```python", "class", "#", "print"]]
-        opener_ids = sorted({tok(t, add_special_tokens=False)["input_ids"][0] for t in code_openers})
-        sweep = yaml.safe_load((CFG / "run.yaml").read_text())["steering"]["sweep"]
-        curve, samples = {}, {}
-        for strength in sweep:
-            f = teacher_forced_forward(lm, None, capture_residual=False, input_ids=p_ids, steer=(W, strength))
-            # recompute logprob vector at last position from a fresh forward that returns logits
-            # (teacher_forced_forward returns argmax + input logprobs; we need the full last-position distribution)
-            curve[str(strength)] = _last_pos_mass(lm, p_ids, (W, strength), opener_ids)
-            samples[str(strength)] = tok.decode(greedy_generate(lm, p_ids, max_new_tokens=24,
-                                                                 ) ) if strength == 0 else None
-        _dump(feat / "steering_report.json", {"feature": fidx, "readout": "P(next token in code openers)",
-                                              "opener_ids": opener_ids, "curve": curve, "samples": samples})
-        print("G4 curve:", {k: round(val, 4) for k, val in curve.items()})
-
-    # ---- G5: oracle. Residuals are captured UNADAPTED first; the LoRA is loaded last of all.
-    from replay.oracle import load_oracle, oracle_calibration_report, gather_residuals
-    samples = gather_residuals(lm, tok, {"code": CODE_TEXT, "prose": PROSE_TEXT})
+    def acts_on(text, fx):
+        ids = tok(text, add_special_tokens=True)["input_ids"]
+        f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids)
+        return encode_dense(sae, f.residual)[1:, fx]
+    per = {}
+    for fx in feats:
+        c, p, m = acts_on(CODE_TEXT, fx), acts_on(PROSE_TEXT, fx), acts_on(MENTION_TEXT, fx)
+        pl = acts_on(PROSE_TEXT + "\n" + CODE_TEXT, fx)
+        cw, pw, mw, plw = _window_max(c), _window_max(p), _window_max(m), _window_max(pl)
+        per[str(fx)] = {"auroc_window_max": auroc(cw, pw), "auroc_position": auroc(c.tolist(), p.tolist()),
+                        "frac_active": {"code": float((c > 0).mean()), "prose": float((p > 0).mean()), "mention": float((m > 0).mean())},
+                        "window_max": {"code": cw, "prose": pw, "mention": mw, "planted": plw},
+                        "raw": {"code": c.tolist(), "prose": p.tolist()}}
+    mf = per[str(fidx)]
+    rep3 = {"rules": GATE_RULES_VERSION, "feature": fidx, "statistic": f"window-max ({WINDOW} tokens) AUROC + fraction-active",
+            "concept_positions": mf["window_max"]["code"], "other_positions": mf["window_max"]["prose"],
+            "concept_positions_raw": mf["raw"]["code"], "other_positions_raw": mf["raw"]["prose"],
+            "planted_secrecy_activation": float(np.mean(mf["window_max"]["planted"])),
+            "baseline_secrecy_activation": float(np.mean(mf["window_max"]["prose"])),
+            "mention_behavior_activation": float(np.mean(mf["window_max"]["mention"])),
+            "control_behavior_activation": float(np.mean(mf["window_max"]["prose"])),
+            "auroc": mf["auroc_window_max"], "frac_active": mf["frac_active"],
+            "per_feature": {k: {kk: vv for kk, vv in val.items() if kk != "raw"} for k, val in per.items()},
+            "note": "planted/mention fields reuse the code feature (code planted in prose; prose that talks about code)"}
+    _dump(feat / "known_answer_report.json", rep3)
     try:
-        rep5p = oracle_calibration_report(load_oracle("patchscopes", lm=lm), samples, feat / "oracle_calibration_patchscopes.json")
-        print("G5 (patchscopes baseline):", {k: round(rep5p[k], 3) for k in ("accuracy", "confab_rate")})
+        fetch_neuronpedia_labels(feats, feat / "feature_labels.json")
+    except Exception as ex:
+        print("neuronpedia fetch failed:", ex)
+    for fx in feats:
+        print(f"G3 feature {fx}: auroc_window_max={per[str(fx)]['auroc_window_max']:.3f} auroc_position={per[str(fx)]['auroc_position']:.3f} active={per[str(fx)]['frac_active']}")
+
+    # ---- G4: steer along the code feature's decoder direction at a LIVE decision point
+    W = sae.W_dec[fidx].detach().float().cpu().numpy()
+    opener_ids = sorted({tok(t, add_special_tokens=False)["input_ids"][0] for t in ["```", "def", "import", "class", "#", "print"]})
+    sweep = yaml.safe_load((CFG / "run.yaml").read_text())["steering"]["sweep"]
+    curves, samples = {}, {}
+    for name, prompt in (("A_code_request", STEER_PROMPT_LIVE), ("B_write_something", STEER_PROMPT)):
+        ids = apply_to_tokenizer(tok, prompt, add_generation_prompt=True)
+        curves[name], samples[name] = {}, {}
+        for st in sweep:
+            curves[name][str(st)] = _last_pos_mass(lm, ids, (W, st), opener_ids)
+            samples[name][str(st)] = tok.decode(greedy_generate_at_layer(lm, ids, lm.layer, (W, st), max_new_tokens=20))
+        print(f"G4 {name}: " + " ".join(f"{k}:{val:.3f}" for k, val in curves[name].items()))
+    _dump(feat / "steering_report.json", {"rules": GATE_RULES_VERSION, "feature": fidx,
+                                          "readout": "P(first generated token in code openers)", "opener_ids": opener_ids,
+                                          "prompt": STEER_PROMPT_LIVE[0]["content"], "curve": curves["A_code_request"],
+                                          "curves_all": curves, "samples": samples})
+
+    # ---- G5: paired real/null verbalization. Residuals captured UNADAPTED first; the LoRA loads last of all.
+    from replay.oracle import load_oracle, oracle_calibration_report, gather_residuals
+    samples5 = gather_residuals(lm, tok, {"code": CODE_TEXT, "prose": PROSE_TEXT})
+    try:
+        rep5p = oracle_calibration_report(load_oracle("patchscopes", lm=lm), samples5, feat / "oracle_calibration_patchscopes.json")
+        print("G5 (patchscopes baseline):", {k: round(rep5p[k], 3) for k in ("accuracy", "confab_rate", "paired_discrimination")})
     except Exception as ex:
         import traceback; traceback.print_exc()
-        print("G5 patchscopes baseline failed:", ex)
     try:
         oracle = load_oracle("karvonen", lm=lm)
-        rep5 = oracle_calibration_report(oracle, samples, feat / "oracle_calibration.json")
-        print("G5 (karvonen):", {k: round(rep5[k], 3) for k in ("accuracy", "confab_rate")})
+        rep5 = oracle_calibration_report(oracle, samples5, feat / "oracle_calibration.json")
+        print("G5 (karvonen):", {k: round(rep5[k], 3) for k in ("accuracy", "confab_rate", "paired_discrimination")})
     except Exception as ex:
         import traceback; traceback.print_exc()
-        _dump(feat / "oracle_calibration.json", {"accuracy": 0.0, "confab_rate": 1.0, "error": str(ex)[:300]})
-        print("G5: FAILED to run karvonen oracle:", ex)
+        _dump(feat / "oracle_calibration.json", {"accuracy": 0.0, "confab_rate": 1.0, "pairs": [], "error": str(ex)[:300]})
 
-    # ---- run the gates on what we wrote
     import subprocess
     cmd = [sys.executable, "-m", "gates.run_gates", "--transcripts", str(out / "transcripts"),
            "--replayed", str(out / "replayed"), "--features", str(feat), "--gates", gates_only or "G0,G1,G2,G3,G4,G5"]
@@ -313,27 +348,78 @@ def stage_nnsight(out, gates_only=None):
     subprocess.run(cmd, cwd=ROOT)
 
 
-def _pile_ids(tok, n_tokens, n_docs=12):
-    """A slice of the SAE's training distribution (models.yaml sae.published.dataset) so the L0
-    comparison is apples-to-apples. Returns None if the dataset can't be streamed."""
+def stage_identity(out):
+    """Tensor identity: TransformerLens HookedTransformer loaded with NO weight processing (Gemma-2's post-norm
+    scales write into the residual, so folding would change the tensor under test), same ids, compare
+    blocks.31.hook_resid_post to the saved nnsight tensor. Runs as its own process so both 9B copies never
+    share the GPU. Writes identity into features/sae_health.json and features/identity_report.json."""
+    import numpy as np
+    import torch
+    from gates._common import GATE_RULES_VERSION
+    from transformer_lens import HookedTransformer
+    out = Path(out); feat = out / "features"
+    z = np.load(feat / "identity_input.npz")
+    ids = torch.tensor([z["ids"].tolist()])
+    dtype = getattr(torch, os.environ.get("T1_DTYPE") or MODELS["target_model"].get("dtype", "bfloat16"))
+    model = HookedTransformer.from_pretrained_no_processing(MODELS["target_model"]["hf_id"], dtype=dtype, device="cuda")
+    L = int(MODELS["sae"]["layer"])
+    names = [f"blocks.{L}.hook_resid_post", f"blocks.{L}.hook_resid_pre"]
+    with torch.no_grad():
+        _, cache = model.run_with_cache(ids.to("cuda"), names_filter=lambda n: n in names)
+    rep = {"rules": GATE_RULES_VERSION, "ref": "transformerlens:from_pretrained_no_processing", "dtype": str(dtype), "n_tokens": int(ids.shape[1])}
+    for key, name in (("resid_post", names[0]), ("resid_pre", names[1])):
+        tl = cache[name][0].float().cpu().numpy()
+        nn = z[key]
+        n = min(len(tl), len(nn))
+        tl, nn = tl[1:n], nn[1:n]                                     # BOS excluded (attention-sink outlier)
+        rel = np.linalg.norm(tl - nn, axis=-1) / (np.linalg.norm(tl, axis=-1) + 1e-6)
+        cos = (tl * nn).sum(-1) / (np.linalg.norm(tl, axis=-1) * np.linalg.norm(nn, axis=-1) + 1e-6)
+        rep[key] = {"max_rel_err": float(rel.max()), "mean_rel_err": float(rel.mean()), "min_cos": float(cos.min()),
+                    "scale_ratio_mean": float((np.linalg.norm(nn, axis=-1) / (np.linalg.norm(tl, axis=-1) + 1e-6)).mean())}
+    # cross-check: nnsight resid_post must NOT match TL resid_pre (proves the comparison has teeth)
+    tl_pre = cache[names[1]][0].float().cpu().numpy()[1:]
+    nn_post = z["resid_post"][1:len(tl_pre) + 1]
+    rep["cross_post_vs_pre_max_rel_err"] = float((np.linalg.norm(tl_pre - nn_post, axis=-1) / (np.linalg.norm(tl_pre, axis=-1) + 1e-6)).max())
+    _dump(feat / "identity_report.json", rep)
+    h = json.loads((feat / "sae_health.json").read_text())
+    h["identity"] = {"max_rel_err": rep["resid_post"]["max_rel_err"], "ref": f"transformerlens:{names[0]}",
+                     "min_cos": rep["resid_post"]["min_cos"], "scale_ratio_mean": rep["resid_post"]["scale_ratio_mean"]}
+    _dump(feat / "sae_health.json", h)
+    print("identity:", json.dumps(rep, indent=None))
+
+
+WINDOW = 16
+STEER_PROMPT_LIVE = [{"role": "user", "content": "Show me how to compute the nth Fibonacci number."}]
+
+
+def _window_max(a, w=WINDOW):
+    a = np.asarray(a) if not isinstance(a, list) else __import__("numpy").asarray(a)
+    return [float(a[i:i + w].max()) for i in range(0, len(a), w) if len(a[i:i + w]) >= w // 2]
+
+
+def _pile_docs(tok, n_docs=16, ctx=1024):
+    """Per-document slices of the SAE's training distribution: each doc gets its OWN BOS and up to ctx tokens
+    (matching Gemma Scope's training context). Docs shorter than 64 tokens are skipped."""
     pub = MODELS["sae"].get("published", {})
     name = pub.get("dataset")
     if not name:
-        return None
+        return []
     try:
         from datasets import load_dataset
         ds = load_dataset(name, split="train", streaming=True)
-        ids = []
-        for i, ex in enumerate(ds):
-            ids += tok(ex["text"], add_special_tokens=False)["input_ids"]
-            if len(ids) >= n_tokens - 1 or i >= n_docs:
+        docs = []
+        for ex in ds:
+            ids = tok(ex["text"], add_special_tokens=False)["input_ids"]
+            if len(ids) < 64:
+                continue
+            docs.append([tok.bos_token_id] + ids[:ctx - 1])
+            if len(docs) >= n_docs:
                 break
-        ids = [tok.bos_token_id] + ids[:n_tokens - 1]
-        print(f"G2 calibration text: {len(ids)} tokens from {name}")
-        return ids
+        print(f"G2 calibration text: {len(docs)} docs from {name}, {sum(len(d) for d in docs)} tokens, own BOS each")
+        return docs
     except Exception as ex:
         print("pile streaming unavailable (%s); using built-in calibration text" % ex)
-        return None
+        return []
 
 
 def _last_pos_mass(lm, ids, steer, target_ids):
@@ -344,7 +430,7 @@ def _last_pos_mass(lm, ids, steer, target_ids):
     import numpy as np
     model, layer = lm.model, residual_module(lm)
     vec, strength = steer
-    with model.trace(torch.tensor([ids])):
+    with torch.no_grad(), model.trace(torch.tensor([ids])):
         stream = resid_post(layer.output)
         v = torch.as_tensor(np.asarray(vec, dtype=np.float32)).to(stream.device, stream.dtype)
         unit = v / (v.norm() + 1e-6)
@@ -357,12 +443,14 @@ def _last_pos_mass(lm, ids, steer, target_ids):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", choices=["vllm", "nnsight"], required=True)
+    ap.add_argument("--stage", choices=["vllm", "nnsight", "identity"], required=True)
     ap.add_argument("--out", default="t1")
     ap.add_argument("--gates", default=None)
     a = ap.parse_args()
     if a.stage == "vllm":
         stage_vllm(a.out)
+    elif a.stage == "identity":
+        stage_identity(a.out)
     else:
         stage_nnsight(a.out, a.gates)
 

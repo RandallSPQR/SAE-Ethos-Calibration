@@ -9,14 +9,25 @@ Two failure modes, not one:
      hook reproduces Google's published FVU/L0 within tolerance AND that every decoy candidate does
      NOT. Reproducing the published numbers is the only positive proof the hook is the trained one.
 
-Real run reads features/sae_health.json, which replay.sae must write per candidate:
-    {"chosen": {"hook": "...", "var_explained": .., "l0": ..},
-     "candidates": [{"hook": "...", "var_explained": .., "l0": ..}, ...],
-     "published": {"fvu": .., "l0": .., "tol": ..}}
+Rules 2026-09-16.2 (see gates/CHANGELOG.md):
+  hook identification = VARIANCE EXPLAINED with a required absolute margin over EVERY decoy
+      (g2_decoy_ve_margin_min). L0 is a weak discriminator against resid_pre by construction (the stream
+      changes slowly across one block), so a published-L0 match is REPORTED, not gated.
+  tensor identity (when present in the report) = the captured tensor must equal an independent
+      implementation's `blocks.31.hook_resid_post` (TransformerLens, no weight processing) within
+      g2_identity_max_rel_err. Beating decoys shows "best of the candidates offered"; identity shows "right".
+  encode integrity (when present) = fraction of active features below their own JumpReLU threshold == 0.
+  health = var_explained >= g2_var_explained_min and l0 <= g2_l0_max.
+
+Real run reads features/sae_health.json:
+    {"chosen": {"hook", "var_explained", "l0", ...}, "candidates": [...], "published": {...},
+     "identity": {"max_rel_err": .., "ref": "transformerlens:blocks.31.hook_resid_post"}   (optional)
+     "jumprelu_below_threshold_frac": 0.0                                                    (optional)
+     "per_doc_l0": [...]}                                                                    (optional)
 fixture proves the identification logic on synthetic numbers."""
 import json
 from pathlib import Path
-from ._common import GateResult, load_run_cfg
+from ._common import GateResult, load_run_cfg, GATE_RULES_VERSION
 
 NAME = "G2_sae_health"
 NEEDS_GPU = True
@@ -41,20 +52,32 @@ def _evaluate(report, g):
     pub = report["published"]
     chosen = report["chosen"]
     health_ok = chosen["var_explained"] >= g["g2_var_explained_min"] and chosen["l0"] <= g["g2_l0_max"]
-    chosen_match = _matches_published(chosen["var_explained"], chosen["l0"], pub)
-    # every decoy must FAIL to match the published numbers; if any decoy matches, the hook is ambiguous
-    decoys_reject = all(_matches_published(c["var_explained"], c["l0"], pub) is not True
-                        for c in report.get("candidates", []))
-    detail = {"chosen_hook": chosen["hook"], "var_explained": round(chosen["var_explained"], 3),
-              "l0": round(chosen["l0"], 1), "matches_published": chosen_match,
-              "decoys_rejected": decoys_reject, "health_ok": health_ok}
-    if chosen_match is None:
-        detail["warning"] = "published FVU/L0 not filled in models.yaml -> hook UNVERIFIED"
-    elif pub.get("fvu") is None:
-        detail["fvu_unverified"] = True              # matched on L0 only; no published FVU exists for this SAE
-    elif pub.get("l0") is None:
-        detail["l0_unverified"] = True
-    ok = bool(health_ok and chosen_match and decoys_reject)
+    margin = g.get("g2_decoy_ve_margin_min", 0.10)
+    cands = report.get("candidates", [])
+    worst_gap = min((chosen["var_explained"] - c["var_explained"] for c in cands), default=None)
+    decoys_reject = worst_gap is not None and worst_gap >= margin
+    chosen_match = _matches_published(chosen["var_explained"], chosen["l0"], pub)     # REPORTED, not gated
+    ident = report.get("identity")
+    ident_ok = None
+    if ident is not None:
+        ident_ok = ident.get("max_rel_err") is not None and ident["max_rel_err"] <= g.get("g2_identity_max_rel_err", 0.02)
+    jr = report.get("jumprelu_below_threshold_frac")
+    jr_ok = None if jr is None else (jr == 0.0)
+    detail = {"rules": GATE_RULES_VERSION, "chosen_hook": chosen["hook"], "var_explained": round(chosen["var_explained"], 3),
+              "l0": round(chosen["l0"], 1), "published_l0": pub.get("l0"), "matches_published": chosen_match,
+              "decoy_ve_worst_gap": None if worst_gap is None else round(worst_gap, 3), "decoy_margin_min": margin,
+              "decoys_rejected": decoys_reject, "identity_ok": ident_ok, "jumprelu_ok": jr_ok, "health_ok": health_ok}
+    if ident is not None:
+        detail["identity_max_rel_err"] = ident.get("max_rel_err")
+    if report.get("per_doc_l0"):
+        pd = sorted(report["per_doc_l0"])
+        detail["per_doc_l0_median"] = round(pd[len(pd) // 2], 1)
+        detail["per_doc_l0_range"] = [round(pd[0], 1), round(pd[-1], 1)]
+    if pub.get("fvu") is None:
+        detail["fvu_unpublished"] = True
+    ok = bool(health_ok and decoys_reject and (ident_ok is not False) and (jr_ok is not False))
+    if ident is None:
+        detail["warning"] = "no tensor-identity check in report (run the TransformerLens stage)"
     return ok, detail
 
 
@@ -69,19 +92,29 @@ def run(cfg, paths):
 
 def fixture():
     g = load_run_cfg()
-    # published: fvu 0.12, l0 60. Correct hook reproduces them; decoys are off; health passes.
     report = {
-        "published": {"fvu": 0.12, "l0": 60, "tol": 0.15},
-        "chosen": {"hook": "layers.31.hook_resid_post", "var_explained": 0.88, "l0": 62},   # fvu 0.12
+        "published": {"fvu": None, "l0": 76, "tol": 0.15},
+        "chosen": {"hook": "blocks.31.hook_resid_post", "var_explained": 0.73, "l0": 101},
         "candidates": [
-            {"hook": "layers.31.input_resid", "var_explained": 0.55, "l0": 140},        # off
-            {"hook": "layers.31.mlp_output", "var_explained": 0.70, "l0": 95},             # off
+            {"hook": "layers.31.input_resid", "var_explained": 0.60, "l0": 79},     # L0 "matches" but VE 0.13 below
+            {"hook": "layers.31.mlp_output", "var_explained": -1090.0, "l0": 18},
+            {"hook": "scaled_x0.8", "var_explained": 0.55, "l0": 70},
         ],
+        "identity": {"max_rel_err": 0.004, "ref": "transformerlens:blocks.31.hook_resid_post"},
+        "jumprelu_below_threshold_frac": 0.0, "per_doc_l0": [70, 80, 95, 100, 110, 300],
     }
     ok, detail = _evaluate(report, g)
-    # also prove it REJECTS a decoy that happens to match published (ambiguous hook)
-    ambiguous = json.loads(json.dumps(report))
-    ambiguous["candidates"][0] = {"hook": "decoy", "var_explained": 0.88, "l0": 61}
-    ok2, _ = _evaluate(ambiguous, g)
-    return GateResult(NAME + "[fixture]", ok and not ok2,
-                      {"correct_hook_passes": ok, "ambiguous_hook_blocked": not ok2, **detail})
+    # a decoy within the VE margin makes the hook ambiguous -> blocked (even though its L0 is far off)
+    amb = json.loads(json.dumps(report)); amb["candidates"][0] = {"hook": "near", "var_explained": 0.68, "l0": 300}
+    ok_amb, _ = _evaluate(amb, g)
+    # identity failure blocks even with a comfortable VE margin
+    bad_id = json.loads(json.dumps(report)); bad_id["identity"]["max_rel_err"] = 0.2
+    ok_id, _ = _evaluate(bad_id, g)
+    # encode integrity failure blocks
+    bad_jr = json.loads(json.dumps(report)); bad_jr["jumprelu_below_threshold_frac"] = 0.05
+    ok_jr, _ = _evaluate(bad_jr, g)
+    # L0 mismatch alone does NOT block (reported only)
+    return GateResult(NAME + "[fixture]", ok and not ok_amb and not ok_id and not ok_jr,
+                      {"ve_margin_passes": ok, "ambiguous_ve_blocked": not ok_amb, "identity_blocks": not ok_id,
+                       "jumprelu_blocks": not ok_jr, "l0_reported_not_gated": detail["matches_published"] is False,
+                       "rules": GATE_RULES_VERSION})

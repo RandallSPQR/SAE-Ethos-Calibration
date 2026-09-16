@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #800 | 3:14 PM | 🔴 | Critical nnsight Read Ordering Fix and G1 Divergence Diagnostics Deployed Mid-Run | ~713 |
 | #769 | 2:29 PM | 🟣 | T1.5 probe track added to calibration framework | ~579 |
 </claude-mem-context>

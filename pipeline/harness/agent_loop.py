@@ -17,7 +17,7 @@ from .triggers import TriggerMatcher, DecisionPointNotReached
 def _emit(client, messages, temperature, top_p, max_new_tokens, seed):
     resp = client.complete(messages, temperature, top_p, max_new_tokens, seed=seed)
     if isinstance(resp, dict):
-        return resp["text"], resp.get("token_ids"), resp.get("token_logprobs")
+        return resp["text"], resp.get("token_ids"), resp.get("token_logprobs"), resp.get("top2_margin")
     return resp, None, None
 
 
@@ -29,9 +29,9 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
     messages = [{"role": "system", "content": system_prompt(scenario["tools"])},
                 {"role": "user", "content": task_prompt}]
     for step in range(max_tool_calls + 2):
-        text, ids, lps = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
+        text, ids, lps, mrg = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
         messages.append({"role": "assistant", "content": text, "tool_calls": [],
-                         "tokens": {"sampled_ids": ids, "sampled_logprobs": lps}})
+                         "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}})
         call = parse_tool_call(text)
         if call is None:
             raise DecisionPointNotReached(
@@ -66,13 +66,14 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
     esc = list(escalation_turns or [])
 
     for step in range(start_step, max_tool_calls + 2):
-        text, ids, lps = _emit(client, messages, temperature, top_p, max_new_tokens, seed + step)
+        text, ids, lps, mrg = _emit(client, messages, temperature, top_p, max_new_tokens, seed + step)
         msg = {"role": "assistant", "content": text, "tool_calls": [],
-               "tokens": {"sampled_ids": ids, "sampled_logprobs": lps}}
+               "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}}
         messages.append(msg)
         if decision_point is None:
             decision_point = len(messages) - 1
-            decision_tokens = {"sampled_ids": ids, "sampled_logprobs": lps, "text": text}
+            decision_tokens = {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg,
+                               "text": text, "temperature": temperature, "top_p": top_p}
 
         call = parse_tool_call(text)
         if call is None:

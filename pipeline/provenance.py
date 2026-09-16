@@ -50,6 +50,14 @@ def _pkg_version(name):
         return None
 
 
+def _gate_rules_version():
+    try:
+        from gates._common import GATE_RULES_VERSION
+        return GATE_RULES_VERSION
+    except Exception:
+        return None
+
+
 def build_manifest(run_id, scenarios_dir=None):
     models = yaml.safe_load((CFG / "models.yaml").read_text())
     run = yaml.safe_load((CFG / "run.yaml").read_text())
@@ -77,6 +85,7 @@ def build_manifest(run_id, scenarios_dir=None):
                    "models_yaml_hash": _sha_file(CFG / "models.yaml"),
                    "sampling": run["sampling"]},
         "isolation_declared": run.get("isolation", {}),
+        "gate_rules_version": _gate_rules_version(),
     }
     manifest["unverified"] = [k for k, v in {
         "model.weight_hash": manifest["model"]["weight_hash"],

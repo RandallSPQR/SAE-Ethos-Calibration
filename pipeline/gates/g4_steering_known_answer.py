@@ -1,11 +1,14 @@
 """G4 steering_known_answer: if we can't move an easy behavior by steering a known vector, we can't
 interpret a null on a hard one. Reproduce a published effect (a persona vector shifting an obvious
 readout) and require a monotone-ish dose-response with |effect| over the sweep >= threshold. Real run
-reads features/steering_report.json (produced by analyze.steer on a calibration prompt); fixture
-proves the effect-size + monotonicity logic."""
+reads features/steering_report.json; fixture proves the effect-size + monotonicity logic.
+Rules 2026-09-16.2: the readout must sit at a LIVE decision point (a prompt where the readout event has
+non-negligible baseline probability); a readout at the floor (first run: P~1e-7 after "Write something.")
+cannot show an absolute effect regardless of the direction's causal power. The report records the prompt
+and per-strength greedy samples so the effect is inspectable. See gates/CHANGELOG.md."""
 import json
 from pathlib import Path
-from ._common import GateResult, load_run_cfg
+from ._common import GateResult, load_run_cfg, GATE_RULES_VERSION
 
 NAME = "G4_steering_known_answer"
 NEEDS_GPU = True
@@ -35,7 +38,10 @@ def run(cfg, paths):
     curve = {float(k): v for k, v in rep["curve"].items()}
     e = effect(curve)
     ok = abs(e) >= thr and coherent(curve)
-    return GateResult(NAME, ok, {"effect": round(e, 3), "threshold": thr, "monotone": coherent(curve)})
+    base = curve.get(0.0)
+    return GateResult(NAME, ok, {"effect": round(e, 3), "threshold": thr, "monotone": coherent(curve),
+                                 "baseline": None if base is None else round(base, 4),
+                                 "readout": rep.get("readout"), "prompt": (rep.get("prompt") or "")[:60]})
 
 
 def fixture():

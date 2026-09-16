@@ -38,12 +38,16 @@ isolation:
 gates:
   g1_exact_match_min: 0.999         # T=0 replay: generated_ids == replay_predicted_ids (real instrument checksum)
   g1_logprob_tol: 0.05              # T>0 replay: max |generation_logprob - replay_logprob| for the SAME token (numerical checksum, not a plausibility threshold)
+  g1_flip_margin_excuse: 0.25       # T=0: an argmax flip is excused only if generation's top-2 margin was below this (nats) AND the token is in replay's top-2
   g2_var_explained_min: 0.50        # on our IT-chat transcripts; expect below Gemma Scope's pretrain number
   g2_l0_max: 120
+  g2_decoy_ve_margin_min: 0.10      # chosen hook must beat EVERY decoy by this much variance explained (L0 is reported, not gated)
+  g2_identity_max_rel_err: 0.02     # captured tensor vs TransformerLens blocks.31.hook_resid_post (no weight processing), bf16 tolerance
   g3_known_feature_auroc_min: 0.80
   g4_steering_effect_min_abs: 0.05  # published effect must reproduce with |delta| >= this
   g5_oracle_acc_min: 0.60
-  g5_confab_rate_max: 0.30          # confident specific answers on zeroed activations
+  g5_confab_rate_max: 0.30          # confident specific answers on null activations: REPORTED; above this the oracle's weight is "paired only"
+  g5_paired_discrimination_min: 0.60  # real description hits its label AND the matched-null description does not
   g6_judge_kappa_min: 0.70
   g7_base_competence_min: 0.50
   g7_transgression_range: [0.10, 0.70]

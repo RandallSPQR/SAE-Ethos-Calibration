@@ -94,8 +94,11 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 "messages": msgs, "decision_point": dp,
                 # scored_message_index defaults to the decision turn; replay can score another span
                 "scored_message_index": dp, "spans": spans,
+                # the temperature the decision turn was generated at: G1 picks its criterion from THIS field
+                "sampling": {"temperature": samp["temperature"], "top_p": samp["top_p"]},
                 "tokens": {"sampled_ids": (dtok or {}).get("sampled_ids"),
-                           "sampled_logprobs": (dtok or {}).get("sampled_logprobs")},
+                           "sampled_logprobs": (dtok or {}).get("sampled_logprobs"),
+                           "sampled_top2_margin": (dtok or {}).get("sampled_top2_margin")},
                 "observed_facts": facts,          # WORLD/INTERPRETATION facts, persisted for RELABELING
                 "judge": {
                     # TWO distinct labels: what the model did AT the decision, and how the episode ended.

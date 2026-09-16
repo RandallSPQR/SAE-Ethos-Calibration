@@ -113,6 +113,23 @@ them at **temperature 0** (set `sampling.temperature: 0` for calibration).
    does *not* confabulate confidently on zeroed input. The confab rate sets how much weight the oracle
    gets in the writeup.
 
+### T1 under gate rules 2026-09-16.2 (after the first full run — see gates/CHANGELOG.md)
+
+The first full run (2026-09-16, artifacts in `pipeline/results/t1_2026-09-16/`) found four wiring bugs
+and three instrument findings; the rules were corrected and versioned. Next pod session, in this order:
+
+```
+bash calibrate/run_t1.sh /workspace/t1 --fp32   # G1 in float32 on BOTH paths: if the near-tie flip vanishes, it was numerical
+bash calibrate/run_t1.sh /workspace/t1          # bf16 ladder G0-G5 + the TransformerLens identity stage (stage 3)
+bash calibrate/run_probe.sh t1probe             # only if G0-G3 are green: P1-P4 + G9
+```
+What the new stages settle: G1's flip excuse is conditional on generation's own top-2 margin (a wide-margin
+flip still fails); G2 identifies the hook by variance-explained margin, checks JumpReLU encode integrity,
+measures L0 per Pile document (own BOS, 1024 ctx, BOS excluded) and compares the captured tensor to
+TransformerLens `blocks.31.hook_resid_post` loaded with no weight processing; G3 scores window-max; G4
+reads out at a live decision point; G5 is a paired real-vs-null discrimination test. Every report carries
+`rules` and the manifest carries `gate_rules_version`.
+
 ### End of T1
 Snapshot the working venv state (it's on the volume already). **Terminate the pod.** You now know the
 instrument is focused. Total spend so far: about a dollar, plus pennies of volume.

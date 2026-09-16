@@ -53,6 +53,7 @@ def _row(meta, messages, revealed_at, dp, score, uid=None):
         "variant": meta["variant"], "persona_prompted": meta.get("persona_prompted", "neutral"),
         "steer": {"vector": None, "strength": 0.0},
         "messages": messages, "decision_point": dp, "scored_message_index": dp,
+        "sampling": meta.get("sampling"),        # temperature the transcript was generated at (None for Inspect logs unless recorded)
         "obstacle_revealed_at": revealed_at,
         "judge": ({"label": score.metadata.get("label"), "taxonomy": score.metadata.get("taxonomy"),
                    "disclosed": score.metadata.get("disclosed"), "confidence": score.value}

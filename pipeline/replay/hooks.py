@@ -17,6 +17,7 @@ class ForwardResult:
     residual: "np.ndarray"   # [seq, d_model] at the VERIFIED hook_resid_post (float32)
     assistant_span: tuple    # [start, end) of the final model turn's CONTENT tokens (no end_of_turn)
     extra: dict = None       # optional: other captured tensors {name: np.ndarray}
+    logits_top2: list = None # [[id1, id2], ...] per position (G1 flip excuse: is the sampled token in replay's top-2?)
 
 
 TURN_SUFFIX = "<end_of_turn>\n"
@@ -70,7 +71,9 @@ def _set_block_output(layer, new_stream):
 
 
 def _val(x):
-    return getattr(x, "value", x)
+    """Unwrap an nnsight saved proxy (0.4: .value; 0.5+: the tensor itself) and detach it."""
+    v = getattr(x, "value", x)
+    return v.detach() if hasattr(v, "detach") else v
 
 
 def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, input_ids=None,
@@ -90,7 +93,13 @@ def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, inpu
     layer = residual_module(lm)
     ids_t = torch.tensor([list(input_ids)])
     saved = {}
-    with model.trace(ids_t):
+    # nnsight requires envoys to be touched in EXECUTION order: submodule outputs (input, attn, mlp,
+    # post-ffn norm) must be read before the block's own output.
+    order = {"block_input": 0, "attn": 1, "mlp": 2, "post_ffn_norm": 3, "block_output": 4}
+    extras = sorted([h for h in (extra_hooks or []) if h != "block_output"], key=lambda h: order.get(h, 9))
+    with torch.no_grad(), model.trace(ids_t):
+        for name in extras:
+            saved[name] = _read_hook(layer, name).float().save()
         stream = resid_post(layer.output)
         if steer is not None:
             vec, strength = steer
@@ -101,18 +110,17 @@ def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, inpu
             _set_block_output(layer, stream)
         if capture_residual:
             saved["resid"] = stream.float().save()
-        for name in (extra_hooks or []):
-            saved[name] = _read_hook(layer, name).float().save()
         saved["logits"] = model.output.logits.float().save()
     logits = _val(saved["logits"])[0]                                      # [seq, vocab]
     lp = torch.log_softmax(logits, dim=-1)
     ids = list(input_ids)
     argmax = logits.argmax(-1).tolist()
+    top2 = logits.topk(2, dim=-1).indices.tolist()
     input_logprobs = [0.0] + [float(lp[i - 1, ids[i]]) for i in range(1, len(ids))]
     resid = _val(saved["resid"])[0].cpu().numpy() if capture_residual else None
     extra = {k: _val(v)[0].cpu().numpy() for k, v in saved.items() if k not in ("resid", "logits")}
     return ForwardResult(token_ids=ids, logits_argmax=argmax, input_logprobs=input_logprobs,
-                         residual=resid, assistant_span=tuple(span), extra=extra)
+                         residual=resid, assistant_span=tuple(span), extra=extra, logits_top2=top2)
 
 
 def _read_hook(layer, reader):

@@ -38,7 +38,8 @@ def load_target(which="target", device="cuda"):
     models = models_cfg()
     tm = models["target_model"]
     hf_id = tm["hf_id" if which == "target" else "base_hf_id"]
-    dtype = getattr(torch, tm.get("dtype", "bfloat16"))
+    import os
+    dtype = getattr(torch, os.environ.get("T1_DTYPE") or tm.get("dtype", "bfloat16"))   # T1_DTYPE=float32 for the fp32 G1 check
     kw = dict(device_map=device, torch_dtype=dtype, attn_implementation="eager", dispatch=True)
     if tm.get("revision"):
         kw["revision"] = tm["revision"]
