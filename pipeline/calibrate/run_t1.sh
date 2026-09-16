@@ -9,9 +9,9 @@ OUT=${1:-/workspace/t1}
 mkdir -p "$OUT" /workspace/logs
 if [ ! -s "$OUT/features/t1_vllm.json" ]; then
   echo "== stage 1: vLLM serve"
-  python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
+  /workspace/venv_vllm/bin/python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
     --dtype bfloat16 --max-model-len 4096 --gpu-memory-utilization 0.85 --port 8000 --seed 0 \
-    --enable-prefix-caching=False > /workspace/logs/vllm.log 2>&1 &
+    --no-enable-prefix-caching > /workspace/logs/vllm.log 2>&1 &
   VPID=$!
   for i in $(seq 1 180); do curl -s localhost:8000/v1/models >/dev/null 2>&1 && break; sleep 5; \
     kill -0 $VPID 2>/dev/null || { echo "vLLM died; see /workspace/logs/vllm.log"; tail -30 /workspace/logs/vllm.log; exit 2; }; done

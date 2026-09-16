@@ -13,12 +13,17 @@ pip install -q -U pip
 # vLLM brings its own torch pin; install it first, then the interp stack on top.
 # PIN: vllm==0.11.0 -> torch==2.8.0 whose default wheel is cu128. Unpinned vllm (0.29) pulled torch 2.13
 # built for CUDA 13, which the RunPod hosts' 12.8 driver (570.x) rejects at torch.cuda init.
-pip install -q "vllm==0.11.0" 2>&1 | tail -3
-pip install -q "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" 2>&1 | tail -3
+# vLLM lives in ITS OWN venv: vllm 0.11.0 needs transformers<5 (GemmaTokenizer.all_special_tokens_extended
+# was removed in transformers 5), while nnsight 0.7 pulls transformers 5.x. The two stages are separate
+# processes, so the server runs from venv_vllm and everything else from venv.
+if [ ! -x venv_vllm/bin/python ]; then python -m venv venv_vllm; fi
+venv_vllm/bin/pip install -q -U pip
+venv_vllm/bin/pip install -q "vllm==0.11.0" "transformers<5" 2>&1 | tail -3
+pip install -q "torch==2.8.0" "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" 2>&1 | tail -3
 python - <<'PY'
-import torch, transformers, vllm, nnsight, sae_lens, peft
+import torch, transformers, nnsight, sae_lens, peft
 print("torch", torch.__version__, "cuda", torch.version.cuda, "gpu", torch.cuda.get_device_name(0))
-print("transformers", transformers.__version__, "| vllm", vllm.__version__, "| nnsight", nnsight.__version__,
+print("transformers", transformers.__version__, "| nnsight", nnsight.__version__,
       "| sae_lens", sae_lens.__version__, "| peft", peft.__version__)
 PY
 # weights (gated: needs a HF login). SKIP_WEIGHTS=1 to stop before this step.
