@@ -18,12 +18,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from probe.tasks import TASKS, messages, parse_choice, label     # noqa: E402
-from probe.psychometric import switching_point                  # noqa: E402
-from probe.synth_trials import MOCK_SP, MOCK_SLOPE               # noqa: E402
+from probe.tasks import TASKS, messages, parse_choice, label, conditions   # noqa: E402
+from probe.psychometric import switching_point                             # noqa: E402
+from probe.synth_trials import MOCK_SP, MOCK_SLOPE, mock_sp                # noqa: E402
 
 CFG = ROOT / "config"
-MOCK_K = {"lottery": 120.0, "ultimatum": 40.0}                   # sp shift per unit lambda (mock)
+MOCK_K = {"lottery": 220.0, "ultimatum": 50.0}                   # sp shift per unit lambda (mock; +-0.4 must span the targets)
 
 
 def _cfg():
@@ -34,7 +34,7 @@ def _cfg():
 def sweep_mock(task, lam, n_agents):
     rng = np.random.default_rng(int(abs(lam) * 1000) + 7)
     grid = TASKS[task]["grid"]
-    sp = MOCK_SP[task] - MOCK_K[task] * lam
+    sp = mock_sp(task, TASKS[task]["reference_level"]) - MOCK_K[task] * lam
     sp = float(np.clip(sp, grid[0] - 40, grid[-1] + 40))         # saturation clamp
     P, Y = [], []
     for n in grid:
@@ -44,39 +44,47 @@ def sweep_mock(task, lam, n_agents):
     return switching_point(P, Y), 0
 
 
-class SteeredGreedy:
-    """Greedy answers under steering through replay.hooks (the G4 path). Loaded once per run."""
-    def __init__(self, run_dir):
+class SteeredSampler:
+    """Sampled answers under steering through replay.hooks (the same injection G4 uses). Loaded once per run.
+    T>0 across agents so the steered psychometric curve is graded; the same surface conditions as P1."""
+    def __init__(self, run_dir, temperature, top_p):
         from replay.modelload import load_target
         self.lm = load_target("target")
         store = np.load(Path(run_dir) / "steering_vectors.npz")
         self.vecs = {k: store[k] for k in store.files}
+        self.temperature, self.top_p = temperature, top_p
 
-    def answer(self, task, n, lam, max_new_tokens=8):
-        import torch
+    def answer(self, task, n, lam, seed, level, cond, max_new_tokens=6):
         from model_io.gemma2 import apply_to_tokenizer
-        from replay.hooks import greedy_generate_at_layer
+        from replay.hooks import sample_generate_at_layer
         vec = self.vecs[f"probe_{task}"]; layer = int(self.vecs[f"probe_{task}__layer"])
-        ids = apply_to_tokenizer(self.lm.tokenizer, messages(task, n), add_generation_prompt=True)
-        out = greedy_generate_at_layer(self.lm, ids, layer, (vec, lam), max_new_tokens=max_new_tokens)
+        ids = apply_to_tokenizer(self.lm.tokenizer, messages(task, n, level, cond), add_generation_prompt=True)
+        out = sample_generate_at_layer(self.lm, ids, layer, (vec, lam), temperature=self.temperature,
+                                       top_p=self.top_p, seed=seed * 7919 + int(abs(lam) * 1e4), max_new_tokens=max_new_tokens)
         return self.lm.tokenizer.decode(out)
 
 
 def sweep_real(task, lam, n_agents, gen):
+    """One steered psychometric curve at the REFERENCE level (safe 50 for the lottery)."""
+    t = TASKS[task]; level = t["reference_level"]
     P, Y, dropped = [], [], 0
-    for n in TASKS[task]["grid"]:
-        txt = gen.answer(task, n, lam)              # T=0: the seed axis is degenerate; one greedy answer per point
-        y = label(task, parse_choice(task, txt))
-        if y is None:
-            dropped += 1
-        P.append(n); Y.append(y)
+    for n in t["grid"]:
+        for seed in range(n_agents):
+            cond = conditions(task, n, seed)
+            txt = gen.answer(task, n, lam, seed, level, cond)
+            y = label(task, parse_choice(task, txt, cond))
+            if y is None:
+                dropped += 1
+            P.append(n); Y.append(y)
     return switching_point(P, Y), dropped
 
 
 # ---------------------------------------------------------------- monotone map + inversion
-def monotone_fit(curve):
+def monotone_fit(curve, tol_frac=0.10):
     """curve {lam: sp or None} -> (xs, ys, monotone_flag, direction). Pool-adjacent-violators on the
-    non-None points; monotone_flag says whether the RAW points were already monotone."""
+    non-None points; monotone_flag is True iff the raw points deviate from the isotonic fit by at most
+    tol_frac of the curve's range (rules 2026-09-16.3: a log-spaced sweep has steps below sampling noise,
+    and strict step-by-step ordering fails on wiggle; a real reversal still fails)."""
     pts = sorted((float(k), float(v)) for k, v in curve.items() if v is not None)
     if len(pts) < 2:
         return [], [], False, 0
@@ -98,7 +106,9 @@ def monotone_fit(curve):
     fit = np.empty_like(z)
     for v, blk in zip(vals, blocks):
         fit[blk] = v
-    return xs.tolist(), (fit * d).tolist(), raw_monotone, int(d)
+    rng_ = float(ys.max() - ys.min()) or 1.0
+    monotone = bool(np.max(np.abs(z - fit)) <= tol_frac * rng_)
+    return xs.tolist(), (fit * d).tolist(), monotone, int(d)
 
 
 def invert(xs, ys, target):
@@ -138,7 +148,8 @@ def calibrate_task(task, run_dir, pc, gen, mock):
         targets[str(tgt)] = {"lambda": float(lam), "achieved": r["sp"], "method": r["method"]}
     errs = [abs(v["achieved"] - float(k)) for k, v in targets.items() if v["achieved"] is not None]
     ach = [v["achieved"] for v in targets.values() if v["achieved"] is not None]
-    rep = {"task": task, "baseline_sp": base["sp"], "lambda_curve": curve, "lambda_methods": methods,
+    rep = {"task": task, "baseline_sp": base["sp"], "reference_level": TASKS[task]["reference_level"],
+           "lambda_sweep": list(pc["lambda_sweep"]), "lambda_curve": curve, "lambda_methods": methods,
            "dropped_per_lambda": dropped, "monotone": monotone, "direction": direction,
            "monotone_fit": {"lambda": xs, "sp": ys}, "targets": targets,
            "mae": float(np.mean(errs)) if errs else None,
@@ -159,7 +170,7 @@ def main():
     a = ap.parse_args()
     pc = _cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
-    gen = None if a.mock else SteeredGreedy(a.run_dir)
+    gen = None if a.mock else SteeredSampler(a.run_dir, float(pc.get("temperature", 0.8)), float(pc.get("top_p", 0.95)))
     for t in tasks:
         calibrate_task(t, a.run_dir, pc, gen, a.mock)
 

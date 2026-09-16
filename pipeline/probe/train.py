@@ -92,8 +92,17 @@ def train_task(task, run_dir, pc, gc):
               "learn the number in the prompt, not the trait. Sample at T>0 across agents.")
         return False
     rng = np.random.default_rng(0)
-    idx = rng.permutation(len(y)); n_ho = max(1, int(round(pc["heldout_frac"] * len(y))))
-    ho, tr = idx[:n_ho], idx[n_ho:]
+    from probe.tasks import TASKS
+    ho_level = TASKS[task].get("heldout_level")
+    levels = z["level"] if "level" in z.files else np.full(len(y), -1.0)
+    if ho_level is not None and (levels == ho_level).any():
+        # the honest number: an ENTIRE safe level the probe never saw
+        ho = np.where(levels == ho_level)[0]; tr = np.where(levels != ho_level)[0]
+        heldout_kind = f"level={ho_level}"
+    else:
+        idx = rng.permutation(len(y)); n_ho = max(1, int(round(pc["heldout_frac"] * len(y))))
+        ho, tr = idx[:n_ho], idx[n_ho:]
+        heldout_kind = f"random {pc['heldout_frac']:.0%}"
     key = "Xfirst" if pc.get("position") == "first_answer_token" else "X"
     best = None
     for L in pc["layer_candidates"]:
@@ -109,8 +118,16 @@ def train_task(task, run_dir, pc, gc):
     heldout = accuracy((X[ho] - mu) / sd, y[ho], w, b)
     w_raw = w / sd; w_raw = w_raw / (np.linalg.norm(w_raw) + 1e-12)   # unit direction in residual units
     base = json.loads((d / "baseline.json").read_text())
+    # per-layer held-out accuracy at the chosen C, so "is the trait more linear earlier?" is answered directly
+    per_layer = {}
+    for L2 in pc["layer_candidates"]:
+        X2 = z[f"{key}_{L2}"].astype(np.float64); mu2, sd2 = X2[tr].mean(0), X2[tr].std(0) + 1e-6
+        w2, b2 = fit_logistic((X2[tr] - mu2) / sd2, y[tr], C)
+        per_layer[str(L2)] = {"heldout_acc": accuracy((X2[ho] - mu2) / sd2, y[ho], w2, b2),
+                              "cv_acc": cv_score(X2[tr], y[tr], C)}
     rep = {"task": task, "layer": L, "C": C, "w": w.tolist(), "b": float(b), "mu": mu.tolist(), "sigma": sd.tolist(),
-           "cv_acc": cv_acc, "heldout_acc": heldout, "n_train": int(len(tr)), "n_heldout": int(len(ho)),
+           "cv_acc": cv_acc, "heldout_acc": heldout, "heldout_kind": heldout_kind, "per_layer": per_layer,
+           "n_train": int(len(tr)), "n_heldout": int(len(ho)),
            "position": key, "steering_vector": f"probe_{task}", "fan2026_reference": base["fan2026_reference"]}
     (d / "probe.json").write_text(json.dumps(rep, indent=2))
     store = Path(run_dir) / "steering_vectors.npz"
@@ -120,7 +137,8 @@ def train_task(task, run_dir, pc, gc):
     np.savez(store, **vecs)
     fan = base["fan2026_reference"]
     print(f"[{task}] layer={L} (fan:{fan['probe_layer']}) C={C} cv_acc={cv_acc:.3f} heldout_acc={heldout:.3f} "
-          f"(fan:{fan['heldout_acc']}) n_train={len(tr)} n_heldout={len(ho)} -> steering vector probe_{task}")
+          f"[{heldout_kind}] (fan:{fan['heldout_acc']}) n_train={len(tr)} n_heldout={len(ho)} -> steering vector probe_{task}")
+    print("   held-out acc by layer: " + " ".join(f"{k}:{v['heldout_acc']:.3f}" for k, v in per_layer.items()))
     if heldout < gc["g9_probe_heldout_acc_min"]:
         print(f"STOP: {task} heldout_acc {heldout:.3f} < {gc['g9_probe_heldout_acc_min']}: trait not linearly "
               "accessible at any candidate layer on this model; nothing to calibrate.")

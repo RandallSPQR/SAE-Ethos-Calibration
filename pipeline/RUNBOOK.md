@@ -159,10 +159,13 @@ P1 (pod, minutes): make probe-trials  — 2 tasks × ~35 grid points × 8 agents
                    seed axis is degenerate — a step cannot be dialed, only flipped (run 1, 2026-09-16).
 P2 (pod, minutes): make probe-extract — residuals at layers 20/26/31 via the SAME resid_post()
                    transform G2 verified. Never bare output[0].
-P3 (offline, $0):  make probe-train — pick layer/C by CV, report HELD-OUT accuracy.
-                   STOP if < 0.75: the trait isn't linearly accessible here; nothing to calibrate.
-P4 (pod, ~20 min): make probe-calibrate — λ sweep through hooks.teacher_forced_forward(steer=...),
-                   the G4 path. Then invert to hit the target switching points and re-run once each.
+P3 (offline, $0):  make probe-train — pick layer/C by CV; HELD-OUT accuracy is measured on an ENTIRE
+                   safe level the probe never saw (level 70). If it generalizes to a safe amount it
+                   never trained on, it found something closer to a trait than a digit reader.
+                   STOP if < 0.75. Read held-out accuracy by layer (31 vs 20 vs 26) first.
+P4 (pod, ~20 min): make probe-calibrate — LOG-SPACED λ sweep (±0.01 .. ±0.4), sampled at T=0.8 at the
+                   reference level (safe 50), through the same injection G4 uses. Then invert to hit the
+                   target switching points and re-run once each.
 G9:                monotone λ→sp, MAE ≤ 5 tokens, coverage ≥ 60% of the target span. Terminate.
 
 What a green G9 buys: a calibrated dial ("risk-tolerant at switching point 60") instead of a persona

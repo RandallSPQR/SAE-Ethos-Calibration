@@ -1,5 +1,22 @@
 # Gate rules changelog
 
+## 2026-09-16.3 (probe track protocol; G0-G9 criteria unchanged)
+
+- **Lottery is two-dimensional**: safe amount in {30, 50, 70, 100} x risky reward 10..180. The decision
+  variable the probe must find is the gamble's attractiveness relative to the sure thing, not the value
+  of n. Safe = 50 is the reference (Fan et al.'s condition) for baselines and calibration.
+- **Held-out level**: an entire safe level (70) is held out of probe training; `heldout_acc` is measured
+  there. `per_layer` reports held-out accuracy at every candidate layer at the chosen C.
+- **Surface variation**: option order (safe-first / risky-first) and unit word (tokens / points /
+  dollars) cycle across agents; the numeric fallback in the parser maps through the trial's order.
+- **Sampling**: T = 0.8 across agents (P1 and the steered sweeps), temperature recorded per trial.
+- **Lambda sweep**: log-spaced from +-0.01 to +-0.4 (was G4's +-0.6 linear); calibration finds where
+  the step starts to move.
+- Rationale: at T=0.8 the residual at the prompt-final position is still a deterministic function of the
+  prompt, so temperature alone would have left the probe fitting the literal number with label noise on
+  top; only prompt variation decorrelates the direction from the digit. Run 1's +-0.6 sweep saturated at
+  every non-zero lambda.
+
 Every change to WHAT a gate measures gets an entry here and a bump of `gates/_common.GATE_RULES_VERSION`.
 The version is written into every gate result, every T1 report JSON, and the provenance manifest, so a
 PASS is always relative to a named ruleset. "PASS after fixing the statistic" without an entry here reads

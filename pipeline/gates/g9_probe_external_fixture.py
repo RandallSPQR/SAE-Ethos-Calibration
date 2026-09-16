@@ -36,7 +36,10 @@ def _evaluate(task, base, probe, cal, g, targets):
     checks["coverage_ok"] = cov >= g["g9_target_coverage_min"]
     def _f(v, nd=1):
         return "None" if v is None else (round(v, nd) if isinstance(v, float) else v)
-    line = (f"{task}: heldout_acc={_f(probe['heldout_acc'], 3)} (fan:{fan.get('heldout_acc')}) "
+    pl = probe.get("per_layer") or {}
+    by_layer = " ".join(f"L{k}:{_f(v['heldout_acc'], 3)}" for k, v in pl.items())
+    line = (f"{task}: heldout_acc={_f(probe['heldout_acc'], 3)} [{probe.get('heldout_kind', '?')}] "
+            f"(fan:{fan.get('heldout_acc')}) by_layer=[{by_layer}] "
             f"mae={_f(cal['mae'])} (fan:{fan.get('mae')}) baseline_sp={_f(base['sp'])} (fan:{fan.get('baseline_sp')}) "
             f"layer={probe['layer']} (fan:{fan.get('probe_layer')}) coverage={cov:.2f} "
             f"range={ra} (fan:{fan.get('range')}) saturated={cal.get('saturated_lambdas')}")

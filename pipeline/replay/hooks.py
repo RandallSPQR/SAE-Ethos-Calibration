@@ -190,3 +190,39 @@ def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos
         out.append(t)
         ids.append(t)
     return out
+
+
+def sample_generate_at_layer(lm, prompt_ids, layer, steer, temperature=0.8, top_p=0.95, seed=0,
+                             max_new_tokens=6, eos_ids=(1, 107)):
+    """Sampled decoding (temperature + nucleus, seeded) with activation addition at block `layer`, same
+    transform as greedy_generate_at_layer. steer=None or strength 0 -> plain sampling. Used by the probe
+    track's steered psychometric sweeps, where a graded curve needs T>0 across agents."""
+    import torch
+    gen = torch.Generator(device="cpu").manual_seed(int(seed))
+    vec, strength = (steer if steer is not None else (None, 0.0))
+    v = None if vec is None else torch.as_tensor(np.asarray(vec, dtype=np.float32))
+    block = lm.model.model.layers[int(layer)]
+    ids = list(prompt_ids)
+    out = []
+    for _ in range(max_new_tokens):
+        with torch.no_grad(), lm.model.trace(torch.tensor([ids])):
+            if v is not None and float(strength) != 0.0:
+                stream = resid_post(block.output)
+                unit = (v / (v.norm() + 1e-6)).to(stream.device, stream.dtype)
+                mean_norm = stream[0, 1:].float().norm(dim=-1).mean().to(stream.dtype)
+                _set_block_output(block, stream + float(strength) * mean_norm * unit)
+            logits = lm.model.output.logits[0, -1].float().save()
+        lg = _val(logits).cpu()
+        if temperature <= 0:
+            t = int(lg.argmax())
+        else:
+            p = torch.softmax(lg / temperature, dim=-1)
+            sp, si = torch.sort(p, descending=True)
+            keep = (torch.cumsum(sp, 0) - sp) < top_p
+            sp = sp * keep
+            t = int(si[torch.multinomial(sp / sp.sum(), 1, generator=gen)])
+        if t in eos_ids:
+            break
+        out.append(t)
+        ids.append(t)
+    return out

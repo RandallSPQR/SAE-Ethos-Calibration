@@ -37,13 +37,18 @@ def load_trials(d):
 
 
 def mock_activations(rows, layers, d_model=64, seed=0):
+    """Planted trait direction correlated with the label PLUS a 'digit' direction that encodes the literal
+    parameter, so the held-out-level test has something to discriminate."""
     rng = np.random.default_rng(seed)
     y = np.array([r["label"] for r in rows], dtype=np.int64)
+    par = np.array([r["param"] for r in rows], dtype=np.float64)
     out = {}
     for L in layers:
         w = rng.normal(size=d_model); w /= np.linalg.norm(w)
+        wd = rng.normal(size=d_model); wd /= np.linalg.norm(wd)
         strength = 2.0 if L == layers[-1] else 1.0
-        X = rng.normal(size=(len(rows), d_model)) + strength * (2 * y[:, None] - 1) * w[None, :]
+        X = (rng.normal(size=(len(rows), d_model)) + strength * (2 * y[:, None] - 1) * w[None, :]
+             + 0.02 * (par[:, None] - par.mean()) * wd[None, :])
         out[f"X_{L}"] = X.astype(np.float32)
         out[f"Xfirst_{L}"] = (X + 0.1 * rng.normal(size=X.shape)).astype(np.float32)
     return out, y
@@ -89,7 +94,10 @@ def main():
         rows = load_trials(d)
         arrays, y = mock_activations(rows, layers) if a.mock else real_activations(rows, layers, lm)
         np.savez(d / "activations.npz", y=y, uid=np.array([r["uid"] for r in rows]),
-                 param=np.array([r["param"] for r in rows], dtype=np.float64), **arrays)
+                 param=np.array([r["param"] for r in rows], dtype=np.float64),
+                 level=np.array([(-1 if r.get("level") is None else r["level"]) for r in rows], dtype=np.float64),
+                 unit=np.array([r.get("cond", {}).get("unit", "") for r in rows]),
+                 order=np.array([r.get("cond", {}).get("order", "") for r in rows]), **arrays)
         cs = Path(a.run_dir) / "features" / "model_checksum.json"
         meta = {"task": task, "layers": layers, "n": int(len(rows)), "position": pc.get("position", "prompt_final"),
                 "hook_transform": "replay.hooks.resid_post (G2-verified at layer 31)", "mock": bool(a.mock),
