@@ -372,18 +372,24 @@ def stage_identity(out):
         nn = z[key]
         n = min(len(tl), len(nn))
         tl, nn = tl[1:n], nn[1:n]                                     # BOS excluded (attention-sink outlier)
-        rel = np.linalg.norm(tl - nn, axis=-1) / (np.linalg.norm(tl, axis=-1) + 1e-6)
-        cos = (tl * nn).sum(-1) / (np.linalg.norm(tl, axis=-1) * np.linalg.norm(nn, axis=-1) + 1e-6)
-        rep[key] = {"max_rel_err": float(rel.max()), "mean_rel_err": float(rel.mean()), "min_cos": float(cos.min()),
-                    "scale_ratio_mean": float((np.linalg.norm(nn, axis=-1) / (np.linalg.norm(tl, axis=-1) + 1e-6)).mean())}
+        ntl, nnn = np.linalg.norm(tl, axis=-1), np.linalg.norm(nn, axis=-1)
+        rel = np.linalg.norm(tl - nn, axis=-1) / (ntl + 1e-6)                 # element-wise, reported only
+        cos = (tl * nn).sum(-1) / (ntl * nnn + 1e-6)
+        norm_rel = np.abs(nnn - ntl) / (ntl + 1e-6)
+        rep[key] = {"min_cos": float(cos.min()), "median_cos": float(np.median(cos)),
+                    "max_norm_rel": float(norm_rel.max()), "median_norm_rel": float(np.median(norm_rel)),
+                    "max_rel_err_elementwise": float(rel.max()), "scale_ratio_mean": float((nnn / (ntl + 1e-6)).mean())}
     # cross-check: nnsight resid_post must NOT match TL resid_pre (proves the comparison has teeth)
     tl_pre = cache[names[1]][0].float().cpu().numpy()[1:]
     nn_post = z["resid_post"][1:len(tl_pre) + 1]
-    rep["cross_post_vs_pre_max_rel_err"] = float((np.linalg.norm(tl_pre - nn_post, axis=-1) / (np.linalg.norm(tl_pre, axis=-1) + 1e-6)).max())
+    cos_x = (tl_pre * nn_post).sum(-1) / (np.linalg.norm(tl_pre, axis=-1) * np.linalg.norm(nn_post, axis=-1) + 1e-6)
+    rep["cross_nnpost_vs_tlpre"] = {"min_cos": float(cos_x.min()), "median_cos": float(np.median(cos_x)),
+                                    "note": "must be clearly BELOW the identity tolerance, or the test has no teeth"}
     _dump(feat / "identity_report.json", rep)
     h = json.loads((feat / "sae_health.json").read_text())
-    h["identity"] = {"max_rel_err": rep["resid_post"]["max_rel_err"], "ref": f"transformerlens:{names[0]}",
-                     "min_cos": rep["resid_post"]["min_cos"], "scale_ratio_mean": rep["resid_post"]["scale_ratio_mean"]}
+    h["identity"] = {"min_cos": rep["resid_post"]["min_cos"], "max_norm_rel": rep["resid_post"]["max_norm_rel"],
+                     "ref": f"transformerlens:{names[0]}", "dtype": str(dtype),
+                     "cross_nnpost_vs_tlpre_median_cos": rep["cross_nnpost_vs_tlpre"]["median_cos"]}
     _dump(feat / "sae_health.json", h)
     print("identity:", json.dumps(rep, indent=None))
 

@@ -13,9 +13,12 @@ Rules 2026-09-16.2 (see gates/CHANGELOG.md):
   hook identification = VARIANCE EXPLAINED with a required absolute margin over EVERY decoy
       (g2_decoy_ve_margin_min). L0 is a weak discriminator against resid_pre by construction (the stream
       changes slowly across one block), so a published-L0 match is REPORTED, not gated.
-  tensor identity (when present in the report) = the captured tensor must equal an independent
-      implementation's `blocks.31.hook_resid_post` (TransformerLens, no weight processing) within
-      g2_identity_max_rel_err. Beating decoys shows "best of the candidates offered"; identity shows "right".
+  tensor identity (when present in the report) = the captured tensor must match an independent
+      implementation's `blocks.31.hook_resid_post` (TransformerLens, no weight processing) RELATIONALLY:
+      per-position cosine >= g2_identity_min_cos (0.999) and per-position relative norm difference <=
+      g2_identity_max_norm_rel (1e-2). Element-wise bf16 atol would fail a correct hook on kernel-order
+      noise accumulated over 31 layers; run the stage in fp32 to hold the tolerance with a clear
+      conscience. Beating decoys shows "best of the candidates offered"; identity shows "right".
   encode integrity (when present) = fraction of active features below their own JumpReLU threshold == 0.
   health = var_explained >= g2_var_explained_min and l0 <= g2_l0_max.
 
@@ -60,7 +63,9 @@ def _evaluate(report, g):
     ident = report.get("identity")
     ident_ok = None
     if ident is not None:
-        ident_ok = ident.get("max_rel_err") is not None and ident["max_rel_err"] <= g.get("g2_identity_max_rel_err", 0.02)
+        ident_ok = (ident.get("min_cos") is not None and ident.get("max_norm_rel") is not None
+                    and ident["min_cos"] >= g.get("g2_identity_min_cos", 0.999)
+                    and ident["max_norm_rel"] <= g.get("g2_identity_max_norm_rel", 0.01))
     jr = report.get("jumprelu_below_threshold_frac")
     jr_ok = None if jr is None else (jr == 0.0)
     detail = {"rules": GATE_RULES_VERSION, "chosen_hook": chosen["hook"], "var_explained": round(chosen["var_explained"], 3),
@@ -68,7 +73,9 @@ def _evaluate(report, g):
               "decoy_ve_worst_gap": None if worst_gap is None else round(worst_gap, 3), "decoy_margin_min": margin,
               "decoys_rejected": decoys_reject, "identity_ok": ident_ok, "jumprelu_ok": jr_ok, "health_ok": health_ok}
     if ident is not None:
-        detail["identity_max_rel_err"] = ident.get("max_rel_err")
+        detail["identity_min_cos"] = ident.get("min_cos")
+        detail["identity_max_norm_rel"] = ident.get("max_norm_rel")
+        detail["identity_dtype"] = ident.get("dtype")
     if report.get("per_doc_l0"):
         pd = sorted(report["per_doc_l0"])
         detail["per_doc_l0_median"] = round(pd[len(pd) // 2], 1)
@@ -100,7 +107,7 @@ def fixture():
             {"hook": "layers.31.mlp_output", "var_explained": -1090.0, "l0": 18},
             {"hook": "scaled_x0.8", "var_explained": 0.55, "l0": 70},
         ],
-        "identity": {"max_rel_err": 0.004, "ref": "transformerlens:blocks.31.hook_resid_post"},
+        "identity": {"min_cos": 0.9998, "max_norm_rel": 0.003, "ref": "transformerlens:blocks.31.hook_resid_post", "dtype": "float32"},
         "jumprelu_below_threshold_frac": 0.0, "per_doc_l0": [70, 80, 95, 100, 110, 300],
     }
     ok, detail = _evaluate(report, g)
@@ -108,7 +115,7 @@ def fixture():
     amb = json.loads(json.dumps(report)); amb["candidates"][0] = {"hook": "near", "var_explained": 0.68, "l0": 300}
     ok_amb, _ = _evaluate(amb, g)
     # identity failure blocks even with a comfortable VE margin
-    bad_id = json.loads(json.dumps(report)); bad_id["identity"]["max_rel_err"] = 0.2
+    bad_id = json.loads(json.dumps(report)); bad_id["identity"]["min_cos"] = 0.97      # resid_pre-like: same scale, wrong direction
     ok_id, _ = _evaluate(bad_id, g)
     # encode integrity failure blocks
     bad_jr = json.loads(json.dumps(report)); bad_jr["jumprelu_below_threshold_frac"] = 0.05

@@ -20,7 +20,9 @@ Triggered by the first full GPU run (A100, artifacts in `pipeline/results/t1_202
   (`g2_decoy_ve_margin_min` 0.10). A published-L0 match is reported, not gated: L0 cannot separate
   resid_post(31) from resid_pre(31) = resid_post(30) by construction. New optional checks that BLOCK when
   present and failing: tensor identity against TransformerLens `blocks.31.hook_resid_post` loaded with
-  no weight processing (`g2_identity_max_rel_err`), and JumpReLU encode integrity (fraction of active
+  no weight processing — RELATIONAL tolerance, per-position cosine >= `g2_identity_min_cos` (0.999) and
+  relative norm difference <= `g2_identity_max_norm_rel` (1e-2), run in fp32 because element-wise bf16
+  atol fails a correct hook on 31 layers of kernel-order noise — and JumpReLU encode integrity (fraction of active
   features below their own threshold must be 0). Scaled copies of the chosen tensor (x0.8, x1.2) join
   the decoy set. L0 is measured per document (own BOS, 1024 ctx, BOS excluded) and the distribution is
   reported. Rationale: 0.73 VE beat every decoy but is below what the release implies; beating decoys

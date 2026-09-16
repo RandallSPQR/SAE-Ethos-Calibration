@@ -42,7 +42,8 @@ gates:
   g2_var_explained_min: 0.50        # on our IT-chat transcripts; expect below Gemma Scope's pretrain number
   g2_l0_max: 120
   g2_decoy_ve_margin_min: 0.10      # chosen hook must beat EVERY decoy by this much variance explained (L0 is reported, not gated)
-  g2_identity_max_rel_err: 0.02     # captured tensor vs TransformerLens blocks.31.hook_resid_post (no weight processing), bf16 tolerance
+  g2_identity_min_cos: 0.999        # captured tensor vs TransformerLens blocks.31.hook_resid_post (no weight processing): per-position cosine
+  g2_identity_max_norm_rel: 0.01    # ... and per-position |norm_nn - norm_tl| / norm_tl. Relational, not element-wise; run in fp32.
   g3_known_feature_auroc_min: 0.80
   g4_steering_effect_min_abs: 0.05  # published effect must reproduce with |delta| >= this
   g5_oracle_acc_min: 0.60
