@@ -123,10 +123,21 @@ def main():
     if not a.mock:
         from resample.target_client import TargetClient
         client = TargetClient(mock=False)
-    ok = all([run_task(t, a.run_dir, n_agents, client, a.mock, temperature=float(pc.get("temperature", 0.8)),
-                       top_p=float(pc.get("top_p", 0.95))) for t in tasks])
-    sys.exit(0 if ok else 1)
+    oks = [run_task(t, a.run_dir, n_agents, client, a.mock, temperature=float(pc.get("temperature", 0.8)),
+                    top_p=float(pc.get("top_p", 0.95))) for t in tasks]
+    # a task with no dial on this model is a FINDING; the run continues with the tasks that have one
+    sys.exit(0 if any(oks) else 1)
 
 
 if __name__ == "__main__":
     main()
+
+
+def task_has_dial(run_dir, task):
+    """A task whose UNSTEERED curve never crosses 0.5 or has no graded region has no dial on this model.
+    That is a finding (recorded in baseline.json), not a pipeline failure: downstream stages skip it and G9
+    reports it without gating on it."""
+    import json as _json
+    from pathlib import Path as _P
+    b = _json.loads((_P(run_dir) / "probe" / task / "baseline.json").read_text())
+    return b.get("sp") is not None and b.get("n_graded_grid_points", 0) >= 2

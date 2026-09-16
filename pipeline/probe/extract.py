@@ -89,7 +89,10 @@ def main():
     if not a.mock:
         from replay.modelload import load_target
         lm = load_target("target")
+    from probe.synth_trials import task_has_dial
     for task in tasks:
+        if not task_has_dial(a.run_dir, task):
+            print(f"[{task}] skipped: no dial on this model (see baseline.json)"); continue
         d = Path(a.run_dir) / "probe" / task
         rows = load_trials(d)
         arrays, y = mock_activations(rows, layers) if a.mock else real_activations(rows, layers, lm)

@@ -11,7 +11,7 @@ Fan et al.'s absolute numbers (switching point, layer) are REPORTED beside ours,
 import json
 from pathlib import Path
 import yaml
-from ._common import GateResult, load_run_cfg
+from ._common import GateResult, load_run_cfg, GATE_RULES_VERSION
 
 NAME = "G9_probe_external_fixture"
 NEEDS_GPU = True
@@ -50,17 +50,29 @@ def run(cfg, paths):
     g = load_run_cfg()
     pc = yaml.safe_load((CFG / "run.yaml").read_text())["probe"]
     root = Path(paths.get("probe") or (Path(paths["features"]).parent / "probe"))
-    ok, detail = True, {}
+    ok, detail, n_eval = True, {"rules": GATE_RULES_VERSION}, 0
     for task in _tasks():
         d = root / task
         try:
-            base, probe, cal = (json.loads((d / f).read_text()) for f in ("baseline.json", "probe.json", "calibration.json"))
+            base = json.loads((d / "baseline.json").read_text())
+        except FileNotFoundError:
+            return GateResult(NAME, False, {"error": f"{task}: missing baseline.json under {d}"})
+        if base.get("sp") is None or base.get("n_graded_grid_points", 0) < 2:
+            # no dial on this model: a FINDING, reported beside the others, not gated
+            detail[task] = (f"{task}: NO DIAL on this model (unsteered sp={base.get('sp')}, graded grid points="
+                            f"{base.get('n_graded_grid_points')}); reported, not gated")
+            continue
+        try:
+            probe, cal = (json.loads((d / f).read_text()) for f in ("probe.json", "calibration.json"))
         except FileNotFoundError as e:
             return GateResult(NAME, False, {"error": f"{task}: missing {Path(e.filename).name} under {d}"})
+        n_eval += 1
         t_ok, checks, line = _evaluate(task, base, probe, cal, g, pc["targets"][task])
         ok = ok and t_ok
         detail[task] = line
         detail[task + "_checks"] = {k: v for k, v in checks.items() if not v} or "all"
+    if n_eval == 0:
+        return GateResult(NAME, False, {**detail, "error": "no task had a dial on this model; nothing to calibrate"})
     return GateResult(NAME, ok, detail)
 
 

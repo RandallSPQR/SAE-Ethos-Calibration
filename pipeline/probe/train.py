@@ -154,7 +154,11 @@ def main():
     a = ap.parse_args()
     pc, gc = _cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
-    ok = all([train_task(t, a.run_dir, pc, gc) for t in tasks])
+    from probe.synth_trials import task_has_dial
+    live = [t for t in tasks if task_has_dial(a.run_dir, t)]
+    for t in tasks:
+        if t not in live: print(f"[{t}] skipped: no dial on this model (see baseline.json)")
+    ok = all([train_task(t, a.run_dir, pc, gc) for t in live]) if live else False
     sys.exit(0 if ok else 1)
 
 

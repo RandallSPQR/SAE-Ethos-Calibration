@@ -171,7 +171,10 @@ def main():
     pc = _cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
     gen = None if a.mock else SteeredSampler(a.run_dir, float(pc.get("temperature", 0.8)), float(pc.get("top_p", 0.95)))
+    from probe.synth_trials import task_has_dial
     for t in tasks:
+        if not task_has_dial(a.run_dir, t):
+            print(f"[{t}] skipped: no dial on this model (see baseline.json)"); continue
         calibrate_task(t, a.run_dir, pc, gen, a.mock)
 
 
