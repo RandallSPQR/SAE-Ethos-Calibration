@@ -110,10 +110,19 @@ def sae_artifact_identity(sae):
     cfg = sae.cfg
     meta = getattr(cfg, "metadata", None)
     get = lambda k: getattr(meta, k, None) if meta is not None else getattr(cfg, k, None)
+    repo, path, npid = get("hf_repo_id"), get("hf_path"), get("neuronpedia_id")
+    if not repo or not path:                      # SAELens >= 6 keeps these in the pretrained directory, not the cfg
+        try:
+            from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
+            entry = get_pretrained_saes_directory()[s["release"]]
+            repo = repo or entry.repo_id
+            path = path or entry.saes_map.get(s["sae_id"])
+            npid = npid or (entry.neuronpedia_id or {}).get(s["sae_id"])
+        except Exception as ex:
+            repo = repo or f"lookup failed: {ex}"
     out = {"release_requested": s["release"], "sae_id_requested": s["sae_id"], "hook_name": _hook_name(sae),
-           "d_in": int(cfg.d_in), "d_sae": int(cfg.d_sae), "hf_repo_id": get("hf_repo_id"),
-           "hf_path": get("hf_path") or get("sae_id"), "neuronpedia_id": get("neuronpedia_id"),
-           "published_l0_reference": s["published"].get("l0")}
+           "d_in": int(cfg.d_in), "d_sae": int(cfg.d_sae), "hf_repo_id": repo, "hf_path": path,
+           "neuronpedia_id": npid, "published_l0_reference": s["published"].get("l0")}
     path = str(out["hf_path"] or "")
     out["path_names_l0"] = int(path.rsplit("average_l0_", 1)[1]) if "average_l0_" in path else None
     out["reference_matches_artifact"] = (out["path_names_l0"] == out["published_l0_reference"]) if out["path_names_l0"] else None

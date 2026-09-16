@@ -1,0 +1,60 @@
+G0 vLLM: '11, 13, 17' | prompt_ids 33 | gen 12
+G1 vLLM: 'Okay, I understand. I will not query the `audited_sums.sqlite` file. \n\nPlease pr' | gen 48 finish stop
+0 MiB
+== stage 2: nnsight
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[PASS] G0_model_checksum: G0a_prompt_identity=True, G0b_computation_identity=True
+[PASS] G1_replay_fidelity: rules=2026-09-16.2, n_exact_rows=1, n_logprob_rows=0, exact_match_raw=0.9783, n_tokens=46, n_flips=1, n_excused=1, unexcused_flip_rate=0.0, excuse_margin_nats=0.25, threshold=0.999, exact_ok=True
+[PASS] G3_feature_known_answer: rules=2026-09-16.2, statistic=window-max (16 tokens) AUROC + fraction-active, auroc=1.0, threshold=0.8, planted_ok=True, topic_filter_ok=True, frac_active={'code': 0.15555555555555556, 'prose': 0.0, 'mention': 0.0}
+[PASS] G4_steering_known_answer: effect=0.118, threshold=0.05, monotone=True, baseline=0.1306, readout=P(first generated token in code openers), prompt=Show me how to compute the nth Fibonacci number.
+[PASS] G5_oracle_calibration: rules=2026-09-16.2, accuracy=0.917, paired_discrimination=0.917, confab_rate=1.0, oracle_weight=paired only, min_acc=0.6, min_paired=0.6, n_pairs=12
+
+full: 5/6 gates passed.
+BLOCKED by: G2_sae_health
+model loaded: layers=42 d_model=3584 hook layer=31 dtype=torch.bfloat16 rules=2026-09-16.2
+G0 nnsight: '11, 13, 17'
+G1 diag: {'span_ids_equal_sampled': True, 'raw_ids_exact_match': 0.9782608695652174} mismatches: [{'k': 9, 'vllm_id': 573, 'vllm_tok': ' the', 'replay_argmax_id': 4103, 'replay_argmax_tok': ' `', 'replay_logprob_of_vllm_tok': -0.8936370611190796, 'vllm_logprob': -0.7642993927001953, 'generation_top2_margin': 0.0, 'replay_top2': [4103, 573]}]
+SAE artifact: {'release_requested': 'gemma-scope-9b-it-res-canonical', 'sae_id_requested': 'layer_31/width_16k/canonical', 'hook_name': 'blocks.31.hook_resid_post', 'd_in': 3584, 'd_sae': 16384, 'hf_repo_id': None, 'hf_path': None, 'neuronpedia_id': 'gemma-2-9b-it/31-gemmascope-res-16k', 'published_l0_reference': 76, 'path_names_l0': None, 'reference_matches_artifact': None, 'is_it_release': True}
+G2 calibration text: 16 docs from monology/pile-uncopyrighted, 6801 tokens, own BOS each
+G2 chosen (pooled): {'hook': 'blocks.31.hook_resid_post', 'var_explained': 0.7569, 'fvu': 0.2431, 'l0': 85.7245, 'var_explained_per_token': 0.8632, 'rel_mse': 0.1368, 'n_tokens': 6785}
+   per-doc L0: median=86.3 min=65.6 max=101.0 | jumprelu below-threshold frac=0.0000 | chat L0=81.3
+   decoy: layers.31.hidden_states_only ve=-0.609 l0=35.9
+   decoy: layers.31.mlp_output ve=-921.466 l0=17.8
+   decoy: layers.31.attn_output ve=-157.926 l0=18.0
+   decoy: layers.31.input_resid ve=0.646 l0=68.7
+   decoy: blocks.31.hook_resid_post_x0.8 ve=0.717 l0=58.8
+   decoy: blocks.31.hook_resid_post_x1.2 ve=0.768 l0=117.6
+G3 feature 8209: auroc_window_max=1.000 auroc_position=0.578 active={'code': 0.15555555555555556, 'prose': 0.0, 'mention': 0.0}
+G3 feature 9002: auroc_window_max=0.625 auroc_position=0.515 active={'code': 0.02962962962962963, 'prose': 0.0, 'mention': 0.016129032258064516}
+G3 feature 4864: auroc_window_max=1.000 auroc_position=0.674 active={'code': 0.34814814814814815, 'prose': 0.0, 'mention': 0.0}
+G3 feature 12174: auroc_window_max=0.625 auroc_position=0.507 active={'code': 0.014814814814814815, 'prose': 0.0, 'mention': 0.0}
+G4 A_code_request: -0.6:0.055 -0.4:0.103 -0.2:0.118 0.0:0.131 0.2:0.137 0.4:0.138 0.6:0.173
+G4 B_write_something: -0.6:0.000 -0.4:0.000 -0.2:0.000 0.0:0.000 0.2:0.000 0.4:0.000 0.6:0.000
+G5 (patchscopes baseline): {'accuracy': 0.583, 'confab_rate': 1.0, 'paired_discrimination': 0.5}
+G5 (karvonen): {'accuracy': 0.917, 'confab_rate': 1.0, 'paired_discrimination': 0.917}
+$ /workspace/venv/bin/python -m gates.run_gates --transcripts /workspace/t1/transcripts --replayed /workspace/t1/replayed --features /workspace/t1/features --gates G0,G1,G2,G3,G4,G5
+== stage 3: tensor identity (TransformerLens, no weight processing)
+Loaded pretrained model google/gemma-2-9b-it into HookedTransformer
+identity: {"rules": "2026-09-16.2", "ref": "transformerlens:from_pretrained_no_processing", "dtype": "torch.bfloat16", "n_tokens": 1024, "resid_post": {"min_cos": 0.9949008822441101, "median_cos": 0.9999576807022095, "max_norm_rel": 0.02055703103542328, "median_norm_rel": 0.0014509169850498438, "max_rel_err_elementwise": 0.10091016441583633, "scale_ratio_mean": 0.9996092915534973}, "resid_pre": {"min_cos": 0.9945563673973083, "median_cos": 0.9999529123306274, "max_norm_rel": 0.019482634961605072, "median_norm_rel": 0.0013147089630365372, "max_rel_err_elementwise": 0.10419970750808716, "scale_ratio_mean": 0.999452531337738}, "cross_nnpost_vs_tlpre": {"min_cos": 0.9094244241714478, "median_cos": 0.9661124348640442, "note": "must be clearly BELOW the identity tolerance, or the test has no teeth"}}
+[PASS] G0_model_checksum: G0a_prompt_identity=True, G0b_computation_identity=True
+[PASS] G1_replay_fidelity: rules=2026-09-16.2, n_exact_rows=1, n_logprob_rows=0, exact_match_raw=0.9783, n_tokens=46, n_flips=1, n_excused=1, unexcused_flip_rate=0.0, excuse_margin_nats=0.25, threshold=0.999, exact_ok=True
+[FAIL] G2_sae_health: rules=2026-09-16.2, chosen_hook=blocks.31.hook_resid_post, var_explained=0.757, l0=85.7, published_l0=76, matches_published=True, decoy_ve_worst_gap=-0.011, decoy_margin_min=0.1, decoys_rejected=False, identity_ok=False, jumprelu_ok=True, health_ok=True, identity_min_cos=0.9949008822441101, identity_max_norm_rel=0.02055703103542328, identity_dtype=torch.bfloat16, per_doc_l0_median=86.3, per_doc_l0_range=[65.6, 101.0], fvu_unpublished=True
+[PASS] G3_feature_known_answer: rules=2026-09-16.2, statistic=window-max (16 tokens) AUROC + fraction-active, auroc=1.0, threshold=0.8, planted_ok=True, topic_filter_ok=True, frac_active={'code': 0.15555555555555556, 'prose': 0.0, 'mention': 0.0}
+[PASS] G4_steering_known_answer: effect=0.118, threshold=0.05, monotone=True, baseline=0.1306, readout=P(first generated token in code openers), prompt=Show me how to compute the nth Fibonacci number.
+[PASS] G5_oracle_calibration: rules=2026-09-16.2, accuracy=0.917, paired_discrimination=0.917, confab_rate=1.0, oracle_weight=paired only, min_acc=0.6, min_paired=0.6, n_pairs=12
+
+full: 5/6 gates passed.
+BLOCKED by: G2_sae_health
+== done; artifacts in /workspace/t1/features
+feature_labels.json
+g1_diagnostics.json
+gate_rules.json
+identity_input.npz
+identity_report.json
+known_answer_report.json
+model_checksum.json
+oracle_calibration.json
+oracle_calibration_patchscopes.json
+sae_health.json
+steering_report.json
+t1_vllm.json

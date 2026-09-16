@@ -1,0 +1,224 @@
+{
+  "rules": "2026-09-16.2",
+  "backend": "patchscopes",
+  "accuracy": 0.5833333333333334,
+  "confab_rate": 1.0,
+  "paired_discrimination": 0.5,
+  "n": 12,
+  "pairs": [
+    {
+      "label": "code",
+      "position": 13,
+      "real": "the concept of a number sequence. \n\n\nPlease provide the text so I can",
+      "null": "the history and evolution of the word \"the\".",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 41,
+      "real": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "null": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 47,
+      "real": "the concept of \"X\". \n\n\nPlease provide the text so I can give",
+      "null": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 71,
+      "real": "the concept of \"n\" and its relationship to other mathematical concepts.",
+      "null": "the concept of \"it\" and its various uses. \n\n\nPlease provide the",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 86,
+      "real": "the concept of \"n\". \n\n\nPlease provide the text so I can give",
+      "null": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 112,
+      "real": "the concept of \"X\" and its various meanings and uses. \n\n\nPlease",
+      "null": "the history and evolution of the word \"X\". \n\n\nPlease provide the text",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 57,
+      "real": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "null": "the concept of \"x\" as a placeholder for an unknown value.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 68,
+      "real": "the history and evolution of the word \"school\". \n\n\nPlease provide the text",
+      "null": "the concept of \"being a good person\" and the importance of kindness and empathy",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 73,
+      "real": "the history and evolution of the word \"and\". \n\n\nPlease provide the text",
+      "null": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 82,
+      "real": "the history and evolution of the \"x\" symbol. \n\n\nPlease provide the",
+      "null": "the history and evolution of the word \"X\". \n\n\nPlease provide the text",
+      "real_hit": true,
+      "null_hit": true
+    },
+    {
+      "label": "prose",
+      "position": 97,
+      "real": "the history and evolution of the stop sign. \n\n\nPlease provide the text so",
+      "null": "a person's experience with a specific type of food. \n\n\nPlease provide",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 106,
+      "real": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "null": "the concept of \"zero\" and its significance in mathematics. \n\n\nPlease provide",
+      "real_hit": true,
+      "null_hit": false
+    }
+  ],
+  "explanations": [
+    {
+      "label": "code",
+      "position": 13,
+      "explanation": "the concept of a number sequence. \n\n\nPlease provide the text so I can",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 41,
+      "explanation": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "source": "patchscopes",
+      "hit": false
+    },
+    {
+      "label": "code",
+      "position": 47,
+      "explanation": "the concept of \"X\". \n\n\nPlease provide the text so I can give",
+      "source": "patchscopes",
+      "hit": false
+    },
+    {
+      "label": "code",
+      "position": 71,
+      "explanation": "the concept of \"n\" and its relationship to other mathematical concepts.",
+      "source": "patchscopes",
+      "hit": false
+    },
+    {
+      "label": "code",
+      "position": 86,
+      "explanation": "the concept of \"n\". \n\n\nPlease provide the text so I can give",
+      "source": "patchscopes",
+      "hit": false
+    },
+    {
+      "label": "code",
+      "position": 112,
+      "explanation": "the concept of \"X\" and its various meanings and uses. \n\n\nPlease",
+      "source": "patchscopes",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 57,
+      "explanation": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 68,
+      "explanation": "the history and evolution of the word \"school\". \n\n\nPlease provide the text",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 73,
+      "explanation": "the history and evolution of the word \"and\". \n\n\nPlease provide the text",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 82,
+      "explanation": "the history and evolution of the \"x\" symbol. \n\n\nPlease provide the",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 97,
+      "explanation": "the history and evolution of the stop sign. \n\n\nPlease provide the text so",
+      "source": "patchscopes",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 106,
+      "explanation": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "source": "patchscopes",
+      "hit": true
+    }
+  ],
+  "null_explanations": [
+    {
+      "kind": "zero",
+      "text": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "a person's experience with a specific type of pain. \n\n\nPlease provide",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "the concept of \"X\" and its various meanings and uses. \n\n\nPlease",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "the history and evolution of the letter \"X\". \n\n\nPlease provide the text",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "the history and evolution of the \"X\" symbol. \n\n\nPlease provide the",
+      "confident": true
+    }
+  ]
+}

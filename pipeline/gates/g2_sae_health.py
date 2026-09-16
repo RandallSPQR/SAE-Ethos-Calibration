@@ -56,7 +56,12 @@ def _evaluate(report, g):
     chosen = report["chosen"]
     health_ok = chosen["var_explained"] >= g["g2_var_explained_min"] and chosen["l0"] <= g["g2_l0_max"]
     margin = g.get("g2_decoy_ve_margin_min", 0.10)
-    cands = report.get("candidates", [])
+    # Scaled copies of the chosen tensor are a SENSITIVITY probe, not alternative hooks: the SAE reconstructs
+    # a x1.2 copy slightly BETTER (0.768 vs 0.757 on run 2), so VE cannot see a scale error at all and the
+    # identity check is the arbiter for scale. They are reported, and L0 (59/86/118) is the number that moves.
+    all_c = report.get("candidates", [])
+    scaled = [c for c in all_c if "_x" in c["hook"].rsplit("/", 1)[-1] and c["hook"].startswith(chosen["hook"])]
+    cands = [c for c in all_c if c not in scaled]
     worst_gap = min((chosen["var_explained"] - c["var_explained"] for c in cands), default=None)
     decoys_reject = worst_gap is not None and worst_gap >= margin
     chosen_match = _matches_published(chosen["var_explained"], chosen["l0"], pub)     # REPORTED, not gated
@@ -72,6 +77,9 @@ def _evaluate(report, g):
               "l0": round(chosen["l0"], 1), "published_l0": pub.get("l0"), "matches_published": chosen_match,
               "decoy_ve_worst_gap": None if worst_gap is None else round(worst_gap, 3), "decoy_margin_min": margin,
               "decoys_rejected": decoys_reject, "identity_ok": ident_ok, "jumprelu_ok": jr_ok, "health_ok": health_ok}
+    if scaled:
+        detail["ve_scale_sensitivity"] = {c["hook"].rsplit("_", 1)[-1]: {"ve": round(c["var_explained"], 3), "l0": round(c["l0"], 1)} for c in scaled}
+        detail["ve_detects_scale"] = all(chosen["var_explained"] - c["var_explained"] >= margin for c in scaled)
     if ident is not None:
         detail["identity_min_cos"] = ident.get("min_cos")
         detail["identity_max_norm_rel"] = ident.get("max_norm_rel")
@@ -105,7 +113,8 @@ def fixture():
         "candidates": [
             {"hook": "layers.31.input_resid", "var_explained": 0.60, "l0": 79},     # L0 "matches" but VE 0.13 below
             {"hook": "layers.31.mlp_output", "var_explained": -1090.0, "l0": 18},
-            {"hook": "scaled_x0.8", "var_explained": 0.55, "l0": 70},
+            {"hook": "blocks.31.hook_resid_post_x0.8", "var_explained": 0.717, "l0": 59},   # scale probe, not a decoy
+            {"hook": "blocks.31.hook_resid_post_x1.2", "var_explained": 0.768, "l0": 118},  # VE cannot see scale
         ],
         "identity": {"min_cos": 0.9998, "max_norm_rel": 0.003, "ref": "transformerlens:blocks.31.hook_resid_post", "dtype": "float32"},
         "jumprelu_below_threshold_frac": 0.0, "per_doc_l0": [70, 80, 95, 100, 110, 300],
@@ -124,4 +133,5 @@ def fixture():
     return GateResult(NAME + "[fixture]", ok and not ok_amb and not ok_id and not ok_jr,
                       {"ve_margin_passes": ok, "ambiguous_ve_blocked": not ok_amb, "identity_blocks": not ok_id,
                        "jumprelu_blocks": not ok_jr, "l0_reported_not_gated": detail["matches_published"] is False,
+                       "scaled_copies_not_decoys": detail.get("ve_detects_scale") is False and ok,
                        "rules": GATE_RULES_VERSION})

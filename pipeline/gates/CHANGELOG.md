@@ -5,6 +5,14 @@ The version is written into every gate result, every T1 report JSON, and the pro
 PASS is always relative to a named ruleset. "PASS after fixing the statistic" without an entry here reads
 as "tuned"; with one it reads as "corrected, and here is why".
 
+## 2026-09-16.2 (amended after run 2, same version: no gate outcome on run-2 artifacts changes except G2's decoy term)
+
+- **G2 amendment** — Scaled copies of the chosen tensor (x0.8, x1.2) are excluded from the decoy-margin
+  rule and reported as `ve_scale_sensitivity`. Run 2 showed the SAE reconstructs the x1.2 copy slightly
+  BETTER than the unscaled tensor (VE 0.768 vs 0.757), i.e. VE cannot detect a scale error; L0 can
+  (59 / 86 / 118) and tensor identity is the arbiter. Artifact identity now resolves repo/path through
+  SAELens's pretrained directory (the cfg no longer carries them).
+
 ## 2026-09-16.2
 
 Triggered by the first full GPU run (A100, artifacts in `pipeline/results/t1_2026-09-16/`).

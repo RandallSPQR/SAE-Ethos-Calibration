@@ -9,16 +9,20 @@ source /workspace/venv/bin/activate
 export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false
 OUT=${1:-/workspace/t1}
 VDTYPE=bfloat16
-if [ "${2:-}" = "--fp32" ]; then VDTYPE=float32; export T1_DTYPE=float32; OUT=${OUT}_fp32; fi
+if [ "${2:-}" = "--fp32" ]; then
+  VDTYPE=float32; export T1_DTYPE=float32; OUT=${OUT}_fp32
+  # FlashAttention only takes fp16/bf16; vLLM's flex-attention backend handles float32.
+  export VLLM_ATTENTION_BACKEND=FLEX_ATTENTION
+fi
 mkdir -p "$OUT" /workspace/logs
 if [ ! -s "$OUT/features/t1_vllm.json" ]; then
   echo "== stage 1: vLLM serve"
   /workspace/venv_vllm/bin/python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
     --dtype $VDTYPE --max-model-len 2048 --gpu-memory-utilization 0.9 --port 8000 --seed 0 \
-    --no-enable-prefix-caching > /workspace/logs/vllm.log 2>&1 &
+    --no-enable-prefix-caching > /workspace/logs/vllm_$VDTYPE.log 2>&1 &
   VPID=$!
   for i in $(seq 1 180); do curl -s localhost:8000/v1/models >/dev/null 2>&1 && break; sleep 5; \
-    kill -0 $VPID 2>/dev/null || { echo "vLLM died; see /workspace/logs/vllm.log"; tail -30 /workspace/logs/vllm.log; exit 2; }; done
+    kill -0 $VPID 2>/dev/null || { echo "vLLM died; see /workspace/logs/vllm_$VDTYPE.log"; grep -E "Error|error|raise|not support" /workspace/logs/vllm_$VDTYPE.log | tail -15; exit 2; }; done
   curl -s localhost:8000/v1/models | head -c 300; echo
   python -m calibrate.t1_ladder --stage vllm --out "$OUT" || { echo "stage 1 failed"; kill $VPID; exit 3; }
   kill $VPID; sleep 5; pkill -f "vllm.entrypoints" 2>/dev/null; sleep 5
