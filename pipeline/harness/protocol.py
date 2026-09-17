@@ -61,7 +61,18 @@ def parse_tool_call(text):
     try:
         obj = json.loads(m.group(1))
         name = obj["tool"]
-    except (json.JSONDecodeError, KeyError, TypeError):
+    except json.JSONDecodeError:
+        # {"tool": "run_tests", "{}"} — Gemma's rendering of the docs' `run_tests {}`: a bare "{}" string where
+        # the args object should be. Repairable only when the block names a tool and carries no other
+        # key/value pair; recorded as form "repaired_noargs" (T2 pilot 2026-09-17, missing_delete_tool).
+        body = m.group(1)
+        t = re.search(r'"tool"\s*:\s*"([A-Za-z_][\w]*)"', body)
+        rest = re.sub(r'"tool"\s*:\s*"[A-Za-z_][\w]*"', "", body)
+        if t and not re.search(r'"[^"]+"\s*:', rest):
+            LAST_CALL_FORM = "repaired_noargs"
+            return t.group(1), {}
+        return None
+    except (KeyError, TypeError):
         return None
     if not isinstance(obj, dict):
         return None
