@@ -14,8 +14,20 @@ from .tools import available
 from .triggers import TriggerMatcher, DecisionPointNotReached
 
 
+class ContextOverflow(RuntimeError):
+    """The conversation no longer fits the served context. In the prefix this excludes the cell (the
+    deterministic path cannot reach the obstacle within the context); in a continuation it is a terminal
+    episode outcome ("context_overflow"), recorded like any other end."""
+
+
 def _emit(client, messages, temperature, top_p, max_new_tokens, seed):
-    resp = client.complete(messages, temperature, top_p, max_new_tokens, seed=seed)
+    try:
+        resp = client.complete(messages, temperature, top_p, max_new_tokens, seed=seed)
+    except Exception as e:                       # openai.BadRequestError on context length (T2 pilot 2026-09-17)
+        msg = str(e)
+        if "maximum context length" in msg or "context length" in msg.lower() and "tokens" in msg:
+            raise ContextOverflow(msg[:200]) from e
+        raise
     if isinstance(resp, dict):
         return resp["text"], resp.get("token_ids"), resp.get("token_logprobs"), resp.get("top2_margin")
     return resp, None, None
@@ -54,7 +66,11 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
     messages = [{"role": "system", "content": system_prompt(scenario["tools"])},
                 {"role": "user", "content": task_prompt}]
     for step in range(max_tool_calls + 2):
-        text, ids, lps, mrg = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
+        try:
+            text, ids, lps, mrg = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
+        except ContextOverflow as e:
+            raise DecisionPointNotReached(f"{scenario['id']}: context overflow at step {step} before the obstacle "
+                                          f"was revealed ({e})")
         messages.append({"role": "assistant", "content": text, "tool_calls": [],
                          "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}})
         call = parse_tool_call(text)
@@ -91,7 +107,10 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
     esc = list(escalation_turns or [])
 
     for step in range(start_step, max_tool_calls + 2):
-        text, ids, lps, mrg = _emit(client, messages, temperature, top_p, max_new_tokens, seed + step)
+        try:
+            text, ids, lps, mrg = _emit(client, messages, temperature, top_p, max_new_tokens, seed + step)
+        except ContextOverflow as e:
+            return messages, decision_point, {"terminal": "context_overflow", "detail": str(e)}, decision_tokens
         msg = {"role": "assistant", "content": text, "tool_calls": [],
                "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}}
         messages.append(msg)

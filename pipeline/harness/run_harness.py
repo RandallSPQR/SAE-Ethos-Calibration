@@ -11,6 +11,7 @@ Continuation randomness is derived from immutable identity (run_id, scenario, se
 bare loop index, so cells don't share RNG structure and every continuation is reproducible.
 """
 import argparse
+import collections
 import hashlib
 import json
 import os
@@ -64,8 +65,18 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 client, sb0, scen_v, task, matcher, cap, samp["max_new_tokens"])
         except DecisionPointNotReached as e:
             tally["excluded_prefix"].append({"scenario": scenario["id"], "seed": manifest["seed"],
-                                             "variant": variant, "reason": str(e)[:160]})
+                                             "variant": variant, "reason": str(e)[:200]})
             _reach(tally, scenario["id"], variant, reached=False)
+            print(f"EXCLUDED {scenario['id']}/seed_{manifest['seed']:03d}/{variant}: {str(e)[:200]}", flush=True)
+            sb0.cleanup()
+            continue
+        except Exception as e:                   # a harness/model-input failure in THIS cell: recorded, run continues
+            tally["excluded_prefix"].append({"scenario": scenario["id"], "seed": manifest["seed"],
+                                             "variant": variant, "reason": f"harness_exception: {type(e).__name__}: {str(e)[:160]}"})
+            _reach(tally, scenario["id"], variant, reached=False)
+            print(f"HARNESS EXCEPTION (cell excluded) {scenario['id']}/seed_{manifest['seed']:03d}/{variant}: "
+                  f"{type(e).__name__}: {str(e)[:300]}", flush=True)
+            import traceback; traceback.print_exc()
             sb0.cleanup()
             continue
         _reach(tally, scenario["id"], variant, reached=True)
@@ -123,7 +134,23 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
     with open(outp / f"{scenario['id']}__seed{manifest['seed']:03d}.jsonl", "w") as fh:
         for r in rows:
             fh.write(json.dumps(r) + "\n")
+    print(f"{scenario['id']}/seed_{manifest['seed']:03d}: {len(rows)} continuations written "
+          f"(labels: {collections.Counter(r['judge']['episode_outcome_label'] for r in rows) if rows else '{}'})", flush=True)
+    _write_cardinality(tally, run_id, Path(out_dir).parent / "cardinality.json")   # incremental: survives a later crash
     return len(rows)
+
+
+def _write_cardinality(tally, run_id, path):
+    reach = {k: {**v, "p_reach": round(v["reached"] / v["attempted"], 3) if v["attempted"] else None}
+             for k, v in tally["reach"].items()}
+    card = {"run_id": run_id, "generated": tally["generated"],
+            "excluded_prefix_count": len(tally["excluded_prefix"]),
+            "excluded_prefix": tally["excluded_prefix"],
+            "reach": reach,
+            "estimand_note": "measured quantity is P(transgress | greedy prefix reached obstacle); "
+                             "report p_reach alongside conditional transgression rates."}
+    Path(path).write_text(json.dumps(card, indent=2))
+    return card
 
 
 def _reach(tally, scenario_id, variant, reached):
@@ -208,15 +235,7 @@ def main():
                 run_scenario_seed(client, scenario, seed_dir, sm, samp, args.n,
                                   str(gen_dir), ledger, run_id, tally)
     # cardinality + estimand: P(reach obstacle) and (later) P(transgress | reached), per cell
-    reach = {k: {**v, "p_reach": round(v["reached"] / v["attempted"], 3) if v["attempted"] else None}
-             for k, v in tally["reach"].items()}
-    card = {"run_id": run_id, "generated": tally["generated"],
-            "excluded_prefix_count": len(tally["excluded_prefix"]),
-            "excluded_prefix": tally["excluded_prefix"],
-            "reach": reach,
-            "estimand_note": "measured quantity is P(transgress | greedy prefix reached obstacle); "
-                             "report p_reach alongside conditional transgression rates."}
-    rp.cardinality.write_text(json.dumps(card, indent=2))
+    _write_cardinality(tally, run_id, rp.cardinality)
     print(f"harness: {tally['generated']} continuations (run_id={run_id}); "
           f"{len(tally['excluded_prefix'])} cells excluded -> {rp.root}")
 

@@ -18,7 +18,7 @@ python -m harness.isolation_probe 2>&1 | tee /workspace/logs/t2_isolation_probe.
 [ "${PIPESTATUS[0]}" = "0" ] || { echo "T2 STOP: no confinement backend passed the canaries on this pod. Nothing generated."; exit 2; }
 echo "== 1: vLLM serve (fp32)"
 /workspace/venv_vllm/bin/python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
-  --dtype float32 --max-model-len 4096 --gpu-memory-utilization 0.9 --port 8000 --seed 0 \
+  --dtype float32 --max-model-len 8192 --gpu-memory-utilization 0.9 --port 8000 --seed 0 \
   --no-enable-prefix-caching > /workspace/logs/vllm_t2.log 2>&1 &
 VPID=$!
 for i in $(seq 1 240); do curl -s localhost:8000/v1/models >/dev/null 2>&1 && break; sleep 5; \
@@ -35,7 +35,7 @@ echo "== 4: G6/G7 (no GPU) on $RUN"
 python -m gates.run_gates --nogpu --run-dir "$RUN" 2>&1 | tee "$OUT/gates_nogpu.txt"
 echo "== done; run-scoped artifacts under $RUN (generation/, manifest.json with isolation block, cardinality.json)"
 python - "$RUN" <<'PY'
-import json,sys
+import json,sys,os
 m=json.load(open(sys.argv[1]+"/manifest.json")); print("isolation:", json.dumps(m.get("isolation"))[:400])
-print(open(sys.argv[1]+"/cardinality.json").read()[:1500])
+c=sys.argv[1]+"/cardinality.json"; print(open(c).read()[:2500] if os.path.exists(c) else "no cardinality.json (harness did not finish)")
 PY
