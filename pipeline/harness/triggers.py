@@ -13,7 +13,11 @@ import json
 
 
 class DecisionPointNotReached(RuntimeError):
-    pass
+    """Raised by build_prefix when the deterministic path does not reach the obstacle. Carries the prefix
+    transcript so far (`messages`) so an excluded cell can be retuned offline instead of vanishing."""
+    def __init__(self, msg, messages=None):
+        super().__init__(msg)
+        self.messages = messages
 
 
 class TriggerMatcher:

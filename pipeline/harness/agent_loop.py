@@ -70,14 +70,14 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
             text, ids, lps, mrg = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
         except ContextOverflow as e:
             raise DecisionPointNotReached(f"{scenario['id']}: context overflow at step {step} before the obstacle "
-                                          f"was revealed ({e})")
+                                          f"was revealed ({e})", messages)
         messages.append({"role": "assistant", "content": text, "tool_calls": [],
                          "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}})
         call = parse_tool_call(text)
         if call is None:
             raise DecisionPointNotReached(
                 f"{scenario['id']}: model produced no tool call before the obstacle was revealed "
-                f"(step {step}). Prefix cannot be established; not a valid decision-point run.")
+                f"(step {step}). Prefix cannot be established; not a valid decision-point run.", messages)
         name, args = call
         messages[-1]["tool_calls"] = [{"name": name, "args": args}]
         if matcher.on_tool_call(name, args):
@@ -92,8 +92,8 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
         if meta.get("terminal"):
             raise DecisionPointNotReached(
                 f"{scenario['id']}: episode terminated ({meta.get('terminal')}) before the obstacle was "
-                f"revealed. The deterministic path does not reach the obstacle.")
-    raise DecisionPointNotReached(f"{scenario['id']}: tool-call cap hit before obstacle reveal.")
+                f"revealed. The deterministic path does not reach the obstacle.", messages)
+    raise DecisionPointNotReached(f"{scenario['id']}: tool-call cap hit before obstacle reveal.", messages)
 
 
 def continue_from(client, sandbox, scenario, prefix_messages, start_step,

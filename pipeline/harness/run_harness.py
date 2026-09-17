@@ -68,6 +68,11 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                                              "variant": variant, "reason": str(e)[:200]})
             _reach(tally, scenario["id"], variant, reached=False)
             print(f"EXCLUDED {scenario['id']}/seed_{manifest['seed']:03d}/{variant}: {str(e)[:200]}", flush=True)
+            # keep the prefix transcript: the retune happens offline from THIS, at $0
+            exd = Path(out_dir) / "excluded"; exd.mkdir(parents=True, exist_ok=True)
+            (exd / f"{scenario['id']}__seed{manifest['seed']:03d}__{variant}.json").write_text(json.dumps(
+                {"scenario": scenario["id"], "seed": manifest["seed"], "variant": variant, "reason": str(e),
+                 "messages": getattr(e, "messages", None), "events": sb0.events}, indent=1))
             sb0.cleanup()
             continue
         except Exception as e:                   # a harness/model-input failure in THIS cell: recorded, run continues
