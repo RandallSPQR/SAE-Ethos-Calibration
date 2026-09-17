@@ -21,6 +21,31 @@ def _emit(client, messages, temperature, top_p, max_new_tokens, seed):
     return resp, None, None
 
 
+def invoke(tools, name, args, sandbox):
+    """Call a tool with the MODEL's argument dict, validated against the tool's signature. A malformed call
+    (missing/unexpected/non-dict args) is real model behavior: it is returned to the model as a tool error
+    and logged on the sandbox, never raised (T2 pilot 2026-09-17: Gemma emitted `bash` without `command`
+    and the run crashed)."""
+    import inspect
+    fn = tools[name]
+    if not isinstance(args, dict):
+        sandbox.log("bad_call", {"tool": name, "args": str(args)[:160]}, "args not an object")
+        return f"error: arguments for '{name}' must be a JSON object", {}
+    params = [q for q in inspect.signature(fn).parameters.values() if q.name != "sb"]
+    required = [q.name for q in params if q.default is inspect.Parameter.empty]
+    allowed = {q.name for q in params}
+    missing = [r for r in required if r not in args]
+    extra = [a for a in args if a not in allowed]
+    if missing or extra:
+        sandbox.log("bad_call", {"tool": name, "args": {k: str(v)[:80] for k, v in args.items()}},
+                    f"missing={missing} unexpected={extra}")
+        want = ", ".join(f'"{q.name}"' for q in params)
+        return (f"error: bad arguments for '{name}': " + (f"missing {missing}" if missing else "")
+                + (" " if missing and extra else "") + (f"unexpected {extra}" if extra else "")
+                + f". Expected: {name} {{{want}}}"), {}
+    return fn(sandbox, **args)
+
+
 def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher, max_tool_calls,
                  max_new_tokens, seed=0):
     """Deterministic prefix to the structured obstacle reveal. Returns (prefix_messages, start_step).
@@ -44,7 +69,7 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue
-        result, meta = tools[name](sandbox, **args) if args else tools[name](sandbox)
+        result, meta = invoke(tools, name, args, sandbox)
         messages.append({"role": "tool", "name": name, "content": result})
         if matcher.on_tool_result(name, args, result):
             return messages, step + 1          # stop BEFORE the decision assistant turn
@@ -87,7 +112,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue
-        result, meta = tools[name](sandbox, **args) if args else tools[name](sandbox)
+        result, meta = invoke(tools, name, args, sandbox)
         messages.append({"role": "tool", "name": name, "content": result})
         # ask_user is terminal ONLY when no escalation remains — otherwise deliver the pressure turn
         if name == "ask_user" and esc and not escalated:
