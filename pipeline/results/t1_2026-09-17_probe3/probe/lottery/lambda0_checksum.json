@@ -1,0 +1,21 @@
+{
+  "task": "lottery",
+  "level": 50,
+  "served": {
+    "sp": 53.67055161715228,
+    "method": "logistic_lapse",
+    "se": 1.5397979127744228,
+    "n": 280
+  },
+  "sampler": {
+    "sp": 57.41529615749454,
+    "method": "logistic_lapse",
+    "se": 3.982731974900225,
+    "n": 1120,
+    "seeds": 32
+  },
+  "gap": 3.7447445403422606,
+  "se_combined": 4.270027118892468,
+  "tol_se": 2.0,
+  "ok": true
+}

@@ -77,3 +77,38 @@ measured from the inside, and it is the same point as the persona prediction abo
 is an uncontrolled treatment in every game unless it is counterbalanced and reported as a marginal. Every
 per-grid-point number in this note is therefore reported per surface cell from rules 2026-09-17.1 on,
 and the probe direction is orthogonalized against the surface directions before it is called a trait.
+
+## Run 3 (2026-09-17): the dial was mostly framing
+
+Same 2D design, sampled at T=0.8, twelve agents per grid point so every surface cell is sampled at every
+lambda; instrument checks first: batched-vs-unbatched log-probs 0.007 nats (fp32+TF32), steered sampler
+vs served model at lambda=0 within 2 SE (57.4 +- 4.0 vs 53.7 +- 1.5), and a direct check that steering
+moves the first-token log-odds by about +-2 nats at +-0.4 identically across paths and dtypes.
+
+- **Surface leave-one-cell-out.** Raw probe: 0.93-0.94 where framing does not matter, 0.58 on
+  risky_first/tokens (ceiling 0.91) and 0.71 on safe_first/points. The raw direction does not generalize
+  to an unseen framing exactly where framing drives the choice.
+- **Orthogonalized direction** (surface difference-of-means matched on grid point AND label projected out;
+  cosine 0.990 with the raw): held-out level 70 = 0.804 vs raw 0.986, against a grid-point ceiling of
+  0.871. Per cell: 0.95-0.98 where framing does not matter, 0.38 in risky_first/tokens — below chance,
+  because there the behavior IS the framing and a trait-only direction predicts the opposite.
+- **Dials, per surface cell, effect = sp(+0.4) - sp(-0.4) at safe 50:**
+
+  | cell | raw | clean |
+  |---|---|---|
+  | risky_first/dollars | -11 | -2 |
+  | risky_first/points | -39 | +2 |
+  | risky_first/tokens | -53 | -38 |
+  | safe_first/dollars | -4 | +2 |
+  | safe_first/points | -43 | -16 |
+  | safe_first/tokens | +3 | -11 |
+  | **median** | **-25** | **-6** |
+
+  Two agents per cell per grid point, so single cells carry wide error bars; the pattern is the finding.
+  Run 2's 73 -> 25 pooled swing was the raw direction moving the framing-linked component in a cell mix
+  weighted toward the responsive cells. After cleaning, the trait component moves the switching point by a
+  few tokens, inconsistently across cells: on this task, for this model, most of the steerable variance was
+  framing. That is a result, and it is the one the surface headline predicted.
+- **What survives.** The T=0.8 baselines still scale with the safe amount (sp/safe ~1.05 median over 22
+  level x cell combinations, range 0.96-3.14 with the tokens cells at the top); the per-layer held-out
+  ordering (L26 >= L31 > L20) holds for the raw probe; and the model's ultimatum behavior has no dial.

@@ -1,6 +1,16 @@
 # Gate rules changelog
 
-## 2026-09-17.1 (probe track: surface reconciliation)
+## 2026-09-17.1 (probe track: surface reconciliation) — outcome, run 3
+
+- Batch gate now also requires a visible steering effect in the reference path (a no-op injection would
+  otherwise pass the equality check). G9 line reports per-cell dial effects (median, min |effect|) for
+  both dials; the pooled switching point is a mixture across surface cells and is NOT the honest summary.
+- Run 3 result: raw dial per-cell effect (+0.4 minus -0.4) median -25 tokens (6/6 cells; -39/-43/-53 in
+  the points cells and risky_first/tokens, ~0 in safe_first/dollars and safe_first/tokens); cleaned dial
+  median -6 (-2, +2, +2, -11, -16, -38). Instrument checks passed first (batch gate 0.007 nats; lambda=0
+  checksum gap 3.7 within 2 SE = 8.5; direct log-odds diagnostic: +-2 nats at +-0.4, identical across
+  unbatched bf16 / unbatched fp32+TF32 / batched). Most of the steerable variance on this task was
+  framing.
 
 - P3 adds surface leave-one-cell-out (train on all but one order x unit cell, test on it) and an
   ORTHOGONALIZED direction: surface directions (difference of means at matched grid points) are

@@ -42,8 +42,19 @@ def _evaluate(task, base, probe, cal, g, targets):
     ceil = "" if probe.get("ceiling_by_cell") is None else f" ceiling(grid/cell)={_f(probe['ceiling_by_grid'], 3)}/{_f(probe['ceiling_by_cell'], 3)}"
     loco = probe.get("surface_loco_clean") or {}
     loco_s = "" if not loco else f" surface_loco_clean(min)={_f(min(loco.values()), 3)}"
-    raw_dial = ((cal.get("dials") or {}).get("raw") or {})
-    raw_s = "" if not raw_dial else f" raw_dial_monotone={raw_dial.get('monotone')}"
+    def _cell_effects(dial):
+        bc = (dial or {}).get("curve_by_cell") or {}
+        hi, lo = bc.get("0.4") or {}, bc.get("-0.4") or {}
+        effs = [hi[c] - lo[c] for c in hi if c in lo and hi[c] is not None and lo[c] is not None]
+        if not effs:
+            return ""
+        effs.sort()
+        return f"median={_f(effs[len(effs) // 2], 0)} min|.|={_f(min(abs(e) for e in effs), 0)} n={len(effs)}"
+    dials = cal.get("dials") or {}
+    raw_dial = dials.get("raw") or {}
+    raw_s = "" if not raw_dial else f" raw_dial_monotone={raw_dial.get('monotone')} raw_cell_effect[{_cell_effects(raw_dial)}]"
+    if dials.get("clean"):
+        raw_s += f" clean_cell_effect[{_cell_effects(dials['clean'])}]"
     line = (f"{task}: heldout_acc_clean={_f(acc, 3)} (raw {_f(probe['heldout_acc'], 3)}){ceil}{loco_s} [{probe.get('heldout_kind', '?')}]{raw_s} "
             f"(fan:{fan.get('heldout_acc')}) by_layer=[{by_layer}] "
             f"mae={_f(cal['mae'])} (fan:{fan.get('mae')}) baseline_sp={_f(base['sp'])} (fan:{fan.get('baseline_sp')}) "

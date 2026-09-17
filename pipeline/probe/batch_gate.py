@@ -45,8 +45,9 @@ def run_gate(lm, vecs, task, tol, n_prompts=8, strength=0.2):
         return torch.log_softmax(_val(lg).cpu(), -1)
     rep = {"task": task, "n_prompts": n_prompts, "tol": tol, "lengths": [len(p) for p in prompts]}
     ok = True
+    refs = {}
     for name, st in (("unsteered", 0.0), ("steered", strength)):
-        ref = torch.stack([single(p, st) for p in prompts])
+        ref = torch.stack([single(p, st) for p in prompts]); refs[name] = ref
         bat = torch.log_softmax(last_logits_batch(lm, prompts, layer, (vec, st)).cpu(), -1)
         top = ref.topk(20, dim=-1).indices                                   # compare where mass lives
         gap = float((ref.gather(1, top) - bat.gather(1, top)).abs().max())
@@ -54,6 +55,12 @@ def run_gate(lm, vecs, task, tol, n_prompts=8, strength=0.2):
         rep[f"max_gap_{name}"] = gap; rep[f"argmax_agree_{name}"] = agree
         ok = ok and gap <= tol and agree
         print(f"batch gate [{task}] {name}: max |dlogprob| over top-20 = {gap:.5f} (tol {tol}) argmax agree={agree}")
+    # the gate can only certify equality; it must also see that steering DOES something in the reference
+    # path, or a no-op injection would pass trivially (2026-09-17: run 3's flat pooled dial prompted this)
+    eff = float((refs["steered"] - refs["unsteered"]).abs().max())
+    rep["steering_effect_max_dlogprob"] = eff; rep["steering_effect_present"] = eff > 10 * tol
+    ok = ok and rep["steering_effect_present"]
+    print(f"batch gate [{task}] steering effect in reference path: max |dlogprob| = {eff:.3f} (must exceed {10 * tol})")
     rep["ok"] = ok
     return rep
 

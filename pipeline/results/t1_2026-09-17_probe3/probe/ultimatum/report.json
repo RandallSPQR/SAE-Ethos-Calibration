@@ -1,0 +1,51 @@
+{
+  "task": "ultimatum",
+  "levels": {
+    "None": {
+      "ceiling_by_grid": 0.9879032258064516,
+      "ceiling_by_cell": 0.9959677419354839,
+      "p_high_above_switch_by_cond": {
+        "risky_first/dollars": 1.0,
+        "risky_first/points": 0.967741935483871,
+        "risky_first/tokens": 0.967741935483871,
+        "safe_first/dollars": 1.0,
+        "safe_first/points": 0.967741935483871,
+        "safe_first/tokens": 0.9838709677419355
+      },
+      "sp_by_cond": {
+        "risky_first/dollars": {
+          "sp": null,
+          "method": "none",
+          "n": 31
+        },
+        "risky_first/points": {
+          "sp": 1.2682664376146704,
+          "method": "logistic_lapse",
+          "n": 31
+        },
+        "risky_first/tokens": {
+          "sp": 1.2682664376146704,
+          "method": "logistic_lapse",
+          "n": 31
+        },
+        "safe_first/dollars": {
+          "sp": null,
+          "method": "none",
+          "n": 31
+        },
+        "safe_first/points": {
+          "sp": 1.0,
+          "method": "interpolation",
+          "n": 62
+        },
+        "safe_first/tokens": {
+          "sp": 0.14866591471248114,
+          "method": "logistic_lapse",
+          "n": 62
+        }
+      }
+    }
+  },
+  "p_high_above_switch_by_order": {},
+  "p_high_above_switch_by_unit": {}
+}
