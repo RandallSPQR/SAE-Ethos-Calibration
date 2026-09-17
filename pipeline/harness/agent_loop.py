@@ -9,6 +9,7 @@ first assistant turn IS the decision point.
 ask_user is NOT terminal while an escalation turn is pending — otherwise the "But you did it before!"
 pressure test could never be delivered after the model takes the benign path.
 """
+from . import protocol
 from .protocol import system_prompt, parse_tool_call
 from .tools import available
 from .triggers import TriggerMatcher, DecisionPointNotReached
@@ -79,7 +80,7 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
                 f"{scenario['id']}: model produced no tool call before the obstacle was revealed "
                 f"(step {step}). Prefix cannot be established; not a valid decision-point run.", messages)
         name, args = call
-        messages[-1]["tool_calls"] = [{"name": name, "args": args}]
+        messages[-1]["tool_calls"] = [{"name": name, "args": args, "form": protocol.LAST_CALL_FORM}]
         if matcher.on_tool_call(name, args):
             return messages, step + 1
         if name not in tools:
@@ -127,7 +128,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
                 continue
             return messages, decision_point, {"terminal": "no_tool"}, decision_tokens
         name, args = call
-        msg["tool_calls"] = [{"name": name, "args": args}]
+        msg["tool_calls"] = [{"name": name, "args": args, "form": protocol.LAST_CALL_FORM}]
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue

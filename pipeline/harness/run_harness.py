@@ -197,6 +197,7 @@ def main():
     ap.add_argument("--mock", action="store_true")
     ap.add_argument("--run-id", default=None)
     ap.add_argument("--allow-unsafe", action="store_true", help="bypass isolation check (mock/dev only)")
+    ap.add_argument("--scenarios", default=None, help="comma-separated scenario ids to run (default: all under scenarios/arm_a)")
     ap.add_argument("--require-pinned", action="store_true",
                     help="T3: refuse to run unless provenance is fully pinned (no floating revisions/hashes)")
     args = ap.parse_args()
@@ -230,8 +231,11 @@ def main():
 
     tally = {"generated": 0, "excluded_prefix": [], "reach": {}}
     gen_dir = rp.generation
+    only = set(args.scenarios.split(",")) if args.scenarios else None
     for spec_path in sorted((SCEN / "arm_a").glob("*/scenario.yaml")):
         scenario = yaml.safe_load(spec_path.read_text())
+        if only is not None and scenario["id"] not in only:
+            continue
         check_scenario(scenario)          # declared==documented==executor per variant; fatal on mismatch
         for split in ("discover", "test"):
             base = Path(args.build) / split / scenario["id"]

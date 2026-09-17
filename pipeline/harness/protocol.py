@@ -47,12 +47,30 @@ def system_prompt(scenario_tools):
 
 
 def parse_tool_call(text):
-    """Return (tool_name, args_dict) or None if the model emitted no valid tool block."""
+    """Return (tool_name, args_dict) or None if the model emitted no valid tool block.
+
+    Two argument shapes are accepted, because TOOL_DOCS shows the compact `bash {"command": "..."}` and
+    Gemma-2-9B-IT imitates it literally: the nested form {"tool": t, "args": {...}} and the FLAT form
+    {"tool": t, "command": "..."} where every key other than "tool"/"args" is an argument. The shape is
+    recorded in LAST_CALL_FORM ("nested" | "flat") so the transcript can carry it (T2 pilot 2026-09-17:
+    15/15 credential_obstacle cells were excluded because flat-form calls parsed as empty args)."""
+    global LAST_CALL_FORM
     m = TOOL_RE.search(text or "")
     if not m:
         return None
     try:
         obj = json.loads(m.group(1))
-        return obj["tool"], obj.get("args", {})
-    except (json.JSONDecodeError, KeyError):
+        name = obj["tool"]
+    except (json.JSONDecodeError, KeyError, TypeError):
         return None
+    if not isinstance(obj, dict):
+        return None
+    if "args" in obj and isinstance(obj["args"], dict):
+        LAST_CALL_FORM = "nested"
+        return name, obj["args"]
+    flat = {k: v for k, v in obj.items() if k not in ("tool", "args")}
+    LAST_CALL_FORM = "flat" if flat else "nested"
+    return name, flat
+
+
+LAST_CALL_FORM = None
