@@ -263,14 +263,15 @@ def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None):
             add = (float(steer[1]) * mean_norm)[:, None, None] * unit[None, None, :] * m[:, :, None].to(stream.dtype)
             _set_block_output(block, stream + add)
         logits = lm.model.output.logits[:, -1].float().save()
-    return _val(logits).cpu()
+    return _val(logits)                      # stays on the GPU; sampling happens there
 
 
 def sample_from_logits(lg, temperature, top_p, seed):
+    """Seeded temperature + nucleus sampling on whatever device `lg` lives on (GPU in the batched path)."""
     import torch
     if temperature <= 0:
         return int(lg.argmax())
-    gen = torch.Generator(device="cpu").manual_seed(int(seed))
+    gen = torch.Generator(device=lg.device).manual_seed(int(seed))
     p = torch.softmax(lg / temperature, dim=-1)
     sp, si = torch.sort(p, descending=True)
     keep = (torch.cumsum(sp, 0) - sp) < top_p
