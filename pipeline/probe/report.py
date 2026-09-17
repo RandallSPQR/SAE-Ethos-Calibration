@@ -77,6 +77,20 @@ def report_task(task, run_dir):
                   f"ceiling_by_cell={lvl['ceiling_by_cell']:.3f}")
     for lv, v in out["levels"].items():
         print(f"   level {lv}: P(high) above switch by cond {{{', '.join(f'{k}:{x:.2f}' for k, x in v['p_high_above_switch_by_cond'].items())}}}")
+    if task == "lottery":
+        # the ratio finding as a per-cell table: sp / safe for every (level, cell), with its spread
+        table = {}
+        for lv, v in out["levels"].items():
+            if lv == "None":
+                continue
+            for c, sc in v["sp_by_cond"].items():
+                table.setdefault(c, {})[lv] = None if sc["sp"] is None else sc["sp"] / float(lv)
+        out["ratio_by_cell"] = table
+        vals = [x for row in table.values() for x in row.values() if x is not None]
+        out["ratio_summary"] = {"median": float(np.median(vals)) if vals else None, "min": min(vals) if vals else None,
+                                "max": max(vals) if vals else None, "n_cells": len(vals)}
+        print("   sp/safe by cell: " + " | ".join(f"{c}: " + " ".join(f"{lv}:{'-' if x is None else round(x, 2)}" for lv, x in row.items()) for c, row in table.items()))
+        print(f"   sp/safe summary: median={out['ratio_summary']['median']} range=[{out['ratio_summary']['min']}, {out['ratio_summary']['max']}] over {out['ratio_summary']['n_cells']} cells")
     (d / "report.json").write_text(json.dumps(out, indent=2))
     return out
 

@@ -67,3 +67,13 @@ Gemma-2-9B-IT rejects only a zero offer, at any temperature we tried, so it has 
 variable to steer. A persona prompt that produced rejections would be manufacturing behavior with no
 internal counterpart: the persona-looks-like-baseline result stated as a prediction, and the cleanest
 single argument for why EthosSim characters need measured axes.
+
+## Surface is a treatment (headline)
+
+On the lottery the model flips on option order and on the word "dollars" versus "tokens" more readily
+than on the payoff: risky-first + "tokens" -> Safe every time above the switch, safe-first -> Risky every
+time. That is Fan et al.'s "slight changes in prompting language lead to big yet unpredictable results"
+measured from the inside, and it is the same point as the persona prediction above: for EthosSim, surface
+is an uncontrolled treatment in every game unless it is counterbalanced and reported as a marginal. Every
+per-grid-point number in this note is therefore reported per surface cell from rules 2026-09-17.1 on,
+and the probe direction is orthogonalized against the surface directions before it is called a trait.

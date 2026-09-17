@@ -1,5 +1,17 @@
 # Gate rules changelog
 
+## 2026-09-17.1 (probe track: surface reconciliation)
+
+- P3 adds surface leave-one-cell-out (train on all but one order x unit cell, test on it) and an
+  ORTHOGONALIZED direction: surface directions (difference of means at matched grid points) are
+  projected out of the probe weight; `probe_<task>_clean` is stored beside `probe_<task>`.
+- P4 runs BOTH dials; the cleaned dial is the instrument claim (G9 gates on `heldout_acc_clean` and the
+  cleaned calibration), the raw dial is reported beside it. Every switching point is also reported per
+  surface cell (sp(lambda) by cell; the ratio finding as a per-cell table with spread).
+- Rationale: run 2 showed order and unit wording nearly determine the choice at the margin, so the raw
+  probe learned framing as well as attractiveness and the raw dial moves both at once. If the cleaned dial
+  keeps its range the knob is a trait; if the range collapses, most steerable variance was framing.
+
 ## 2026-09-16.3 (probe track protocol; G0-G9 criteria unchanged)
 
 Amended after probe run 2 (pod, 2026-09-16 22:49 UTC; artifacts `results/t1_2026-09-16_probe2/`):

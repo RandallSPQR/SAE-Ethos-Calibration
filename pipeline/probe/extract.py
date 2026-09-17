@@ -42,13 +42,18 @@ def mock_activations(rows, layers, d_model=64, seed=0):
     rng = np.random.default_rng(seed)
     y = np.array([r["label"] for r in rows], dtype=np.int64)
     par = np.array([r["param"] for r in rows], dtype=np.float64)
+    order = np.array([1.0 if r.get("cond", {}).get("order") == "risky_first" else 0.0 for r in rows])
+    unit = np.array([{"tokens": 0.0, "points": 1.0, "dollars": 2.0}.get(r.get("cond", {}).get("unit"), 0.0) for r in rows])
     out = {}
     for L in layers:
         w = rng.normal(size=d_model); w /= np.linalg.norm(w)
         wd = rng.normal(size=d_model); wd /= np.linalg.norm(wd)
+        wo = rng.normal(size=d_model); wo /= np.linalg.norm(wo)      # surface: order
+        wu = rng.normal(size=d_model); wu /= np.linalg.norm(wu)      # surface: unit
         strength = 2.0 if L == layers[-1] else 1.0
         X = (rng.normal(size=(len(rows), d_model)) + strength * (2 * y[:, None] - 1) * w[None, :]
-             + 0.02 * (par[:, None] - par.mean()) * wd[None, :])
+             + 0.02 * (par[:, None] - par.mean()) * wd[None, :]
+             + 1.5 * (order[:, None] - 0.5) * wo[None, :] + 0.8 * (unit[:, None] - 1.0) * wu[None, :])
         out[f"X_{L}"] = X.astype(np.float32)
         out[f"Xfirst_{L}"] = (X + 0.1 * rng.normal(size=X.shape)).astype(np.float32)
     return out, y

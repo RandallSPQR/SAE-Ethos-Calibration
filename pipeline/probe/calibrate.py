@@ -63,11 +63,12 @@ class SteeredSampler:
         print(f"[{task}] batched sampling {'ENABLED (batch gate passed)' if ok else 'DISABLED (no passing batch_gate.json)'}")
         return ok
 
-    def answers_batch(self, task, items, lam, max_new_tokens=6):
+    def answers_batch(self, task, items, lam, max_new_tokens=6, vec_name=None):
         """items: [(n, seed, level, cond)] -> texts, through the batched path in chunks."""
         from model_io.gemma2 import apply_to_tokenizer
         from replay.hooks import sample_generate_batch_at_layer
-        vec = self.vecs[f"probe_{task}"]; layer = int(self.vecs[f"probe_{task}__layer"])
+        vn = vec_name or f"probe_{task}"
+        vec = self.vecs[vn]; layer = int(self.vecs[f"{vn}__layer"])
         texts = []
         for i in range(0, len(items), self.batch_size):
             chunk = items[i:i + self.batch_size]
@@ -79,32 +80,37 @@ class SteeredSampler:
             texts += [self.lm.tokenizer.decode(o) for o in outs]
         return texts
 
-    def answer(self, task, n, lam, seed, level, cond, max_new_tokens=6):
+    def answer(self, task, n, lam, seed, level, cond, max_new_tokens=6, vec_name=None):
         from model_io.gemma2 import apply_to_tokenizer
         from replay.hooks import sample_generate_at_layer
-        vec = self.vecs[f"probe_{task}"]; layer = int(self.vecs[f"probe_{task}__layer"])
+        vn = vec_name or f"probe_{task}"
+        vec = self.vecs[vn]; layer = int(self.vecs[f"{vn}__layer"])
         ids = apply_to_tokenizer(self.lm.tokenizer, messages(task, n, level, cond), add_generation_prompt=True)
         out = sample_generate_at_layer(self.lm, ids, layer, (vec, lam), temperature=self.temperature,
                                        top_p=self.top_p, seed=seed * 7919 + int(abs(lam) * 1e4), max_new_tokens=max_new_tokens)
         return self.lm.tokenizer.decode(out)
 
 
-def sweep_real(task, lam, n_agents, gen, seed_offset=0):
-    """One steered psychometric curve at the REFERENCE level (safe 50 for the lottery). Batched across grid
-    points and agents when the batch gate passed; otherwise one sampled answer at a time."""
+def sweep_real(task, lam, n_agents, gen, seed_offset=0, vec_name=None):
+    """One steered psychometric curve at the REFERENCE level (safe 50 for the lottery), plus the curve PER
+    SURFACE CELL from the same samples. Batched when the batch gate passed."""
     t = TASKS[task]; level = t["reference_level"]
     items = [(n, seed_offset + seed, level, conditions(task, n, seed_offset + seed)) for n in t["grid"] for seed in range(n_agents)]
     if gen.batched_ok.get(task):
-        texts = gen.answers_batch(task, items, lam)
+        texts = gen.answers_batch(task, items, lam, vec_name=vec_name)
     else:
-        texts = [gen.answer(task, n, lam, seed, level, cond) for n, seed, level, cond in items]
-    P, Y, dropped = [], [], 0
+        texts = [gen.answer(task, n, lam, seed, level, cond, vec_name=vec_name) for n, seed, level, cond in items]
+    P, Y, dropped, cellP, cellY = [], [], 0, {}, {}
     for (n, seed, level, cond), txt in zip(items, texts):
         y = label(task, parse_choice(task, txt, cond))
         if y is None:
             dropped += 1
         P.append(n); Y.append(y)
-    return switching_point(P, Y), dropped
+        c = f"{cond['order']}/{cond['unit']}"
+        cellP.setdefault(c, []).append(n); cellY.setdefault(c, []).append(y)
+    r = switching_point(P, Y)
+    r["by_cell"] = {c: switching_point(cellP[c], cellY[c])["sp"] for c in sorted(cellP)}
+    return r, dropped
 
 
 # ---------------------------------------------------------------- lambda=0 checksum (served vs steered sampler)
@@ -240,12 +246,29 @@ def calibrate_task(task, run_dir, pc, gen, mock):
               f"(gap {chk['gap']} > {chk['tol_se']} x SE {chk['se_combined']}); the sampler is a different instrument.")
         (d / "calibration.json").write_text(json.dumps({"task": task, "error": "lambda0_checksum_failed", **chk}, indent=2))
         return
-    curve, methods, dropped = {}, {}, {}
-    for lam in pc["lambda_sweep"]:
-        r, nd = sweep_mock(task, lam, n_agents) if mock else sweep_real(task, lam, n_agents, gen)
-        curve[str(lam)] = r["sp"]; methods[str(lam)] = r["method"]; dropped[str(lam)] = nd
-        print(f"  [{task}] lambda={lam:+.2f} sp={None if r['sp'] is None else round(r['sp'], 1)} ({r['method']})")
-    xs, ys, monotone, direction = monotone_fit(curve)
+    sweep_agents = int(pc.get("sweep_agents", n_agents))
+    dials = {}
+    for dial, vec_name in (("clean", f"probe_{task}_clean"), ("raw", f"probe_{task}")):
+        curve, methods, dropped, by_cell = {}, {}, {}, {}
+        for lam in pc["lambda_sweep"]:
+            if mock:
+                r, nd = sweep_mock(task, lam, sweep_agents)
+                if dial == "raw":
+                    r = dict(r); r["sp"] = None if r["sp"] is None else r["sp"] * 0.9   # mock: raw dial differs slightly
+            else:
+                r, nd = sweep_real(task, lam, sweep_agents, gen, vec_name=vec_name)
+            curve[str(lam)] = r["sp"]; methods[str(lam)] = r["method"]; dropped[str(lam)] = nd
+            by_cell[str(lam)] = r.get("by_cell", {})
+            print(f"  [{task}] {dial} lambda={lam:+.2f} sp={None if r['sp'] is None else round(r['sp'], 1)} ({r['method']})"
+                  + (("  by cell " + " ".join(f"{c.split('/')[0][:5]}/{c.split('/')[1][:3]}:{'-' if v is None else round(v)}" for c, v in r["by_cell"].items())) if r.get("by_cell") else ""))
+        xs, ys, monotone, direction = monotone_fit(curve)
+        dials[dial] = {"vector": vec_name, "lambda_curve": curve, "lambda_methods": methods, "dropped_per_lambda": dropped,
+                       "curve_by_cell": by_cell, "monotone": monotone, "direction": direction,
+                       "monotone_fit": {"lambda": xs, "sp": ys}, "sweep_agents": sweep_agents}
+    # the CLEANED dial is the instrument claim; the raw dial is reported beside it
+    clean = dials["clean"]; curve, methods, dropped = clean["lambda_curve"], clean["lambda_methods"], clean["dropped_per_lambda"]
+    xs, ys, monotone, direction = clean["monotone_fit"]["lambda"], clean["monotone_fit"]["sp"], clean["monotone"], clean["direction"]
+    vec_name = f"probe_{task}_clean"
     tr = TASKS[task].get("target_ratios")
     target_list = ([round(r * TASKS[task]["reference_level"], 1) for r in tr] if tr and TASKS[task]["reference_level"]
                    else pc["targets"][task])
@@ -255,11 +278,12 @@ def calibrate_task(task, run_dir, pc, gen, mock):
         if lam is None:
             targets[str(tgt)] = {"lambda": None, "achieved": None, "method": "out_of_range"}
             continue
-        r, _ = sweep_mock(task, lam, n_agents) if mock else sweep_real(task, lam, n_agents, gen)
-        targets[str(tgt)] = {"lambda": float(lam), "achieved": r["sp"], "method": r["method"]}
+        r, _ = sweep_mock(task, lam, n_agents) if mock else sweep_real(task, lam, sweep_agents, gen, vec_name=vec_name)
+        targets[str(tgt)] = {"lambda": float(lam), "achieved": r["sp"], "method": r["method"], "by_cell": r.get("by_cell")}
     errs = [abs(v["achieved"] - float(k)) for k, v in targets.items() if v["achieved"] is not None]
     ach = [v["achieved"] for v in targets.values() if v["achieved"] is not None]
-    rep = {"task": task, "baseline_sp": base["sp"], "baseline_sp_interp": base.get("sp_interp"),
+    rep = {"task": task, "dial": "clean (surface directions projected out); raw beside it under dials.raw",
+           "dials": dials, "baseline_sp": base["sp"], "baseline_sp_interp": base.get("sp_interp"),
            "lambda0_checksum": chk,
            "reference_level": TASKS[task]["reference_level"], "target_list": target_list,
            "sweep_lambda0_sp": curve.get("0.0"),
@@ -272,8 +296,10 @@ def calibrate_task(task, run_dir, pc, gen, mock):
            "fan2026_reference": base["fan2026_reference"]}
     (d / "calibration.json").write_text(json.dumps(rep, indent=2))
     fan = base["fan2026_reference"]
-    print(f"[{task}] monotone={monotone} mae={rep['mae']} (fan:{fan['mae']}) range={rep['range_achieved']} "
+    print(f"[{task}] CLEAN dial: monotone={monotone} mae={rep['mae']} (fan:{fan['mae']}) range={rep['range_achieved']} "
           f"(fan:{fan['range']}) saturated={rep['saturated_lambdas']}")
+    rc = dials["raw"]["lambda_curve"]; ks = sorted(rc, key=float)
+    print(f"[{task}] RAW dial for comparison: monotone={dials['raw']['monotone']} sp(lambda) " + " ".join(f"{k}:{'-' if rc[k] is None else round(rc[k])}" for k in ks))
 
 
 def main():

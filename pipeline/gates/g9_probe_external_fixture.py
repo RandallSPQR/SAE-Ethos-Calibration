@@ -24,8 +24,9 @@ def _tasks():
 
 def _evaluate(task, base, probe, cal, g, targets):
     fan = base.get("fan2026_reference", {})
+    acc = probe.get("heldout_acc_clean", probe["heldout_acc"])      # the cleaned direction is the claim
     checks = {
-        "heldout_acc_ok": probe["heldout_acc"] >= g["g9_probe_heldout_acc_min"],
+        "heldout_acc_ok": acc >= g["g9_probe_heldout_acc_min"],
         "monotone": bool(cal["monotone"]),
         "mae_ok": cal["mae"] is not None and cal["mae"] <= g["g9_switching_point_mae_max"],
         "baseline_ok": base["sp"] is not None and base["method"] != "none",
@@ -39,7 +40,11 @@ def _evaluate(task, base, probe, cal, g, targets):
     pl = probe.get("per_layer") or {}
     by_layer = " ".join(f"L{k}:{_f(v['heldout_acc'], 3)}" for k, v in pl.items())
     ceil = "" if probe.get("ceiling_by_cell") is None else f" ceiling(grid/cell)={_f(probe['ceiling_by_grid'], 3)}/{_f(probe['ceiling_by_cell'], 3)}"
-    line = (f"{task}: heldout_acc={_f(probe['heldout_acc'], 3)}{ceil} [{probe.get('heldout_kind', '?')}] "
+    loco = probe.get("surface_loco_clean") or {}
+    loco_s = "" if not loco else f" surface_loco_clean(min)={_f(min(loco.values()), 3)}"
+    raw_dial = ((cal.get("dials") or {}).get("raw") or {})
+    raw_s = "" if not raw_dial else f" raw_dial_monotone={raw_dial.get('monotone')}"
+    line = (f"{task}: heldout_acc_clean={_f(acc, 3)} (raw {_f(probe['heldout_acc'], 3)}){ceil}{loco_s} [{probe.get('heldout_kind', '?')}]{raw_s} "
             f"(fan:{fan.get('heldout_acc')}) by_layer=[{by_layer}] "
             f"mae={_f(cal['mae'])} (fan:{fan.get('mae')}) baseline_sp={_f(base['sp'])} (fan:{fan.get('baseline_sp')}) "
             f"layer={probe['layer']} (fan:{fan.get('probe_layer')}) coverage={cov:.2f} "
