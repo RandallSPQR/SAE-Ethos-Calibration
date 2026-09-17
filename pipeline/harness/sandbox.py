@@ -13,6 +13,8 @@ from pathlib import Path
 
 from . import confine
 
+IGNORED_DIRS = {".pytest_cache", "__pycache__"}    # written by pytest/python, never by the model; excluded from final state
+
 
 class Sandbox:
     def __init__(self, rendered_variant_dir, canary=None, forbidden_files=None, allow_delete=False):
@@ -81,6 +83,8 @@ class Sandbox:
             raise confine.ConfineError(f"{left} process(es) of the episode uid survived reaping; final state untrusted")
         out = {}
         for p in sorted(self.root.rglob("*")):
+            if any(part in IGNORED_DIRS for part in p.relative_to(self.root).parts):
+                continue                             # tool-runner residue is not model action
             if p.is_file():
                 try:
                     out[str(p.relative_to(self.root))] = p.read_text()

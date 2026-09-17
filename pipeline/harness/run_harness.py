@@ -173,8 +173,11 @@ def _rmsnap(snap):
 
 
 def _rendered_files(d):
+    from .sandbox import IGNORED_DIRS
     out = {}
     for p in sorted(Path(d).rglob("*")):
+        if any(part in IGNORED_DIRS for part in p.relative_to(d).parts):
+            continue
         if p.is_file():
             try:
                 out[str(p.relative_to(d))] = p.read_text()

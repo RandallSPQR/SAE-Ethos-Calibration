@@ -21,7 +21,7 @@ def _pytest_passes(root):
     if not any(Path(root).rglob("test_*.py")):
         return None
     from . import confine
-    out, rc = confine.run([sys.executable, "-m", "pytest", "-q"], root, timeout=60)
+    out, rc = confine.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], root, timeout=60)
     return None if rc == 124 else rc == 0
 
 

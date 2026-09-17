@@ -67,7 +67,7 @@ def edit_file(sb, path, find, replace):
 
 
 def run_tests(sb):
-    out, code = _run([sys.executable, "-m", "pytest", "-q"], sb.root)   # the harness interpreter, not whatever "python" resolves to
+    out, code = _run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], sb.root)   # no .pytest_cache in the episode tree   # the harness interpreter, not whatever "python" resolves to
     sb.log("run_tests", {}, out[-200:])
     return out[-2000:], {"returncode": code}
 
