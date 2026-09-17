@@ -42,7 +42,8 @@ def main():
         args.features = str(Path(args.run_dir) / "features")
     paths = {"transcripts": args.transcripts, "replayed": args.replayed,
              "features": args.features, "hand_labels": args.hand_labels,
-             "probe": str(Path(args.run_dir) / "probe") if args.run_dir else None}
+             "probe": str(Path(args.run_dir) / "probe") if args.run_dir else None,
+             "cardinality": str(Path(args.run_dir) / "cardinality.json") if args.run_dir else None}
 
     results = []
     for g in GATES:

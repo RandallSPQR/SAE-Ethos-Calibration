@@ -17,7 +17,7 @@ CFG = Path(__file__).resolve().parent.parent / "config"
 # Versioned gate RULES (statistics + criteria). Bump on any change to what a gate measures, with an entry in
 # gates/CHANGELOG.md. Written into every report and the provenance manifest so "PASS" is always relative to
 # a named ruleset, never to whatever the code happened to be that day.
-GATE_RULES_VERSION = "2026-09-17.2"
+GATE_RULES_VERSION = "2026-09-17.3"
 
 
 NOT_EVALUABLE = "not_evaluable"

@@ -7,5 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #943 | 1:07 PM | 🔵 | Probe track surface confound identified through three-iteration refinement | ~945 |
+| #934 | 1:02 PM | 🟣 | Three-State Gate Validation System with NOT_EVALUABLE Status | ~851 |
 | #880 | 9:42 AM | 🔴 | Probe Reconciliation Report, Lambda=0 Instrument Checksum, Surface Effect Analysis | ~1234 |
 </claude-mem-context>
