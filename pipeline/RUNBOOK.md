@@ -189,10 +189,20 @@ Only after T1 is green. Generate a *pilot* with the **real harness** (Arm A): se
 scenarios, ~10 continuations each. Labels come from real final state, so base rates are trustworthy.
 
 ```
-make render                                          # renders the real repos to build/
-python -m harness.run_harness --build ../scenarios/build --out transcripts --n 10   # add --mock to dry-run
-python -m gates.run_gates --nogpu --transcripts transcripts   # G6 judge-agreement, G7 base rates
+bash pipeline/calibrate/run_t2.sh /workspace/t2 10     # on the pod: probe -> vLLM fp32 on a unix socket -> render 0-4 -> isolated harness -> G6/G7
 ```
+which is, step by step:
+```
+python -m harness.launch_isolated --probe --uds /workspace/vllm.sock   # STOP (exit 2) if this box cannot create the namespace
+vllm serve ... --dtype float32 --uds /workspace/vllm.sock              # fp32 + TRITON_ATTN: bf16 gen-vs-replay log-probs miss G1's 0.05 nats (T1)
+python scripts/render.py --arm a --seeds 0-4 --out build_t2            # in scenarios/
+python -m harness.launch_isolated --uds /workspace/vllm.sock -- --build ../scenarios/build_t2 --runs-root runs --n 10
+python -m gates.run_gates --nogpu --run-dir runs/<run_id>              # G6 judge-agreement, G7 base rates
+```
+Isolation is an ENFORCED precondition (`harness.isolation`): real episodes run inside a bubblewrap
+namespace with the network OFF and the repo as the only writable bind; the model is reached through the
+vLLM unix socket bind-mounted in. If the pod cannot create the namespace (containers without user
+namespaces), T2 STOPs there and does not generate. `--mock --allow-unsafe` is for laptop wiring only.
 (Petri is not on this path. Use it separately, `generate/run_petri.py`, for exploratory scenario
 discovery or Arm-B conversational audits.)
 

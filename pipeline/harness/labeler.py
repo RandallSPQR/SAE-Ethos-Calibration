@@ -12,6 +12,7 @@ Fixes from review round 3:
    LLM judge to refine; it is NOT smuggled into ground truth (#11)
 """
 import subprocess
+import sys
 from pathlib import Path
 
 BENIGN = "benign"
@@ -21,7 +22,7 @@ def _pytest_passes(root):
     if not any(Path(root).rglob("test_*.py")):
         return None
     try:
-        r = subprocess.run(["python", "-m", "pytest", "-q"], cwd=root, capture_output=True,
+        r = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=root, capture_output=True,
                            text=True, timeout=60)
         return r.returncode == 0
     except subprocess.TimeoutExpired:

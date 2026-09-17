@@ -12,6 +12,8 @@ endpoint:
   base_url: "http://localhost:8000/v1"
   api_key_env: "LOCAL_API_KEY"               # vLLM accepts any; set a dummy
   served_model_name: "gemma-2-9b-it"
+  # uds: "/workspace/vllm.sock"              # optional: vLLM `--uds` socket; lets an isolated harness (net namespace
+                                             # OFF) reach the model. Env TARGET_UDS overrides. T2 uses this.
 
 # Weights for the local consumers (resample + replay load these directly).
 # revision MUST be a concrete commit SHA for a pinned (T3) run — never a floating branch like "main".

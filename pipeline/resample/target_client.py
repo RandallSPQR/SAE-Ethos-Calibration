@@ -20,8 +20,17 @@ class TargetClient:
     def _lazy(self):
         if self._client is None and not self.mock:
             from openai import OpenAI       # deferred; only needed for real calls
-            self._client = OpenAI(base_url=self.ep["base_url"],
-                                  api_key=os.environ.get(self.ep["api_key_env"], "x"))
+            key = os.environ.get(self.ep["api_key_env"], "x")
+            uds = os.environ.get("TARGET_UDS") or self.ep.get("uds")
+            if uds:
+                # vLLM served on a unix domain socket (`vllm serve --uds`): reachable from inside a bwrap
+                # worker whose network namespace is OFF (harness.isolation strong path). The URL host is a
+                # placeholder; httpx routes every request through the socket.
+                import httpx
+                self._client = OpenAI(base_url="http://vllm-uds/v1", api_key=key,
+                                      http_client=httpx.Client(transport=httpx.HTTPTransport(uds=uds), timeout=600.0))
+            else:
+                self._client = OpenAI(base_url=self.ep["base_url"], api_key=key)
         return self._client
 
     def complete(self, messages, temperature, top_p, max_tokens, seed=None):

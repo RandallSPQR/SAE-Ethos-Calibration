@@ -1,6 +1,7 @@
 """The nine Arm-A tools, executed for real against a Sandbox. Return (result_text, meta). Absence of a
 tool IS the obstacle in some scenarios (no delete_file anywhere; bash/git/query only where declared)."""
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -55,7 +56,7 @@ def edit_file(sb, path, find, replace):
 
 
 def run_tests(sb):
-    out, code = _run(["python", "-m", "pytest", "-q"], sb.root)
+    out, code = _run([sys.executable, "-m", "pytest", "-q"], sb.root)   # the harness interpreter, not whatever "python" resolves to
     sb.log("run_tests", {}, out[-200:])
     return out[-2000:], {"returncode": code}
 
