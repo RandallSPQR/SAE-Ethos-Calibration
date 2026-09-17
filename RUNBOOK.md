@@ -189,20 +189,28 @@ Only after T1 is green. Generate a *pilot* with the **real harness** (Arm A): se
 scenarios, ~10 continuations each. Labels come from real final state, so base rates are trustworthy.
 
 ```
-bash pipeline/calibrate/run_t2.sh /workspace/t2 10     # on the pod: probe -> vLLM fp32 on a unix socket -> render 0-4 -> isolated harness -> G6/G7
+bash pipeline/calibrate/run_t2.sh /workspace/t2 10     # on the pod: probe -> vLLM fp32 -> render 0-4 -> harness -> G6/G7
 ```
 which is, step by step:
 ```
-python -m harness.launch_isolated --probe --uds /workspace/vllm.sock   # STOP (exit 2) if this box cannot create the namespace
-vllm serve ... --dtype float32 --uds /workspace/vllm.sock              # fp32 + TRITON_ATTN: bf16 gen-vs-replay log-probs miss G1's 0.05 nats (T1)
+python -m harness.isolation_probe                                      # which door is open; which backend passes 5/5 canaries; exit 2 = STOP
+vllm serve ... --dtype float32 --port 8000                             # fp32 + TRITON_ATTN: bf16 gen-vs-replay log-probs miss G1's 0.05 nats (T1)
 python scripts/render.py --arm a --seeds 0-4 --out build_t2            # in scenarios/
-python -m harness.launch_isolated --uds /workspace/vllm.sock -- --build ../scenarios/build_t2 --runs-root runs --n 10
+python -m harness.run_harness --build ../scenarios/build_t2 --runs-root runs --n 10
 python -m gates.run_gates --nogpu --run-dir runs/<run_id>              # G6 judge-agreement, G7 base rates
 ```
-Isolation is an ENFORCED precondition (`harness.isolation`): real episodes run inside a bubblewrap
-namespace with the network OFF and the repo as the only writable bind; the model is reached through the
-vLLM unix socket bind-mounted in. If the pod cannot create the namespace (containers without user
-namespaces), T2 STOPs there and does not generate. `--mock --allow-unsafe` is for laptop wiring only.
+Isolation is an ENFORCED precondition, and it is the PROPERTIES that are enforced, not one mechanism:
+model-authored code (pytest, bash, git) must not reach the network, must not read or write outside its
+episode directory (labels, snapshots, `_side/` answers, harness state), must not see credentials (HF
+token, RunPod variables), must not run away (processes, memory, wall clock), and must not persist across
+continuations. `harness.confine` provides two backends — `seccomp_uid` (dedicated non-root uid, env -i
+allowlist, rlimits, no_new_privs + seccomp-bpf denying socket/connect; works in an unprivileged Docker
+container where namespaces do not) and `bwrap` (namespaces, only the episode dir bound) — and picks the
+first whose FIVE CANARIES all hold at launch (outbound connect fails, a root-owned file one level above
+the episode dir is unreadable, secrets absent, a fork bomb hits the limit, an over-time sleep is killed).
+No backend 5/5 means the harness refuses. The manifest records `isolation: {mechanism, canaries, tried}`
+so a reader sees e.g. `seccomp_uid, canaries 5/5`, not a YAML field. `--mock --allow-unsafe` is for laptop
+wiring only.
 (Petri is not on this path. Use it separately, `generate/run_petri.py`, for exploratory scenario
 discovery or Arm-B conversational audits.)
 

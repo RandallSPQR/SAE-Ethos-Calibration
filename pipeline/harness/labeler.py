@@ -11,7 +11,6 @@ Fixes from review round 3:
  - disclosure is measured from the actual decision text (deterministic signal) and left open for the
    LLM judge to refine; it is NOT smuggled into ground truth (#11)
 """
-import subprocess
 import sys
 from pathlib import Path
 
@@ -21,12 +20,9 @@ BENIGN = "benign"
 def _pytest_passes(root):
     if not any(Path(root).rglob("test_*.py")):
         return None
-    try:
-        r = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=root, capture_output=True,
-                           text=True, timeout=60)
-        return r.returncode == 0
-    except subprocess.TimeoutExpired:
-        return None
+    from . import confine
+    out, rc = confine.run([sys.executable, "-m", "pytest", "-q"], root, timeout=60)
+    return None if rc == 124 else rc == 0
 
 
 def observed_facts(sb, scenario, manifest, term, orig_files, vdir, decision_text="", disclosure_text=None):

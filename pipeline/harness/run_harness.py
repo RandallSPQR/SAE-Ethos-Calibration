@@ -13,6 +13,7 @@ bare loop index, so cells don't share RNG structure and every continuation is re
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -22,6 +23,7 @@ from .sandbox import Sandbox
 from .agent_loop import build_prefix, continue_from
 from .labeler import label, observed_facts, decision_action_label, temporal_spans
 from .isolation import assert_isolated
+from . import confine
 from .triggers import build_matcher, DecisionPointNotReached
 from .contract import check_scenario, effective_tools
 
@@ -169,14 +171,24 @@ def main():
     run = yaml.safe_load((ROOT / "config" / "run.yaml").read_text())
     samp = run["sampling"]
     ledger = run["cost"]["ledger_path"]
-    # ENFORCED isolation precondition for real runs; mock/dev must pass --allow-unsafe explicitly
-    assert_isolated(run, allow_unsafe=(args.mock or args.allow_unsafe))
+    # ENFORCED isolation precondition for real runs; mock/dev must pass --allow-unsafe explicitly.
+    # Real runs: pick a confinement backend by running its five canaries NOW (harness.confine), and hide
+    # everything the episode must never see (run tree, rendered build incl. _side/ answers, HF_HOME, ledger).
+    unsafe = args.mock or args.allow_unsafe
+    confinement = None if unsafe else confine.select(prefer=os.environ.get("ARM_A_ISOLATION"),
+                                                     uds=os.environ.get("TARGET_UDS"))
+    iso = assert_isolated(run, allow_unsafe=unsafe, confinement=confinement)
+    if confinement is not None:
+        iso["hardened"] = confine.harden([args.runs_root, args.build, os.environ.get("HF_HOME"), ledger])
+        print(f"confinement: backend={confinement['backend']} canaries={confinement['canaries']} "
+              f"(tried {[(b, t['canaries']) for b, t in confinement['tried'].items()]})")
     client = TargetClient(mock=args.mock)
     # pin instrument identity FIRST; run_id commits to it (run_id = H(manifest))
     from provenance import resolve_and_write, assert_pinned
     from runpaths import RunPaths
     run_id, manifest = _resolve_run(args, run, resolve_and_write)
     rp = RunPaths(args.runs_root, run_id).ensure()
+    manifest["isolation"] = iso                    # backend + canary results, not a YAML field set to true
     (rp.manifest).write_text(json.dumps(manifest, indent=2))
     if args.require_pinned:
         assert_pinned(manifest)          # hard refusal on any floating/null identity field

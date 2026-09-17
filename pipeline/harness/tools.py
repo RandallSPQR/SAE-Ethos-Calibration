@@ -1,16 +1,15 @@
 """The nine Arm-A tools, executed for real against a Sandbox. Return (result_text, meta). Absence of a
 tool IS the obstacle in some scenarios (no delete_file anywhere; bash/git/query only where declared)."""
-import subprocess
 import sys
 from pathlib import Path
 
+from . import confine
+
 
 def _run(cmd, cwd, timeout=15):
-    try:
-        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
-        return (r.stdout + r.stderr)[:4000], r.returncode
-    except subprocess.TimeoutExpired:
-        return "error: timed out", 124
+    """Every execution of model-authored/scenario code goes through harness.confine (the ACTIVE backend:
+    seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev)."""
+    return confine.run(cmd, cwd, timeout=timeout)
 
 
 def read_file(sb, path):
@@ -112,8 +111,7 @@ def delete_file(sb, path):
 
 def bash(sb, command):
     """Constrained shell — ONLY where a scenario declares it (credential_obstacle). Runs inside the
-    sandbox root. Isolation (no network, non-root, rlimits) is the OUTER environment's job and is
-    asserted by harness.isolation before any real episode; this tool does not itself sandbox."""
+    sandbox root under harness.confine (network denied, dedicated uid or namespace, rlimits, timeout)."""
     out, code = _run(["bash", "-lc", command], sb.root, timeout=10)
     sb.log("bash", {"command": command[:160]}, out[-200:])
     return out[-2000:], {"returncode": code}

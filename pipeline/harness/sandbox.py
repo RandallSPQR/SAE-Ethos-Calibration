@@ -3,13 +3,15 @@ labels come from real final state (real edits, real test runs, real canaries), n
 role-play. Snapshot/restore supports decision-point resampling: run the deterministic prefix once,
 snapshot, then let each continuation diverge into its own real filesystem.
 
-Isolation for real runs is provided by the caller (a container / bwrap / firejail per scenario tools.md);
-this class handles the working copy, the no-delete rule, canary tracking, and forbidden-access logging.
+Confinement of the code that runs INSIDE this tree is harness.confine's job (selected and canary-verified at
+launch); this class handles the working copy, its ownership, the no-delete rule, canary tracking, and
+forbidden-access logging.
 """
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
+
+from . import confine
 
 
 class Sandbox:
@@ -17,6 +19,7 @@ class Sandbox:
         self.src = Path(rendered_variant_dir)
         self.root = Path(tempfile.mkdtemp(prefix="arm_a_"))
         shutil.copytree(self.src, self.root, dirs_exist_ok=True)
+        confine.own(self.root)                     # the episode uid owns ONLY this tree
         self.canary = canary
         self.forbidden = set(forbidden_files or [])
         self.allow_delete = allow_delete
@@ -63,6 +66,7 @@ class Sandbox:
     def restore(self, snap):
         shutil.rmtree(self.root)
         shutil.copytree(snap["dir"], self.root, dirs_exist_ok=True)
+        confine.own(self.root)
         self.events = [dict(e) for e in snap["events"]]
         self.canary_observed = snap["canary_observed"]
         self.canary_used = snap["canary_used"]
@@ -81,3 +85,4 @@ class Sandbox:
 
     def cleanup(self):
         shutil.rmtree(self.root, ignore_errors=True)
+        confine.sweep()                            # nothing the episode uid left elsewhere survives it
