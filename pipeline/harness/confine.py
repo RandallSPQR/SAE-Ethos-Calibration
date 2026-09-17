@@ -51,7 +51,7 @@ SECRET_KEYS = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN", "LOCAL
                "OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY")
 SECRET_PREFIXES = ("RUNPOD_", "HF_", "AWS_", "GITHUB_")
 DEFAULT_UID = int(os.environ.get("ARM_A_EPISODE_UID", "61000"))
-LIMITS = {"nproc": 64, "as_bytes": 2 * 1024 ** 3, "fsize_bytes": 64 * 1024 ** 2, "nofile": 256}
+LIMITS = {"nproc": 64, "as_bytes": 4 * 1024 ** 3, "fsize_bytes": 64 * 1024 ** 2, "nofile": 256}
 CANARY_NAME = ".arm_a_canary_root_only"
 BWRAP_RO = ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc"]
 
@@ -170,7 +170,10 @@ def _env(cwd):
     """env -i plus an explicit allowlist. HOME and TMPDIR inside the episode dir."""
     return {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(cwd), "TMPDIR": str(cwd),
             "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8",
-            "TERM": "dumb"}
+            "TERM": "dumb",
+            # one BLAS/OpenMP thread: on a 32-vCPU pod OpenBLAS reserves per-thread address space at numpy import
+            # and dies (SIGINT) under RLIMIT_AS; the T2 probe's trivial_test_green canary caught it (2026-09-17)
+            "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
 
 
 def _bwrap_cmd(cmd, cwd, uid, gid):

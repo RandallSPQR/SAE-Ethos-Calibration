@@ -19,7 +19,9 @@ pip install -q -U pip
 if [ ! -x venv_vllm/bin/python ]; then python -m venv venv_vllm; fi
 venv_vllm/bin/pip install -q -U pip
 venv_vllm/bin/pip install -q "vllm==0.11.0" "transformers<5" 2>&1 | tail -3
-pip install -q "torch==2.8.0" "torchvision==0.23.0" "torchaudio==2.8.0" "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" "transformer-lens" 2>&1 | tail -3
+# pytest: the harness runs the rendered repos' tests under the episode uid from THIS venv; the T2 probe's
+# positive canary (imports_available) failed on 2026-09-17 because it was missing here.
+pip install -q "torch==2.8.0" "torchvision==0.23.0" "torchaudio==2.8.0" "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" "transformer-lens" "pytest>=7.0" 2>&1 | tail -3
 python - <<'PY'
 import torch, transformers, nnsight, sae_lens, peft
 print("torch", torch.__version__, "cuda", torch.version.cuda, "gpu", torch.cuda.get_device_name(0))
