@@ -14,3 +14,5 @@ pipeline/run_ledger.jsonl
 config.json
 *.env
 .env.local
+# plugin-generated context stubs
+pipeline/results/**/CLAUDE.md

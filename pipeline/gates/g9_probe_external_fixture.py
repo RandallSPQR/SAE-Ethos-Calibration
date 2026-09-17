@@ -48,8 +48,9 @@ def _evaluate(task, base, probe, cal, g, targets):
         effs = [hi[c] - lo[c] for c in hi if c in lo and hi[c] is not None and lo[c] is not None]
         if not effs:
             return ""
-        effs.sort()
-        return f"median={_f(effs[len(effs) // 2], 0)} min|.|={_f(min(abs(e) for e in effs), 0)} n={len(effs)}"
+        effs.sort(); n = len(effs)
+        med = effs[n // 2] if n % 2 else (effs[n // 2 - 1] + effs[n // 2]) / 2
+        return f"median={_f(float(med), 0)} min|.|={_f(min(abs(e) for e in effs), 0)} n={len(effs)}"
     dials = cal.get("dials") or {}
     raw_dial = dials.get("raw") or {}
     raw_s = "" if not raw_dial else f" raw_dial_monotone={raw_dial.get('monotone')} raw_cell_effect[{_cell_effects(raw_dial)}]"
