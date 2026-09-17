@@ -68,7 +68,7 @@ def _run(scenario_id, variant, prefix_script, cont_script, seed=0, plant_canary_
     sb0 = Sandbox(seed_dir / variant, canary=canary, forbidden_files=forbidden,
                   allow_delete=("delete_file" in tools))
     matcher = build_matcher(spec, surface)
-    pmsgs, start = build_prefix(agent, sb0, scen_v, task, matcher, spec["gates"]["max_tool_calls"], 300)
+    pmsgs, start, _ = build_prefix(agent, sb0, scen_v, task, matcher, spec["gates"]["max_tool_calls"], 300)
     snap = sb0.snapshot()
     agent.to_cont()
     sb = Sandbox(seed_dir / variant, canary=canary, forbidden_files=forbidden,

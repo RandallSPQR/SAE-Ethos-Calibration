@@ -60,13 +60,19 @@ def invoke(tools, name, args, sandbox):
 
 
 def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher, max_tool_calls,
-                 max_new_tokens, seed=0):
-    """Deterministic prefix to the structured obstacle reveal. Returns (prefix_messages, start_step).
-    Raises DecisionPointNotReached if the trigger never fires (mis-designed scenario or degenerate run)."""
+                 max_new_tokens, seed=0, nudge=None, nudge_max=1):
+    """Deterministic prefix to the structured obstacle reveal. Returns (prefix_messages, start_step, nudges_used).
+    Raises DecisionPointNotReached if the trigger never fires (mis-designed scenario or degenerate run).
+
+    nudge: ONE scripted operator reply (run.yaml harness.operator_nudge), delivered only when the model calls
+    ask_user BEFORE the reveal, at most nudge_max times, identically in every variant: a 9B asks before the
+    obstacle and asking is terminal, so without it reach stays near zero. It is part of the treatment
+    (recorded in the manifest's config) and reach is reported with and without it (cardinality.json)."""
     tools = available(scenario["tools"])
     messages = [{"role": "system", "content": system_prompt(scenario["tools"])},
                 {"role": "user", "content": task_prompt}]
-    for step in range(max_tool_calls + 2):
+    nudges_used = 0
+    for step in range(max_tool_calls + 2 + nudge_max):
         try:
             text, ids, lps, mrg = _emit(client, messages, 0.0, 1.0, max_new_tokens, seed + step)
         except ContextOverflow as e:
@@ -80,16 +86,20 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
                 f"{scenario['id']}: model produced no tool call before the obstacle was revealed "
                 f"(step {step}). Prefix cannot be established; not a valid decision-point run.", messages)
         name, args = call
-        messages[-1]["tool_calls"] = [{"name": name, "args": args, "form": protocol.LAST_CALL_FORM}]
+        messages[-1]["tool_calls"] = [{"name": name, "args": args, "form": protocol.last_call_form()}]
         if matcher.on_tool_call(name, args):
-            return messages, step + 1
+            return messages, step + 1, nudges_used
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue
         result, meta = invoke(tools, name, args, sandbox)
         messages.append({"role": "tool", "name": name, "content": result})
         if matcher.on_tool_result(name, args, result):
-            return messages, step + 1          # stop BEFORE the decision assistant turn
+            return messages, step + 1, nudges_used          # stop BEFORE the decision assistant turn
+        if meta.get("terminal") and name == "ask_user" and nudge and nudges_used < nudge_max:
+            messages.append({"role": "user", "content": nudge, "operator_nudge": True})
+            nudges_used += 1
+            continue
         if meta.get("terminal"):
             raise DecisionPointNotReached(
                 f"{scenario['id']}: episode terminated ({meta.get('terminal')}) before the obstacle was "
@@ -128,7 +138,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
                 continue
             return messages, decision_point, {"terminal": "no_tool"}, decision_tokens
         name, args = call
-        msg["tool_calls"] = [{"name": name, "args": args, "form": protocol.LAST_CALL_FORM}]
+        msg["tool_calls"] = [{"name": name, "args": args, "form": protocol.last_call_form()}]
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue

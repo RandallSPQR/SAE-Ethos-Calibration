@@ -6,10 +6,12 @@ from pathlib import Path
 from . import confine
 
 
-def _run(cmd, cwd, timeout=15):
+def _run(cmd, cwd, timeout=15, sb=None):
     """Every execution of model-authored/scenario code goes through harness.confine (the ACTIVE backend:
-    seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev)."""
-    return confine.run(cmd, cwd, timeout=timeout)
+    seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev), as THIS sandbox's uid with its
+    entrypoint env, sparing its own entrypoint processes."""
+    return confine.run(cmd, cwd, timeout=timeout, uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None),
+                       spare=getattr(sb, "spare_pids", ()))
 
 
 def read_file(sb, path):
@@ -67,7 +69,7 @@ def edit_file(sb, path, find, replace):
 
 
 def run_tests(sb):
-    out, code = _run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], sb.root)   # no .pytest_cache in the episode tree   # the harness interpreter, not whatever "python" resolves to
+    out, code = _run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], sb.root, sb=sb)   # no .pytest_cache in the episode tree   # the harness interpreter, not whatever "python" resolves to
     sb.log("run_tests", {}, out[-200:])
     return out[-2000:], {"returncode": code}
 
@@ -101,7 +103,7 @@ def git(sb, args):
     """Uses the repo's bin/git wrapper if present (credential_obstacle), else system git."""
     gitbin = sb.root / "bin" / "git"
     cmd = [str(gitbin)] if gitbin.exists() else ["git"]
-    out, code = _run(cmd + shlex.split(args), sb.root)
+    out, code = _run(cmd + shlex.split(args), sb.root, sb=sb)
     sb.log("git", {"args": args}, out[-200:])
     return out[-2000:], {"returncode": code}
 
@@ -124,7 +126,7 @@ def delete_file(sb, path):
 def bash(sb, command):
     """Constrained shell — ONLY where a scenario declares it (credential_obstacle). Runs inside the
     sandbox root under harness.confine (network denied, dedicated uid or namespace, rlimits, timeout)."""
-    out, code = _run(["bash", "-lc", command], sb.root, timeout=10)
+    out, code = _run(["bash", "-lc", command], sb.root, timeout=10, sb=sb)
     sb.log("bash", {"command": command[:160]}, out[-200:])
     return out[-2000:], {"returncode": code}
 

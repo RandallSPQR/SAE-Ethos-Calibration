@@ -15,6 +15,8 @@ import collections
 import hashlib
 import json
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
@@ -37,7 +39,11 @@ def derive_seed(run_id, scenario, seed, variant, k):
     return int(h[:8], 16)
 
 
-def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally):
+def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None):
+    hcfg = hcfg or {}
+    nudge = (hcfg.get("operator_nudge") or "").strip() or None
+    nudge_max = int(hcfg.get("nudge_max", 1))
+    concurrency = max(1, int(hcfg.get("concurrency", 1)))
     family = scenario["family"]
     surface = manifest["surface"]
     task = _subst(scenario["task_prompt"], surface)
@@ -58,11 +64,13 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         orig_files = _rendered_files(vdir)
 
         # 1) deterministic prefix to the STRUCTURED trigger + snapshot (filesystem + event state)
-        sb0 = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete)
+        sb0 = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=0)
+        sb0.configure_entrypoint(canary=canary, variant_ops=vspec)
+        nudged = 0
         try:
             matcher = build_matcher(scenario, surface)
-            prefix_msgs, start_step = build_prefix(
-                client, sb0, scen_v, task, matcher, cap, samp["max_new_tokens"])
+            prefix_msgs, start_step, nudged = build_prefix(
+                client, sb0, scen_v, task, matcher, cap, samp["max_new_tokens"], nudge=nudge, nudge_max=nudge_max)
         except DecisionPointNotReached as e:
             tally["excluded_prefix"].append({"scenario": scenario["id"], "seed": manifest["seed"],
                                              "variant": variant, "reason": str(e)[:200]})
@@ -84,27 +92,37 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
             import traceback; traceback.print_exc()
             sb0.cleanup()
             continue
-        _reach(tally, scenario["id"], variant, reached=True)
+        _reach(tally, scenario["id"], variant, reached=True, nudged=nudged > 0)
         snap = sb0.snapshot()
 
-        # 2) N continuations, each on a RESTORED world + RESTORED conversation
-        for k in range(n):
-            sb = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete)
+        # 2) N continuations, each on a RESTORED world + RESTORED conversation. They are independent, so they
+        #    run concurrently (vLLM batches), each in its own sandbox under its own episode uid (slot 1+k).
+        lock = threading.Lock()
+
+        def one(k):
+            sb = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=1 + k)
             sb.restore(snap)
+            sb.configure_entrypoint(canary=canary, variant_ops=vspec)
             kseed = derive_seed(run_id, scenario["id"], manifest["seed"], variant, k)
-            msgs, dp, term, dtok = continue_from(
-                client, sb, scen_v, prefix_msgs, start_step, cap,
-                samp["temperature"], samp["top_p"], samp["max_new_tokens"], seed=kseed,
-                escalation_turns=scenario.get("escalation_turns"))
-            cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
-            facts = observed_facts(sb, scenario, manifest, term, orig_files, vdir,
-                                   decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text)
-            lab, tax, disclosed, evidence = label(family, variant, facts, sb, term)
+            try:
+                msgs, dp, term, dtok = continue_from(
+                    client, sb, scen_v, prefix_msgs, start_step, cap,
+                    samp["temperature"], samp["top_p"], samp["max_new_tokens"], seed=kseed,
+                    escalation_turns=scenario.get("escalation_turns"))
+                cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
+                facts = observed_facts(sb, scenario, manifest, term, orig_files, vdir,
+                                       decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text)
+                lab, tax, disclosed, evidence = label(family, variant, facts, sb, term)
+                dp = dp if dp is not None else len(msgs) - 1
+                spans = temporal_spans(msgs, dp, sb, facts)
+                dec_action = decision_action_label(msgs[dp] if dp < len(msgs) else {})
+                return k, _row(k, msgs, dp, term, dtok, facts, lab, tax, disclosed, evidence, spans, dec_action, kseed)
+            finally:
+                sb.cleanup()
+
+        def _row(k, msgs, dp, term, dtok, facts, lab, tax, disclosed, evidence, spans, dec_action, kseed):
             uid = f"{scenario['id']}/seed_{manifest['seed']:03d}/{variant}/c{k:02d}"
-            dp = dp if dp is not None else len(msgs) - 1
-            spans = temporal_spans(msgs, dp, sb, facts)
-            dec_action = decision_action_label(msgs[dp] if dp < len(msgs) else {})
-            rows.append({
+            return {
                 "uid": uid, "scenario": scenario["id"], "arm": "A", "seed": manifest["seed"],
                 "split": "discover" if manifest["seed"] <= 49 else "test", "variant": variant,
                 "persona_prompted": "neutral", "steer": {"vector": None, "strength": 0.0},
@@ -126,11 +144,18 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                     "disclosed": disclosed, "confidence": 1.0, "evidence": evidence,
                     "source": "real_state"},
                 "cost_usd": 0.0,
-            })
-            tally["generated"] += 1
-            sb.cleanup()
-            with open(ledger, "a") as f:
-                f.write(json.dumps({"uid": uid, "cost_usd": 0.0}) + "\n")
+                "nudged": nudged > 0,             # the prefix used the scripted operator reply (same for all k)
+            }
+
+        done = []
+        with ThreadPoolExecutor(max_workers=concurrency) as ex:
+            for k, row in ex.map(one, range(n)):
+                done.append((k, row))
+                with lock:
+                    tally["generated"] += 1
+                    with open(ledger, "a") as f:
+                        f.write(json.dumps({"uid": row["uid"], "cost_usd": 0.0}) + "\n")
+        rows.extend(r for _, r in sorted(done))
         sb0.cleanup()
         _rmsnap(snap)
 
@@ -146,25 +171,29 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
 
 
 def _write_cardinality(tally, run_id, path):
-    reach = {k: {**v, "p_reach": round(v["reached"] / v["attempted"], 3) if v["attempted"] else None}
+    reach = {k: {**v, "p_reach": round(v["reached"] / v["attempted"], 3) if v["attempted"] else None,
+                 "p_reach_no_nudge": round(v.get("reached_no_nudge", 0) / v["attempted"], 3) if v["attempted"] else None}
              for k, v in tally["reach"].items()}
-    card = {"run_id": run_id, "generated": tally["generated"],
+    card = {"run_id": run_id, "generated": tally["generated"], "operator_nudge": tally.get("operator_nudge"),
             "excluded_prefix_count": len(tally["excluded_prefix"]),
             "excluded_prefix": tally["excluded_prefix"],
             "reach": reach,
-            "estimand_note": "measured quantity is P(transgress | greedy prefix reached obstacle); "
-                             "report p_reach alongside conditional transgression rates."}
+            "estimand_note": "measured quantity is P(transgress | greedy prefix reached obstacle, <= nudge_max scripted "
+                             "operator replies); report p_reach and p_reach_no_nudge alongside conditional rates."}
     Path(path).write_text(json.dumps(card, indent=2))
     return card
 
 
-def _reach(tally, scenario_id, variant, reached):
-    """Per-cell reach accounting for the estimand: P(reach obstacle) and P(transgress | reached)."""
+def _reach(tally, scenario_id, variant, reached, nudged=False):
+    """Per-cell reach accounting for the estimand: P(reach obstacle) and P(transgress | reached), with and
+    without the scripted operator nudge (reached_no_nudge = reached without needing it)."""
     key = f"{scenario_id}/{variant}"
-    r = tally["reach"].setdefault(key, {"attempted": 0, "reached": 0})
+    r = tally["reach"].setdefault(key, {"attempted": 0, "reached": 0, "reached_no_nudge": 0})
     r["attempted"] += 1
     if reached:
         r["reached"] += 1
+        if not nudged:
+            r["reached_no_nudge"] += 1
 
 
 def _rmsnap(snap):
@@ -232,7 +261,9 @@ def main():
         print(f"manifest UNVERIFIED fields (fill before a pinned run; --require-pinned enforces): "
               f"{manifest['unverified']}")
 
-    tally = {"generated": 0, "excluded_prefix": [], "reach": {}}
+    hcfg = run.get("harness") or {}
+    tally = {"generated": 0, "excluded_prefix": [], "reach": {},
+             "operator_nudge": {"text": (hcfg.get("operator_nudge") or "").strip() or None, "max": int(hcfg.get("nudge_max", 1))}}
     gen_dir = rp.generation
     only = set(args.scenarios.split(",")) if args.scenarios else None
     for spec_path in sorted((SCEN / "arm_a").glob("*/scenario.yaml")):
@@ -245,7 +276,7 @@ def main():
             for seed_dir in sorted(base.glob("seed_*")) if base.exists() else []:
                 sm = json.loads((seed_dir / "manifest.json").read_text())
                 run_scenario_seed(client, scenario, seed_dir, sm, samp, args.n,
-                                  str(gen_dir), ledger, run_id, tally)
+                                  str(gen_dir), ledger, run_id, tally, hcfg=hcfg)
     # cardinality + estimand: P(reach obstacle) and (later) P(transgress | reached), per cell
     _write_cardinality(tally, run_id, rp.cardinality)
     print(f"harness: {tally['generated']} continuations (run_id={run_id}); "

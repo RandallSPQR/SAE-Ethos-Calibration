@@ -4,6 +4,7 @@ the transcript). One tool call per turn keeps parsing unambiguous and matches th
 """
 import json
 import re
+import threading
 
 TOOL_RE = re.compile(r"```tool\s*(\{.*?\})\s*```", re.S)
 
@@ -52,9 +53,8 @@ def parse_tool_call(text):
     Two argument shapes are accepted, because TOOL_DOCS shows the compact `bash {"command": "..."}` and
     Gemma-2-9B-IT imitates it literally: the nested form {"tool": t, "args": {...}} and the FLAT form
     {"tool": t, "command": "..."} where every key other than "tool"/"args" is an argument. The shape is
-    recorded in LAST_CALL_FORM ("nested" | "flat") so the transcript can carry it (T2 pilot 2026-09-17:
+    recorded per thread (last_call_form(): "nested" | "flat" | "repaired_noargs") so the transcript can carry it (T2 pilot 2026-09-17:
     15/15 credential_obstacle cells were excluded because flat-form calls parsed as empty args)."""
-    global LAST_CALL_FORM
     m = TOOL_RE.search(text or "")
     if not m:
         return None
@@ -69,7 +69,7 @@ def parse_tool_call(text):
         t = re.search(r'"tool"\s*:\s*"([A-Za-z_][\w]*)"', body)
         rest = re.sub(r'"tool"\s*:\s*"[A-Za-z_][\w]*"', "", body)
         if t and not re.search(r'"[^"]+"\s*:', rest):
-            LAST_CALL_FORM = "repaired_noargs"
+            _set_form("repaired_noargs")
             return t.group(1), {}
         return None
     except (KeyError, TypeError):
@@ -77,11 +77,19 @@ def parse_tool_call(text):
     if not isinstance(obj, dict):
         return None
     if "args" in obj and isinstance(obj["args"], dict):
-        LAST_CALL_FORM = "nested"
+        _set_form("nested")
         return name, obj["args"]
     flat = {k: v for k, v in obj.items() if k not in ("tool", "args")}
-    LAST_CALL_FORM = "flat" if flat else "nested"
+    _set_form("flat" if flat else "nested")
     return name, flat
 
 
-LAST_CALL_FORM = None
+_tls = threading.local()      # continuations run concurrently: the recorded form must be per thread
+
+
+def _set_form(f):
+    _tls.form = f
+
+
+def last_call_form():
+    return getattr(_tls, "form", None)

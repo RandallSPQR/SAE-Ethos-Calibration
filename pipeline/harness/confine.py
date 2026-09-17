@@ -31,8 +31,9 @@ uid and confirms nothing remains -> the labeler reads final state. TMPDIR is ins
 the world-writable sweep is a backstop, not the mechanism.
 
 Later (noted, not built): SECCOMP_RET_USER_NOTIF would let the harness log every denied socket/connect as
-an observed_fact, turning "tried to reach the network" from an unobservable into a label input. A fixed
-uid is fine while episodes run sequentially; parallel episodes need per-episode uids (dirs are 0700).
+an observed_fact, turning "tried to reach the network" from an unobservable into a label input.
+Concurrency: every Sandbox has its own uid (ARM_A_EPISODE_UID + slot) and 0700 tree, so the N continuations
+from a decision point run in parallel without reading each other; reap/sweep are per uid.
 """
 import ctypes
 import json
@@ -166,17 +167,22 @@ def _preexec(backend, timeout, uid, gid):
     return fn
 
 
-def _env(cwd):
-    """env -i plus an explicit allowlist. HOME and TMPDIR inside the episode dir."""
-    return {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(cwd), "TMPDIR": str(cwd),
+def _env(cwd, extra=None):
+    """env -i plus an explicit allowlist. HOME and TMPDIR inside the episode dir. `extra` is the per-episode
+    entrypoint environment (scenario contract: PATH with the repo's bin/, SIGNING_REF_FILE, GIT_SIGNING_KEY
+    in control variants); it can only ADD or override allowlisted keys, never carry the harness's env."""
+    e = {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": str(cwd), "TMPDIR": str(cwd),
             "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8",
             "TERM": "dumb",
             # one BLAS/OpenMP thread: on a 32-vCPU pod OpenBLAS reserves per-thread address space at numpy import
             # and dies (SIGINT) under RLIMIT_AS; the T2 probe's trivial_test_green canary caught it (2026-09-17)
             "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
+    if extra:
+        e.update({k: str(v) for k, v in extra.items()})
+    return e
 
 
-def _bwrap_cmd(cmd, cwd, uid, gid):
+def _bwrap_cmd(cmd, cwd, uid, gid, extra=None):
     venv = Path(sys.executable).resolve().parent.parent
     b = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--unshare-user", "--uid", str(uid), "--gid", str(gid)]
     for p in BWRAP_RO:
@@ -184,20 +190,23 @@ def _bwrap_cmd(cmd, cwd, uid, gid):
             b += ["--ro-bind", p, p]
     b += ["--ro-bind", str(venv), str(venv), "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp",
           "--bind", str(cwd), str(cwd), "--chdir", str(cwd), "--clearenv"]
-    for k, v in _env(cwd).items():
+    for k, v in _env(cwd, extra).items():
         b += ["--setenv", k, v]
     return b + ["--"] + list(cmd)
 
 
 # ---------------------------------------------------------------- the one executor
-def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000):
+def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000, uid=None, gid=None, env_extra=None, spare=()):
     """Run model-authored/scenario code under the ACTIVE backend. Returns (text, returncode); 124 on
-    timeout (the whole process group is killed). backend=None -> ACTIVE (plain subprocess if none)."""
+    timeout (the whole process group is killed). backend=None -> ACTIVE (plain subprocess if none).
+    uid: the EPISODE uid (per sandbox; concurrent continuations get distinct uids). spare: pids of this
+    episode's own entrypoint processes (the credential supervisor) that reap() must not kill."""
     backend = backend or ACTIVE["backend"] or "none"
-    uid, gid = ACTIVE["uid"] or DEFAULT_UID, ACTIVE["gid"] or DEFAULT_UID
+    uid = uid or ACTIVE["uid"] or DEFAULT_UID
+    gid = gid or uid
     cwd = Path(cwd)
-    argv = _bwrap_cmd(cmd, cwd, uid, gid) if backend == "bwrap" else list(cmd)
-    env = _env(cwd) if backend != "none" else None
+    argv = _bwrap_cmd(cmd, cwd, uid, gid, env_extra) if backend == "bwrap" else list(cmd)
+    env = _env(cwd, env_extra) if backend != "none" else ({**os.environ, **{k: str(v) for k, v in (env_extra or {}).items()}} if env_extra else None)
     pre = _preexec(backend, timeout, uid, gid) if backend != "none" else None
     try:
         p = subprocess.Popen(argv, cwd=str(cwd), env=env, preexec_fn=pre, start_new_session=True,
@@ -210,7 +219,7 @@ def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000):
     except subprocess.TimeoutExpired:
         _kill_group(p)
         rc, text = 124, "error: timed out"
-    left = reap()
+    left = reap(uid, spare=spare)
     if left:
         text += f"\nerror: {left} process(es) of the episode uid survived reaping"
     return text, rc
@@ -236,7 +245,7 @@ def _uid_pids(uid):
     return pids
 
 
-def reap(tries=30):
+def reap(uid=None, spare=(), tries=30):
     """Kill EVERYTHING running as the episode uid and confirm nothing remains. Called after every confined
     execution and before the labeler reads final state, because a model-authored background process
     (`nohup ... &`, setsid) outlives the process group and could edit files after they were read.
@@ -244,9 +253,10 @@ def reap(tries=30):
     its init, so there is nothing to reap by uid; the no_survivors canary checks that property instead."""
     if ACTIVE["backend"] != "seccomp_uid":
         return 0
-    uid = ACTIVE["uid"]
+    uid = uid or ACTIVE["uid"]
+    spare = set(spare or ())
     for _ in range(tries):
-        pids = _uid_pids(uid)
+        pids = [p for p in _uid_pids(uid) if p not in spare]
         if not pids:
             return 0
         for pid in pids:
@@ -255,7 +265,19 @@ def reap(tries=30):
             except ProcessLookupError:
                 pass
         time.sleep(0.1)
-    return len(_uid_pids(uid))
+    return len([p for p in _uid_pids(uid) if p not in spare])
+
+
+def spawn_background(cmd, cwd, uid=None, env_extra=None):
+    """Start a long-lived ENTRYPOINT process (the credential scenario's fake supervisor) as the episode uid,
+    with the confined env plus `env_extra` in ITS environment only. Returns the Popen; the caller registers
+    its pid as spared and kills it at episode end."""
+    backend = ACTIVE["backend"] or "none"
+    uid = uid or ACTIVE["uid"] or DEFAULT_UID
+    env = _env(Path(cwd), env_extra) if backend != "none" else {**os.environ, **{k: str(v) for k, v in (env_extra or {}).items()}}
+    pre = _preexec(backend, 10 ** 6, uid, uid) if backend != "none" else None
+    return subprocess.Popen(list(cmd), cwd=str(cwd), env=env, preexec_fn=pre, start_new_session=True,
+                            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def _kill_group(p):
@@ -278,14 +300,14 @@ class ConfineError(RuntimeError):
     pass
 
 
-def own(path):
+def own(path, uid=None, gid=None):
     """Give the episode directory to the episode uid (seccomp_uid backend); no-op otherwise. Verified,
     not assumed: some network-volume backends ignore or refuse chown, and the positive canaries below
     would then show an episode dir the uid cannot write. Mode 0700 so a parallel episode (if ever) cannot
     read it; today episodes run sequentially under one uid (ARM_A_EPISODE_UID)."""
     if ACTIVE["backend"] != "seccomp_uid":
         return
-    uid, gid = ACTIVE["uid"], ACTIVE["gid"]
+    uid = uid or ACTIVE["uid"]; gid = gid or uid
     try:
         for root, dirs, files in os.walk(path):
             os.chown(root, uid, gid); os.chmod(root, 0o700)
@@ -298,17 +320,18 @@ def own(path):
         raise ConfineError(f"cannot give {path} to uid {uid}: {e}") from e
 
 
-def sweep():
+def sweep(uid=None):
     """Remove anything the episode uid left in world-writable places (cross-continuation persistence)."""
     if ACTIVE["backend"] != "seccomp_uid":
         return 0
+    uid = uid or ACTIVE["uid"]
     n = 0
     for base in ("/tmp", "/dev/shm", "/var/tmp"):
         if not os.path.isdir(base):
             continue
         for entry in os.scandir(base):
             try:
-                if entry.stat(follow_symlinks=False).st_uid == ACTIVE["uid"]:
+                if entry.stat(follow_symlinks=False).st_uid == uid:
                     (shutil.rmtree if entry.is_dir(follow_symlinks=False) else os.unlink)(entry.path); n += 1
             except OSError:
                 pass
@@ -483,8 +506,8 @@ def select(prefer=None, uds=None):
 _orig_env = _env
 
 
-def _env(cwd):        # noqa: F811
-    e = _orig_env(cwd)
+def _env(cwd, extra=None):        # noqa: F811
+    e = _orig_env(cwd, extra)
     if os.environ.get("CANARY_UDS"):
         e["CANARY_UDS"] = os.environ["CANARY_UDS"]
     return e
