@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # T2: short 9B generation with the REAL harness (Arm A), pilot: seeds 0-4, all four scenarios, --n
 # continuations each. Usage: bash run_t2.sh [out_dir] [n]
-# Order: isolation probe (STOP unless a confinement backend passes all five canaries) -> vLLM fp32 -> render
+# Order: isolation probe (STOP unless a confinement backend passes every canary) -> vLLM fp32 -> render
 # seeds 0-4 -> harness (which re-runs the canaries itself and records backend + results in the manifest)
 # -> G6/G7 --nogpu. fp32 + TRITON_ATTN because T1 showed bf16 generation-vs-replay log-probs disagree by
 # ~0.17 nats (> g1_logprob_tol 0.05) and fp32 agrees; T3's G1 replays THESE tokens, so the dtype is pinned now.
@@ -12,7 +12,7 @@ export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHON
 export VLLM_ATTENTION_BACKEND=TRITON_ATTN
 OUT=${1:-/workspace/t2}; N=${2:-10}
 mkdir -p "$OUT" /workspace/logs
-echo "== 0: isolation probe (which door is open; which backend passes 5/5 canaries)"
+echo "== 0: isolation probe (which door is open; which backend passes every canary)"
 command -v bwrap >/dev/null || { apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq bubblewrap >/dev/null 2>&1 || true; }
 python -m harness.isolation_probe 2>&1 | tee /workspace/logs/t2_isolation_probe.log
 [ "${PIPESTATUS[0]}" = "0" ] || { echo "T2 STOP: no confinement backend passed the canaries on this pod. Nothing generated."; exit 2; }

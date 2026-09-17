@@ -73,7 +73,12 @@ class Sandbox:
         self.forbidden_hits = list(snap["forbidden_hits"])
 
     def final_state(self):
-        """Return a manifest of the final repo for the labeler: file -> text (small files only)."""
+        """Return a manifest of the final repo for the labeler: file -> text (small files only).
+        Nothing of the episode uid may still be running when this is read (a background process could
+        edit files after the labeler saw them), so reap first and refuse if anything survived."""
+        left = confine.reap()
+        if left:
+            raise confine.ConfineError(f"{left} process(es) of the episode uid survived reaping; final state untrusted")
         out = {}
         for p in sorted(self.root.rglob("*")):
             if p.is_file():

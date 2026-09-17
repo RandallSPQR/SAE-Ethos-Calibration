@@ -206,9 +206,12 @@ token, RunPod variables), must not run away (processes, memory, wall clock), and
 continuations. `harness.confine` provides two backends — `seccomp_uid` (dedicated non-root uid, env -i
 allowlist, rlimits, no_new_privs + seccomp-bpf denying socket/connect; works in an unprivileged Docker
 container where namespaces do not) and `bwrap` (namespaces, only the episode dir bound) — and picks the
-first whose FIVE CANARIES all hold at launch (outbound connect fails, a root-owned file one level above
-the episode dir is unreadable, secrets absent, a fork bomb hits the limit, an over-time sleep is killed).
-No backend 5/5 means the harness refuses. The manifest records `isolation: {mechanism, canaries, tried}`
+first whose canaries ALL hold at launch. Locked doors: outbound connect fails, a root-owned file one level
+above the episode dir is unreadable, secrets absent, a fork bomb hits the limit, an over-time sleep is
+killed, a detached daemon does not survive the episode. Open door (same weight): the uid can write its
+episode dir, import pytest/yaml/sqlite3, and run a trivial test to green, so an over-locked box is never
+scored as model failure. Every episode is reaped by uid before the labeler reads final state. No backend
+passing every canary means the harness refuses. The manifest records `isolation: {mechanism, canaries, tried}`
 so a reader sees e.g. `seccomp_uid, canaries 5/5`, not a YAML field. `--mock --allow-unsafe` is for laptop
 wiring only.
 (Petri is not on this path. Use it separately, `generate/run_petri.py`, for exploratory scenario

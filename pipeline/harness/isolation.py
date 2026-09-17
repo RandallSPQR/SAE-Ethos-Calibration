@@ -63,12 +63,12 @@ def assert_isolated(cfg, allow_unsafe=False, confinement=None):
     and is explicitly weaker. allow_unsafe bypasses for mock/dev and is recorded in the manifest."""
     if allow_unsafe:
         return {"isolated": False, "bypassed": True, "reason": "allow_unsafe (mock/dev only)"}
-    # strongest path: a confinement backend whose five canaries all held at launch (harness.confine.select)
+    # strongest path: a confinement backend whose canaries all held at launch (harness.confine.select)
     if confinement is not None:
         if confinement.get("ok"):
             return {"isolated": True, "mechanism": confinement["backend"], "canaries": confinement.get("canaries"),
                     "tried": {b: t["canaries"] for b, t in confinement.get("tried", {}).items()}}
-        raise IsolationError("Refusing to run a real episode: no confinement backend passed all five canaries "
+        raise IsolationError("Refusing to run a real episode: no confinement backend passed every canary "
                              f"(candidates {confinement.get('candidates')}; tried "
                              f"{ {b: t['canaries'] for b, t in confinement.get('tried', {}).items()} }). "
                              "Run `python -m harness.isolation_probe` to see which door is locked.")

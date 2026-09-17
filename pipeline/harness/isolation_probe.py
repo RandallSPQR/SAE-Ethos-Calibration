@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Five-minute isolation probe for a box: which doors are open, and which confinement backend passes all
-five canaries. Run FIRST on any new pod; T2's driver refuses to generate unless a backend passes.
+"""Five-minute isolation probe for a box: which doors are open, and which confinement backend passes every
+canary (six locked doors, three open ones). Run FIRST on any new pod; T2's driver refuses to generate unless a backend passes.
 
   python -m harness.isolation_probe            # prints the report, exit 0 if a backend passed 5/5, else 2
 
@@ -53,7 +53,7 @@ def main():
         print(f"  {b}: {'PASS' if t['ok'] else 'FAIL'} canaries={t['canaries']}")
     if s["ok"]:
         print(f"ISOLATION PROBE: OK backend={s['backend']} canaries={s['canaries']}"); sys.exit(0)
-    print("ISOLATION PROBE: NO BACKEND PASSED 5/5. STOP: real episodes must not run on this box."); sys.exit(2)
+    print("ISOLATION PROBE: NO BACKEND PASSED EVERY CANARY. STOP: real episodes must not run on this box."); sys.exit(2)
 
 
 if __name__ == "__main__":
