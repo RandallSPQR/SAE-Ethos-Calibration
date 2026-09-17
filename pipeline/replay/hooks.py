@@ -226,3 +226,73 @@ def sample_generate_at_layer(lm, prompt_ids, layer, steer, temperature=0.8, top_
         out.append(t)
         ids.append(t)
     return out
+
+
+def _left_pad(tok, prompt_ids_list):
+    """Left-pad a list of id lists. Returns input_ids [B,T], attention_mask [B,T], position_ids [B,T]
+    (positions counted over REAL tokens only, so a padded row sees the same positions as unbatched)."""
+    import torch
+    pad = tok.pad_token_id if tok.pad_token_id is not None else 0
+    T = max(len(x) for x in prompt_ids_list)
+    ids = torch.full((len(prompt_ids_list), T), pad, dtype=torch.long)
+    mask = torch.zeros((len(prompt_ids_list), T), dtype=torch.long)
+    for i, x in enumerate(prompt_ids_list):
+        ids[i, T - len(x):] = torch.tensor(x); mask[i, T - len(x):] = 1
+    pos = (mask.cumsum(-1) - 1).clamp(min=0)
+    return ids, mask, pos
+
+
+def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None):
+    """Last-position logits [B, V] (float32) for a batch of prompts, left-padded, with optional activation
+    addition at block `layer` on the real tokens of every row. Same transform as the unbatched path; the
+    batch gate (probe.batch_gate) proves equality to the G1 tolerance before this is trusted."""
+    import torch
+    ids, mask, pos = _left_pad(lm.tokenizer, prompt_ids_list)
+    block = lm.model.model.layers[int(layer)] if layer is not None else None
+    with torch.no_grad(), lm.model.trace({"input_ids": ids, "attention_mask": mask, "position_ids": pos}):
+        if steer is not None and float(steer[1]) != 0.0 and block is not None:
+            stream = resid_post(block.output)
+            v = torch.as_tensor(np.asarray(steer[0], dtype=np.float32))
+            unit = (v / (v.norm() + 1e-6)).to(stream.device, stream.dtype)
+            m = mask.to(stream.device).bool()
+            # per-row mean residual norm over real tokens excluding each row's first real token (BOS)
+            first = (mask.cumsum(-1) == 1).to(stream.device)
+            use = m & ~first
+            norms = stream.float().norm(dim=-1)
+            mean_norm = ((norms * use).sum(-1) / use.sum(-1).clamp(min=1)).to(stream.dtype)      # [B]
+            add = (float(steer[1]) * mean_norm)[:, None, None] * unit[None, None, :] * m[:, :, None].to(stream.dtype)
+            _set_block_output(block, stream + add)
+        logits = lm.model.output.logits[:, -1].float().save()
+    return _val(logits).cpu()
+
+
+def sample_from_logits(lg, temperature, top_p, seed):
+    import torch
+    if temperature <= 0:
+        return int(lg.argmax())
+    gen = torch.Generator(device="cpu").manual_seed(int(seed))
+    p = torch.softmax(lg / temperature, dim=-1)
+    sp, si = torch.sort(p, descending=True)
+    keep = (torch.cumsum(sp, 0) - sp) < top_p
+    sp = sp * keep
+    return int(si[torch.multinomial(sp / sp.sum(), 1, generator=gen)])
+
+
+def sample_generate_batch_at_layer(lm, prompt_ids_list, layer, steer, temperature=0.8, top_p=0.95, seeds=None,
+                                   max_new_tokens=6, eos_ids=(1, 107)):
+    """Batched counterpart of sample_generate_at_layer: all rows advance one token per forward; a row stops
+    at EOS. Per-row seeded sampling. Returns list of generated id lists."""
+    seeds = seeds or list(range(len(prompt_ids_list)))
+    cur = [list(x) for x in prompt_ids_list]
+    outs = [[] for _ in cur]; done = [False] * len(cur)
+    for step in range(max_new_tokens):
+        live = [i for i in range(len(cur)) if not done[i]]
+        if not live:
+            break
+        lg = last_logits_batch(lm, [cur[i] for i in live], layer, steer)
+        for j, i in enumerate(live):
+            t = sample_from_logits(lg[j], temperature, top_p, seeds[i] * 104729 + step)
+            if t in eos_ids:
+                done[i] = True; continue
+            outs[i].append(t); cur[i].append(t)
+    return outs

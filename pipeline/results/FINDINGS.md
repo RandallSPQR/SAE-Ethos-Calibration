@@ -48,3 +48,22 @@ Two-dimensional lottery (safe 30/50/70/100 x jackpot 10..180, order and unit var
 - A methods point for the fit: the safe-50 curve plateaus at 0.88 (a 9% lapse rate), and a logistic with
   fixed asymptotes put the switching point at 65.5 where the 0.5 crossing was 53. Psychometric fits
   need lapse parameters (Wichmann & Hill); the interpolated crossing is reported beside every fit.
+
+## The plateau is a surface effect, not a lapse rate (provisional, from run 2's own trials)
+
+Well above the switching point the model takes the gamble 100% of the time when the safe option is
+listed first, 67% when the risky option is listed first, and 0% when the risky option is listed first
+AND the unit word is "tokens" (points: 100% regardless of order; dollars: 91%). The label is therefore
+essentially deterministic given (grid point, order, unit): the ceiling on per-trial held-out accuracy is
+1.00 by cell versus 0.87 by grid point at the held-out level, so 0.986 / 0.996 are real numbers under a
+real ceiling. It also qualifies the probe claim: the direction separates "which option is attractive"
+in a way that includes list position and wording, not the gamble's attractiveness alone. The reconciled
+version of this finding needs the lambda=0 checksum (served vs steered sampler, 32 seeds, within 2 SE)
+to pass first; until then it is provisional.
+
+## The ultimatum "no dial" is a testable prediction
+
+Gemma-2-9B-IT rejects only a zero offer, at any temperature we tried, so it has no fairness-punishment
+variable to steer. A persona prompt that produced rejections would be manufacturing behavior with no
+internal counterpart: the persona-looks-like-baseline result stated as a prediction, and the cleanest
+single argument for why EthosSim characters need measured axes.

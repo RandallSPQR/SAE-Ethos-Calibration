@@ -8,4 +8,10 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #800 | 3:14 PM | 🔴 | Critical nnsight Read Ordering Fix and G1 Divergence Diagnostics Deployed Mid-Run | ~713 |
+
+### Sep 17, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #880 | 9:42 AM | 🔴 | Probe Reconciliation Report, Lambda=0 Instrument Checksum, Surface Effect Analysis | ~1234 |
 </claude-mem-context>

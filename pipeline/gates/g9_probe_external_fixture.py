@@ -38,7 +38,8 @@ def _evaluate(task, base, probe, cal, g, targets):
         return "None" if v is None else (round(v, nd) if isinstance(v, float) else v)
     pl = probe.get("per_layer") or {}
     by_layer = " ".join(f"L{k}:{_f(v['heldout_acc'], 3)}" for k, v in pl.items())
-    line = (f"{task}: heldout_acc={_f(probe['heldout_acc'], 3)} [{probe.get('heldout_kind', '?')}] "
+    ceil = "" if probe.get("ceiling_by_cell") is None else f" ceiling(grid/cell)={_f(probe['ceiling_by_grid'], 3)}/{_f(probe['ceiling_by_cell'], 3)}"
+    line = (f"{task}: heldout_acc={_f(probe['heldout_acc'], 3)}{ceil} [{probe.get('heldout_kind', '?')}] "
             f"(fan:{fan.get('heldout_acc')}) by_layer=[{by_layer}] "
             f"mae={_f(cal['mae'])} (fan:{fan.get('mae')}) baseline_sp={_f(base['sp'])} (fan:{fan.get('baseline_sp')}) "
             f"layer={probe['layer']} (fan:{fan.get('probe_layer')}) coverage={cov:.2f} "

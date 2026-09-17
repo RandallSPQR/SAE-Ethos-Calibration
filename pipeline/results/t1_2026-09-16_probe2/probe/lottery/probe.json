@@ -10794,5 +10794,7 @@
     "risk_neutral_sp": 100,
     "model": "Llama-3.3-70B-Instruct",
     "arxiv": "2609.16436"
-  }
+  },
+  "ceiling_by_grid": 0.8714285714285714,
+  "ceiling_by_cell": 1.0
 }

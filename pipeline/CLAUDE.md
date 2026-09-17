@@ -8,4 +8,10 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #769 | 2:29 PM | 🟣 | T1.5 probe track added to calibration framework | ~579 |
+
+### Sep 17, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #880 | 9:42 AM | 🔴 | Probe Reconciliation Report, Lambda=0 Instrument Checksum, Surface Effect Analysis | ~1234 |
 </claude-mem-context>

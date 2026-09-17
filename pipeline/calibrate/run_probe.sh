@@ -23,6 +23,9 @@ echo "== P2: extract"
 python -m probe.extract --run-dir runs/$RUN_ID || { echo "PROBE_FAIL P2"; exit 4; }
 echo "== P3: train"
 python -m probe.train --run-dir runs/$RUN_ID || { echo "PROBE_FAIL P3 (heldout below threshold)"; exit 5; }
+python -m probe.report --run-dir runs/$RUN_ID
+echo "== batch gate (batched vs unbatched logprobs at T=0, G1 tolerance)"
+python -m probe.batch_gate --run-dir runs/$RUN_ID --task lottery || echo "batch gate FAILED: P4 falls back to unbatched sampling"
 echo "== P4: calibrate"
 python -m probe.calibrate --run-dir runs/$RUN_ID || { echo "PROBE_FAIL P4"; exit 6; }
 python -m gates.run_gates --run-dir runs/$RUN_ID --gates G9

@@ -13,6 +13,13 @@ Amended after probe run 2 (pod, 2026-09-16 22:49 UTC; artifacts `results/t1_2026
 - **Sweep** +-0.1..+-0.8 (sub-noise steps dropped; run 2 was flat inside +-0.05 and unsaturated at +-0.4,
   moving 73 -> 25 monotonically, MAE 3.0 on reachable targets).
 - Per-layer held-out accuracy on the unseen safe level 70: L20 0.971, L26 0.996, L31 0.986 (Fan: 0.82).
+- **Reconciliation (2026-09-17)**: `probe.report` prints the label-noise CEILING next to held-out accuracy
+  (by grid point and by (grid, order, unit) cell); run 2: 0.87 vs 1.00 — the 0.88 plateau was an order x
+  unit surface effect, not a lapse rate. **lambda=0 checksum**: before any steered sweep, the steered
+  sampler at lambda=0 (32 seeds) must reproduce the served model's unsteered switching point within
+  `lambda0_tol_se` (2) combined bootstrap SEs, else P4 STOPs (run 2 gap: 53.7 vs 48.2, untested). **Batch
+  gate**: the batched sampler (left padding, explicit position ids, last-position logits) must match the
+  unbatched path's log-probs at T=0, unsteered and steered, to `g1_logprob_tol` before it may generate.
 
 - **Lottery is two-dimensional**: safe amount in {30, 50, 70, 100} x risky reward 10..180. The decision
   variable the probe must find is the gamble's attractiveness relative to the sure thing, not the value

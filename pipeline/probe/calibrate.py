@@ -47,12 +47,37 @@ def sweep_mock(task, lam, n_agents):
 class SteeredSampler:
     """Sampled answers under steering through replay.hooks (the same injection G4 uses). Loaded once per run.
     T>0 across agents so the steered psychometric curve is graded; the same surface conditions as P1."""
-    def __init__(self, run_dir, temperature, top_p):
+    def __init__(self, run_dir, temperature, top_p, batch_size=32):
         from replay.modelload import load_target
         self.lm = load_target("target")
         store = np.load(Path(run_dir) / "steering_vectors.npz")
         self.vecs = {k: store[k] for k in store.files}
         self.temperature, self.top_p = temperature, top_p
+        self.batch_size = int(batch_size)
+        self.batched_ok = {}                      # task -> batch gate passed (probe.batch_gate)
+
+    def allow_batch(self, task, run_dir):
+        p = Path(run_dir) / "probe" / task / "batch_gate.json"
+        ok = p.exists() and json.loads(p.read_text()).get("ok") is True
+        self.batched_ok[task] = ok
+        print(f"[{task}] batched sampling {'ENABLED (batch gate passed)' if ok else 'DISABLED (no passing batch_gate.json)'}")
+        return ok
+
+    def answers_batch(self, task, items, lam, max_new_tokens=6):
+        """items: [(n, seed, level, cond)] -> texts, through the batched path in chunks."""
+        from model_io.gemma2 import apply_to_tokenizer
+        from replay.hooks import sample_generate_batch_at_layer
+        vec = self.vecs[f"probe_{task}"]; layer = int(self.vecs[f"probe_{task}__layer"])
+        texts = []
+        for i in range(0, len(items), self.batch_size):
+            chunk = items[i:i + self.batch_size]
+            ids = [apply_to_tokenizer(self.lm.tokenizer, messages(task, n, level, cond), add_generation_prompt=True)
+                   for n, seed, level, cond in chunk]
+            seeds = [seed * 7919 + int(abs(lam) * 1e4) for n, seed, level, cond in chunk]
+            outs = sample_generate_batch_at_layer(self.lm, ids, layer, (vec, lam), temperature=self.temperature,
+                                                  top_p=self.top_p, seeds=seeds, max_new_tokens=max_new_tokens)
+            texts += [self.lm.tokenizer.decode(o) for o in outs]
+        return texts
 
     def answer(self, task, n, lam, seed, level, cond, max_new_tokens=6):
         from model_io.gemma2 import apply_to_tokenizer
@@ -64,19 +89,96 @@ class SteeredSampler:
         return self.lm.tokenizer.decode(out)
 
 
-def sweep_real(task, lam, n_agents, gen):
-    """One steered psychometric curve at the REFERENCE level (safe 50 for the lottery)."""
+def sweep_real(task, lam, n_agents, gen, seed_offset=0):
+    """One steered psychometric curve at the REFERENCE level (safe 50 for the lottery). Batched across grid
+    points and agents when the batch gate passed; otherwise one sampled answer at a time."""
     t = TASKS[task]; level = t["reference_level"]
+    items = [(n, seed_offset + seed, level, conditions(task, n, seed_offset + seed)) for n in t["grid"] for seed in range(n_agents)]
+    if gen.batched_ok.get(task):
+        texts = gen.answers_batch(task, items, lam)
+    else:
+        texts = [gen.answer(task, n, lam, seed, level, cond) for n, seed, level, cond in items]
     P, Y, dropped = [], [], 0
-    for n in t["grid"]:
-        for seed in range(n_agents):
-            cond = conditions(task, n, seed)
-            txt = gen.answer(task, n, lam, seed, level, cond)
-            y = label(task, parse_choice(task, txt, cond))
-            if y is None:
-                dropped += 1
-            P.append(n); Y.append(y)
+    for (n, seed, level, cond), txt in zip(items, texts):
+        y = label(task, parse_choice(task, txt, cond))
+        if y is None:
+            dropped += 1
+        P.append(n); Y.append(y)
     return switching_point(P, Y), dropped
+
+
+# ---------------------------------------------------------------- lambda=0 checksum (served vs steered sampler)
+def _bootstrap_sp(params, labels, n_boot=200, seed=0):
+    """Bootstrap SE of the switching point over trials (resampling within grid point keeps the design)."""
+    rng = np.random.default_rng(seed)
+    params = np.asarray(params); labels = np.asarray(labels, dtype=object)
+    sps = []
+    for _ in range(n_boot):
+        idx = np.concatenate([rng.choice(np.where(params == v)[0], size=(params == v).sum(), replace=True)
+                              for v in np.unique(params)])
+        r = switching_point(params[idx].tolist(), labels[idx].tolist())
+        if r["sp"] is not None:
+            sps.append(r["sp"])
+    return (float(np.std(sps)) if len(sps) > 1 else None), len(sps)
+
+
+def _bootstrap_from_curve(curve, n_per_point, n_boot=200, seed=0):
+    """Bootstrap SE of the switching point from per-grid-point rates with n_per_point trials each."""
+    rng = np.random.default_rng(seed)
+    ps = sorted(curve, key=float); sps = []
+    for _ in range(n_boot):
+        P, Y = [], []
+        for p in ps:
+            k = rng.binomial(n_per_point, curve[p])
+            P += [float(p)] * n_per_point; Y += [1] * k + [0] * (n_per_point - k)
+        r = switching_point(P, Y)
+        if r["sp"] is not None:
+            sps.append(r["sp"])
+    return float(np.std(sps)) if len(sps) > 1 else None
+
+
+def lambda0_checksum(task, run_dir, pc, gen, mock):
+    """The steered sampler at lambda=0 must reproduce the SERVED model's unsteered curve at the reference
+    level: |sp_sampler - sp_served| <= tol_se * sqrt(SE_served^2 + SE_sampler^2), with SEs from a within-grid
+    bootstrap. Served side: the P1 trials (vLLM, T=0.8). Sampler side: `lambda0_seeds` fresh seeds here.
+    Fails loudly (STOP) if the gap exceeds the tolerance: the sampler would then be a different instrument
+    from the served model and nothing downstream may ride on it. Writes probe/<task>/lambda0_checksum.json."""
+    t = TASKS[task]; level = t["reference_level"]
+    d = Path(run_dir) / "probe" / task
+    served = [json.loads(l) for l in open(d / "trials.jsonl") if l.strip()]
+    served = [r for r in served if r.get("level") == level and r["label"] is not None]
+    sp_served = switching_point([r["param"] for r in served], [r["label"] for r in served])
+    se_served, _ = _bootstrap_sp([r["param"] for r in served], [r["label"] for r in served])
+    n_seeds = int(pc.get("lambda0_seeds", 32))
+    if mock:
+        from probe.synth_trials import mock_choice
+        P, Y = [], []
+        for n in t["grid"]:
+            for seed in range(n_seeds):
+                cond = conditions(task, n, seed)
+                P.append(n); Y.append(label(task, parse_choice(task, mock_choice(task, n, 1000 + seed, level)["text"], cond)))
+        sp_s = switching_point(P, Y)
+    else:
+        sp_s, _ = sweep_real(task, 0.0, n_seeds, gen, seed_offset=1000)
+        P = [n for n in t["grid"] for _ in range(n_seeds)]
+        Y = [1 if v > 0.5 else 0 for v in []]      # placeholder; SE below uses the curve's own bootstrap
+    if mock:
+        se_s, _ = _bootstrap_sp(P, Y)
+    else:
+        se_s = _bootstrap_from_curve(sp_s["curve"], n_seeds)
+    gap = None if (sp_s["sp"] is None or sp_served["sp"] is None) else abs(sp_s["sp"] - sp_served["sp"])
+    se_tot = None if (se_served is None or se_s is None) else float(np.sqrt(se_served ** 2 + se_s ** 2))
+    tol = float(pc.get("lambda0_tol_se", 2.0))
+    ok = gap is not None and se_tot is not None and gap <= tol * se_tot
+    rep = {"task": task, "level": level, "served": {"sp": sp_served["sp"], "method": sp_served["method"], "se": se_served, "n": len(served)},
+           "sampler": {"sp": sp_s["sp"], "method": sp_s["method"], "se": se_s, "n": len(P), "seeds": n_seeds},
+           "gap": gap, "se_combined": se_tot, "tol_se": tol, "ok": ok}
+    (d / "lambda0_checksum.json").write_text(json.dumps(rep, indent=2))
+    print(f"[{task}] lambda=0 checksum: served sp={None if sp_served['sp'] is None else round(sp_served['sp'], 1)}"
+          f"+-{None if se_served is None else round(se_served, 1)}  sampler sp={None if sp_s['sp'] is None else round(sp_s['sp'], 1)}"
+          f"+-{None if se_s is None else round(se_s, 1)}  gap={None if gap is None else round(gap, 1)}  "
+          f"tol={tol}xSE={None if se_tot is None else round(tol * se_tot, 1)}  -> {'OK' if ok else 'STOP'}")
+    return ok, rep
 
 
 # ---------------------------------------------------------------- monotone map + inversion
@@ -132,6 +234,12 @@ def calibrate_task(task, run_dir, pc, gen, mock):
     d = Path(run_dir) / "probe" / task
     base = json.loads((d / "baseline.json").read_text())
     n_agents = pc["n_agents"]
+    ok0, chk = lambda0_checksum(task, run_dir, pc, gen, mock)
+    if not ok0:
+        print(f"STOP: {task} steered sampler does not reproduce the served model at lambda=0 "
+              f"(gap {chk['gap']} > {chk['tol_se']} x SE {chk['se_combined']}); the sampler is a different instrument.")
+        (d / "calibration.json").write_text(json.dumps({"task": task, "error": "lambda0_checksum_failed", **chk}, indent=2))
+        return
     curve, methods, dropped = {}, {}, {}
     for lam in pc["lambda_sweep"]:
         r, nd = sweep_mock(task, lam, n_agents) if mock else sweep_real(task, lam, n_agents, gen)
@@ -152,6 +260,7 @@ def calibrate_task(task, run_dir, pc, gen, mock):
     errs = [abs(v["achieved"] - float(k)) for k, v in targets.items() if v["achieved"] is not None]
     ach = [v["achieved"] for v in targets.values() if v["achieved"] is not None]
     rep = {"task": task, "baseline_sp": base["sp"], "baseline_sp_interp": base.get("sp_interp"),
+           "lambda0_checksum": chk,
            "reference_level": TASKS[task]["reference_level"], "target_list": target_list,
            "sweep_lambda0_sp": curve.get("0.0"),
            "lambda_sweep": list(pc["lambda_sweep"]), "lambda_curve": curve, "lambda_methods": methods,
@@ -175,11 +284,14 @@ def main():
     a = ap.parse_args()
     pc = _cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
-    gen = None if a.mock else SteeredSampler(a.run_dir, float(pc.get("temperature", 0.8)), float(pc.get("top_p", 0.95)))
+    gen = None if a.mock else SteeredSampler(a.run_dir, float(pc.get("temperature", 0.8)), float(pc.get("top_p", 0.95)),
+                                             batch_size=int(pc.get("batch_size", 32)))
     from probe.synth_trials import task_has_dial
     for t in tasks:
         if not task_has_dial(a.run_dir, t):
             print(f"[{t}] skipped: no dial on this model (see baseline.json)"); continue
+        if gen is not None:
+            gen.allow_batch(t, a.run_dir)
         calibrate_task(t, a.run_dir, pc, gen, a.mock)
 
 

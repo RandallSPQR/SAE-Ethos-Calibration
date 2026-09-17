@@ -54,5 +54,7 @@ probe-train:     ## P3: CPU — probe + steering vector into the store
 	$(PY) -m probe.train --run-dir runs/$(RUN_ID)
 probe-calibrate: ## P4: lambda sweep -> switching points -> hit targets (GPU)
 	$(PY) -m probe.calibrate --run-dir runs/$(RUN_ID) $(MOCK)
-probe: probe-trials probe-extract probe-train probe-calibrate
+probe-report:    ## ceilings next to held-out accuracy; plateau by surface condition
+	$(PY) -m probe.report --run-dir runs/$(RUN_ID)
+probe: probe-trials probe-extract probe-train probe-report probe-calibrate
 	$(PY) -m gates.run_gates --run-dir runs/$(RUN_ID) --gates G9     # G9 joins the ladder
