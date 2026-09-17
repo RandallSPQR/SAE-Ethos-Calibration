@@ -47,7 +47,7 @@ def run_gate(lm, vecs, task, tol, n_prompts=8, strength=0.2):
     ok = True
     for name, st in (("unsteered", 0.0), ("steered", strength)):
         ref = torch.stack([single(p, st) for p in prompts])
-        bat = torch.log_softmax(last_logits_batch(lm, prompts, layer, (vec, st)), -1)
+        bat = torch.log_softmax(last_logits_batch(lm, prompts, layer, (vec, st)).cpu(), -1)
         top = ref.topk(20, dim=-1).indices                                   # compare where mass lives
         gap = float((ref.gather(1, top) - bat.gather(1, top)).abs().max())
         agree = bool((ref.argmax(-1) == bat.argmax(-1)).all())
