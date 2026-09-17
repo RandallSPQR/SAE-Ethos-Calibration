@@ -28,6 +28,11 @@ One argmax flip in 46 tokens under bf16 (a 0.13-nat near-tie) vanished in fp32 (
 paths). Template mismatches produce many flips clustered at the turn boundary; kernel-order noise
 produces one at a near-tie. The G1 rule excuses only the latter.
 
+Methods note: the batched sampler's bf16 disagreement with the unbatched path (0.18 nats, probe run 3) is
+the same magnitude as the original G1 flip. bf16 numerics on this stack are shape-sensitive, and
+everything precision-critical now runs fp32 with TF32 matmuls (batched vs unbatched 0.007 nats, gated at
+the G1 tolerance before any batched sweep).
+
 ## Published L0 reproduces under a clean protocol
 
 Per-document Pile slices, own BOS, 1024 context, BOS excluded: median L0 86.5 (range 66-101), pooled
@@ -104,11 +109,28 @@ moves the first-token log-odds by about +-2 nats at +-0.4 identically across pat
   | safe_first/tokens | +3 | -11 |
   | **median** | **-25** | **-6** |
 
-  Two agents per cell per grid point, so single cells carry wide error bars; the pattern is the finding.
+  Two agents per cell per grid point cannot distinguish "a few tokens" from zero, so the honest claim is a
+  bound, not a null: after cleaning, the trait component's effect is under roughly 10-15 tokens in most
+  cells, against 25-50 for the raw direction, with wide intervals (under rules 2026-09-17.2 this run is
+  NOT_EVALUABLE for G9: `t1_2026-09-17_probe3/g9_rules_2026-09-17.2.txt`; the next sweep runs 6 per cell).
   Run 2's 73 -> 25 pooled swing was the raw direction moving the framing-linked component in a cell mix
-  weighted toward the responsive cells. After cleaning, the trait component moves the switching point by a
-  few tokens, inconsistently across cells: on this task, for this model, most of the steerable variance was
-  framing. That is a result, and it is the one the surface headline predicted.
+  weighted toward the responsive cells. On this task, for this model, most of the steerable variance was
+  framing. The surface headline above predicted it; that section was written at 09:55 EDT on 2026-09-17
+  (commit c0c182c) from run 2's trials, before run 3's sweep ran at 10:37 EDT, so it was not fitted to the
+  result.
+- **Reading the bound.** A model that compares the jackpot to the sure thing and ignores the probability
+  is not computing a risk attitude; there may be no such variable in it on this task, only a heuristic plus
+  a position bias. The 0.38 in the framing-dominated cell says the same from inside: where the behavior is
+  the framing, the "trait" direction predicts the answer the model does not give, because trait and
+  framing are not separable there. They are the same computation. Fan et al.'s Llama-3.3-70B sat at 125,
+  above risk-neutral, so it was weighing the probability, and that is the kind of model on which a cleaned
+  dial might still work. The first cross-family question worth a second stack (27B or a Llama adapter):
+  does the trait component survive on a model whose baseline is not pinned to the jackpot-equals-sure-thing
+  line?
+- **What caught it.** Every pooled statistic Fan et al. report (held-out accuracy, monotone dial, MAE,
+  coverage) would have passed this dial. Three things done in order caught it: leave-one-framing-out,
+  label-matched orthogonalization, and per-cell reporting. That sequence is the finding, and it is written
+  up as the rule for any character axis in `AXIS_VALIDATION_PROTOCOL.md`.
 - **What survives.** The T=0.8 baselines still scale with the safe amount (sp/safe ~1.05 median over 22
   level x cell combinations, range 0.96-3.14 with the tokens cells at the top); the per-layer held-out
   ordering (L26 >= L31 > L20) holds for the raw probe; and the model's ultimatum behavior has no dial.

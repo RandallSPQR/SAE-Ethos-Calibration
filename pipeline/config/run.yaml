@@ -54,7 +54,14 @@ gates:
   g7_transgression_range: [0.10, 0.70]
   g8_null_cohens_d_max: 0.10        # end-to-end permuted-label null mean |d| must be near-zero
   g8_prefix_token_gap_max: 40       # destructive vs benign mean decision_token_position gap (TOKENS)
-  g9_probe_heldout_acc_min: 0.75    # Fan et al. 2026: 0.82 on Llama-3.3-70B
+  g9_probe_heldout_acc_min: 0.75    # Fan et al. 2026: 0.82 on Llama-3.3-70B (on the CLEANED direction)
+  # Rules 2026-09-17.2: G9 gates on the PER-SURFACE-CELL effect of the cleaned dial, sp(+lam) - sp(-lam):
+  g9_cell_effect_lambda: 0.4        # preferred symmetric |lambda|; falls back to the widest smaller pair with every cell inside the grid
+  g9_cell_sign_agree_min: 5         # cells (of 6) whose effect has the sign of the median
+  g9_cell_effect_min: 10.0          # median per-cell |effect| in tokens (run 3: raw 25, clean 7 at safe 50)
+  g9_cell_min_n: 6                  # trials per grid point per cell below which the gate is NOT_EVALUABLE (run 3 had 2)
+  g9_cell_min_cells: 6              # all order x unit cells must be present
+  # descriptive only from 2026-09-17.2 (the pooled curve is a mixture across cells): reported on the G9 line, not gated
   g9_switching_point_mae_max: 5.0   # tokens; Fan et al. ~2
   g9_target_coverage_min: 0.60      # achieved sp span / target span
 
@@ -79,7 +86,7 @@ probe:
   # run 2: flat inside +-0.05, moving from ~0.1, no saturation by +-0.4 -> drop the sub-noise steps, extend to +-0.8
   lambda_sweep: [-0.8, -0.6, -0.4, -0.2, -0.1, 0.0, 0.1, 0.2, 0.4, 0.6, 0.8]
   batch_size: 32                   # batched sampler chunk (used only when probe.batch_gate passed)
-  sweep_agents: 12                 # agents per grid point in the steered sweeps (6 surface cells x 2), for per-cell curves
+  sweep_agents: 36                 # agents per grid point in the steered sweeps: 6 surface cells x g9_cell_min_n (run 3 used 12 = 2 per cell, NOT_EVALUABLE under 2026-09-17.2)
   lambda0_seeds: 32                # lambda=0 checksum: steered sampler vs served model at the reference level
   lambda0_tol_se: 2.0              # |gap| must sit inside this many combined bootstrap SEs
   targets:                         # lottery targets come from tasks.py target_ratios x reference level; this list is Fan's (Llama) for the record

@@ -6,7 +6,9 @@ uses (steering units = fraction_of_mean_residual_norm).
 
   python -m probe.calibrate --run-dir runs/<run_id> [--mock]
 
-Writes runs/<run_id>/probe/<task>/calibration.json.
+Writes runs/<run_id>/probe/<task>/calibration.json. Rules 2026-09-17.2: the gated statistic is the PER-CELL
+effect of the cleaned dial (probe.cell_effects); the pooled lambda -> sp curve, its monotonicity, MAE and
+coverage are descriptive.
 """
 import argparse
 import json
@@ -21,6 +23,7 @@ sys.path.insert(0, str(ROOT))
 from probe.tasks import TASKS, messages, parse_choice, label, conditions   # noqa: E402
 from probe.psychometric import switching_point                             # noqa: E402
 from probe.synth_trials import MOCK_SP, MOCK_SLOPE, mock_sp                # noqa: E402
+from probe.cell_effects import cell_effects, fmt                           # noqa: E402
 
 CFG = ROOT / "config"
 MOCK_K = {"lottery": 220.0, "ultimatum": 50.0}                   # sp shift per unit lambda (mock; +-0.4 must span the targets)
@@ -32,16 +35,37 @@ def _cfg():
 
 # ---------------------------------------------------------------- one steered sweep
 def sweep_mock(task, lam, n_agents):
+    """Mock steered sweep with the same surface cells and per-cell aggregation as sweep_real."""
     rng = np.random.default_rng(int(abs(lam) * 1000) + 7)
-    grid = TASKS[task]["grid"]
-    sp = mock_sp(task, TASKS[task]["reference_level"]) - MOCK_K[task] * lam
+    t = TASKS[task]; grid = t["grid"]
+    sp = mock_sp(task, t["reference_level"]) - MOCK_K[task] * lam
     sp = float(np.clip(sp, grid[0] - 40, grid[-1] + 40))         # saturation clamp
-    P, Y = [], []
-    for n in grid:
-        for s in range(n_agents):
-            p = 1.0 / (1.0 + np.exp(-MOCK_SLOPE[task] * (n - sp)))
-            P.append(n); Y.append(int(rng.random() < p))
-    return switching_point(P, Y), 0
+    items = [(n, seed, t["reference_level"], conditions(task, n, seed)) for n in grid for seed in range(n_agents)]
+    Y = [int(rng.random() < 1.0 / (1.0 + np.exp(-MOCK_SLOPE[task] * (n - sp)))) for n, _, _, _ in items]
+    return _aggregate(items, Y), 0
+
+
+def _aggregate(items, Y):
+    """Pooled switching point plus, per surface cell, the switching point with a within-grid-point
+    bootstrap SE and the trials per grid point (rules 2026-09-17.2: the per-cell effect is the gated
+    statistic, so every cell carries what an interval needs)."""
+    P = [n for n, _, _, _ in items]
+    cellP, cellY = {}, {}
+    for (n, seed, level, cond), y in zip(items, Y):
+        c = f"{cond['order']}/{cond['unit']}"
+        cellP.setdefault(c, []).append(n); cellY.setdefault(c, []).append(y)
+    r = switching_point(P, Y)
+    r["by_cell"], r["cell_detail"] = {}, {}
+    for c in sorted(cellP):
+        sc = switching_point(cellP[c], cellY[c])
+        se, _ = (_bootstrap_sp(cellP[c], cellY[c]) if sc["sp"] is not None else (None, 0))
+        counts = {}
+        for n in cellP[c]:
+            counts[n] = counts.get(n, 0) + 1
+        r["by_cell"][c] = sc["sp"]
+        r["cell_detail"][c] = {"sp": sc["sp"], "method": sc["method"], "se": se, "n_per_point": min(counts.values()),
+                               "n": len(cellP[c]), "curve": sc["curve"]}
+    return r
 
 
 class SteeredSampler:
@@ -100,17 +124,8 @@ def sweep_real(task, lam, n_agents, gen, seed_offset=0, vec_name=None):
         texts = gen.answers_batch(task, items, lam, vec_name=vec_name)
     else:
         texts = [gen.answer(task, n, lam, seed, level, cond, vec_name=vec_name) for n, seed, level, cond in items]
-    P, Y, dropped, cellP, cellY = [], [], 0, {}, {}
-    for (n, seed, level, cond), txt in zip(items, texts):
-        y = label(task, parse_choice(task, txt, cond))
-        if y is None:
-            dropped += 1
-        P.append(n); Y.append(y)
-        c = f"{cond['order']}/{cond['unit']}"
-        cellP.setdefault(c, []).append(n); cellY.setdefault(c, []).append(y)
-    r = switching_point(P, Y)
-    r["by_cell"] = {c: switching_point(cellP[c], cellY[c])["sp"] for c in sorted(cellP)}
-    return r, dropped
+    Y = [label(task, parse_choice(task, txt, cond)) for (n, seed, level, cond), txt in zip(items, texts)]
+    return _aggregate(items, Y), sum(1 for y in Y if y is None)
 
 
 # ---------------------------------------------------------------- lambda=0 checksum (served vs steered sampler)
@@ -249,7 +264,7 @@ def calibrate_task(task, run_dir, pc, gen, mock):
     sweep_agents = int(pc.get("sweep_agents", n_agents))
     dials = {}
     for dial, vec_name in (("clean", f"probe_{task}_clean"), ("raw", f"probe_{task}")):
-        curve, methods, dropped, by_cell = {}, {}, {}, {}
+        curve, methods, dropped, by_cell, detail = {}, {}, {}, {}, {}
         for lam in pc["lambda_sweep"]:
             if mock:
                 r, nd = sweep_mock(task, lam, sweep_agents)
@@ -258,13 +273,17 @@ def calibrate_task(task, run_dir, pc, gen, mock):
             else:
                 r, nd = sweep_real(task, lam, sweep_agents, gen, vec_name=vec_name)
             curve[str(lam)] = r["sp"]; methods[str(lam)] = r["method"]; dropped[str(lam)] = nd
-            by_cell[str(lam)] = r.get("by_cell", {})
+            by_cell[str(lam)] = r.get("by_cell", {}); detail[str(lam)] = r.get("cell_detail", {})
             print(f"  [{task}] {dial} lambda={lam:+.2f} sp={None if r['sp'] is None else round(r['sp'], 1)} ({r['method']})"
                   + (("  by cell " + " ".join(f"{c.split('/')[0][:5]}/{c.split('/')[1][:3]}:{'-' if v is None else round(v)}" for c, v in r["by_cell"].items())) if r.get("by_cell") else ""))
         xs, ys, monotone, direction = monotone_fit(curve)
         dials[dial] = {"vector": vec_name, "lambda_curve": curve, "lambda_methods": methods, "dropped_per_lambda": dropped,
-                       "curve_by_cell": by_cell, "monotone": monotone, "direction": direction,
+                       "curve_by_cell": by_cell, "cell_detail_by_lambda": detail, "monotone": monotone, "direction": direction,
                        "monotone_fit": {"lambda": xs, "sp": ys}, "sweep_agents": sweep_agents}
+        g = yaml.safe_load((CFG / "run.yaml").read_text())["gates"]
+        ce = cell_effects(dials[dial], lam_pref=g.get("g9_cell_effect_lambda", 0.4), min_n=g.get("g9_cell_min_n", 6))
+        dials[dial]["cell_effect"] = ce
+        print(f"[{task}] {dial} dial {fmt(ce)}")
     # the CLEANED dial is the instrument claim; the raw dial is reported beside it
     clean = dials["clean"]; curve, methods, dropped = clean["lambda_curve"], clean["lambda_methods"], clean["dropped_per_lambda"]
     xs, ys, monotone, direction = clean["monotone_fit"]["lambda"], clean["monotone_fit"]["sp"], clean["monotone"], clean["direction"]

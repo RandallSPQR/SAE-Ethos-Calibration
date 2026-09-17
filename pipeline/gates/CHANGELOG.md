@@ -1,5 +1,30 @@
 # Gate rules changelog
 
+## 2026-09-17.2 (G9 gates on the per-cell effect of the cleaned dial; a NOT_EVALUABLE state)
+
+First change to a gate CRITERION since 2026-09-16.2 (16.3 and 17.1 changed protocol and reporting only).
+Applies retroactively to run 3 (`results/t1_2026-09-17_probe3/g9_rules_2026-09-17.2.txt`): NOT_EVALUABLE.
+
+- **G9 gated statistic** is now the per-surface-cell effect of the CLEANED dial, effect_c = sp_c(+lam) -
+  sp_c(-lam), with a 95% interval from the within-grid-point bootstrap that `probe.calibrate` stores per
+  cell and lambda (`cell_detail_by_lambda`). lam is the widest symmetric |lambda| <= `g9_cell_effect_lambda`
+  (0.4) at which every cell's switching point is inside the grid at both ends. Three conditions:
+  sign agreement in >= `g9_cell_sign_agree_min` (5) of the 6 cells; median per-cell |effect| >=
+  `g9_cell_effect_min` (10 tokens); every cell's interval excludes zero. Held-out accuracy of the cleaned
+  direction (>= 0.75) and a graded unsteered baseline still gate.
+- **NOT_EVALUABLE**: a third gate state (`GateResult.status`), returned when any cell has fewer than
+  `g9_cell_min_n` (6) trials per grid point or no stored interval. It blocks spend like a fail but is
+  reported apart, because a gate that returns pass or fail on underpowered data is the quiet version of
+  the thing it exists to prevent. `run_gates` counts it separately and exits non-zero.
+- **Demoted to descriptive**: the pooled lambda -> sp curve (monotone, MAE, coverage) is a mixture across
+  surface cells and is reported on the G9 line, never gated; so are the raw dial's per-cell effects,
+  per-layer held-out accuracy, the ceilings, surface leave-one-cell-out and Fan et al.'s numbers.
+- `probe.sweep_agents` 12 -> 36 (6 cells x g9_cell_min_n) so the next real sweep is evaluable.
+- Rationale (run 3): the cleaned dial's per-cell effects were -2/+2/-38/+2/-16/-11 at two trials per cell
+  per grid point. That distinguishes "large" from "small" but not "a few tokens" from zero; the honest
+  reading is a bound (under ~10-15 tokens in most cells against 25-50 for the raw direction), not a null,
+  and the gate must say so rather than fail it.
+
 ## 2026-09-17.1 (probe track: surface reconciliation) — outcome, run 3
 
 - Batch gate now also requires a visible steering effect in the reference path (a no-op injection would

@@ -58,11 +58,16 @@ def main():
         results.append(r)
         print(r.line())
 
-    failed = [r for r in results if not r.passed]
+    failed = [r for r in results if r.status == "fail"]
+    not_eval = [r for r in results if r.status == "not_evaluable"]
     mode = "fixture" if args.fixture else ("nogpu" if args.nogpu else "full")
-    print(f"\n{mode}: {len(results) - len(failed)}/{len(results)} gates passed.")
+    print(f"\n{mode}: {len(results) - len(failed) - len(not_eval)}/{len(results)} gates passed"
+          + (f", {len(not_eval)} not evaluable (underpowered: neither pass nor fail)" if not_eval else "") + ".")
     if failed:
         print("BLOCKED by:", ", ".join(r.name for r in failed))
+    if not_eval:
+        print("NOT EVALUABLE (blocks spend until powered):", ", ".join(r.name for r in not_eval))
+    if failed or not_eval:
         sys.exit(1)
     print("All run gates green.")
 

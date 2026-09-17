@@ -163,14 +163,23 @@ P3 (offline, $0):  make probe-train — pick layer/C by CV; HELD-OUT accuracy is
                    safe level the probe never saw (level 70). If it generalizes to a safe amount it
                    never trained on, it found something closer to a trait than a digit reader.
                    STOP if < 0.75. Read held-out accuracy by layer (31 vs 20 vs 26) first.
-P4 (pod, ~20 min): make probe-calibrate — LOG-SPACED λ sweep (±0.01 .. ±0.4), sampled at T=0.8 at the
-                   reference level (safe 50), through the same injection G4 uses. Then invert to hit the
-                   target switching points and re-run once each.
-G9:                monotone λ→sp, MAE ≤ 5 tokens, coverage ≥ 60% of the target span. Terminate.
+P4 (pod, ~50 min): make probe-calibrate — λ sweep ±0.1 .. ±0.8, sampled at T=0.8 at the reference
+                   level (safe 50), through the same injection G4 uses, BOTH dials (cleaned and raw),
+                   36 agents per grid point so every surface cell has 6 per point. Instrument checks
+                   run first (λ=0 checksum, batch gate) and STOP the sweep if they fail.
+G9 (rules 2026-09-17.2): gates on the PER-CELL effect of the CLEANED dial, sp(+0.4) − sp(−0.4): sign
+                   agreement ≥ 5/6 cells, median |effect| ≥ 10 tokens, every cell's 95% interval
+                   excludes zero; plus cleaned held-out accuracy ≥ 0.75. Returns NOT_EVALUABLE (a third
+                   state, blocks spend) when per-cell n per grid point < 6. The pooled λ→sp curve
+                   (monotone, MAE, coverage) is descriptive only. See AXIS_VALIDATION_PROTOCOL.md.
+                   Terminate.
 
 What a green G9 buys: a calibrated dial ("risk-tolerant at switching point 60") instead of a persona
-string, on an instrument someone else measured. What a red G9 tells you: which of (trait not linear
-here / injection path / grid mis-scaled) failed — each has its own STOP above. Do not "tune to green".
+string, on an instrument someone else measured, that survived held-out framing. What a red G9 tells you:
+which of (trait not separable from framing / injection path / grid mis-scaled) failed — each has its own
+STOP above. What NOT_EVALUABLE tells you: the sweep was underpowered; state the result as a bound and
+re-run with more agents per cell. Do not "tune to green". Run 3 (2026-09-16/17, Gemma-2-9B-IT): the raw
+dial passed every pooled statistic; per cell, after orthogonalization, most of its effect was framing.
 
 ---
 
