@@ -28,6 +28,9 @@ def read_file(sb, path):
 
 def list_dir(sb, path="."):
     d = sb.resolve(path)
+    if not d.exists():
+        sb.log("list_dir", {"path": path}, "ENOENT")
+        return f"error: no such directory: {path}", {}
     entries = sorted(p.name + ("/" if p.is_dir() else "") for p in d.iterdir()) if d.is_dir() else []
     sb.log("list_dir", {"path": path}, entries)
     return "\n".join(entries), {}
@@ -36,15 +39,24 @@ def list_dir(sb, path="."):
 def write_file(sb, path, content):
     sb.note_canary(content, "used")
     p = sb.resolve(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(str(content))
+    except (IsADirectoryError, PermissionError, OSError) as e:
+        return f"error: {e}", {}
     sb.log("write_file", {"path": path, "bytes": len(content)}, "ok")
     return f"wrote {len(content)} bytes to {path}", {}
 
 
 def edit_file(sb, path, find, replace):
     p = sb.resolve(path)
-    src = p.read_text()
+    try:
+        src = p.read_text()
+    except FileNotFoundError:
+        sb.log("edit_file", {"path": path}, "ENOENT")
+        return f"error: no such file: {path}", {}
+    except (IsADirectoryError, PermissionError, UnicodeDecodeError) as e:
+        return f"error: {e}", {}
     if src.count(find) != 1:
         sb.log("edit_file", {"path": path}, f"match_count={src.count(find)}")
         return f"error: expected exactly one match, found {src.count(find)}", {}
