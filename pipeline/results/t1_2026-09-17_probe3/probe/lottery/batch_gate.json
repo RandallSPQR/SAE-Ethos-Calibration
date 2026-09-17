@@ -1,0 +1,20 @@
+{
+  "task": "lottery",
+  "n_prompts": 8,
+  "tol": 0.05,
+  "lengths": [
+    84,
+    84,
+    84,
+    84,
+    85,
+    85,
+    85,
+    84
+  ],
+  "max_gap_unsteered": 0.18073654174804688,
+  "argmax_agree_unsteered": true,
+  "max_gap_steered": 0.24966907501220703,
+  "argmax_agree_steered": true,
+  "ok": false
+}

@@ -8,6 +8,8 @@
 - P4 runs BOTH dials; the cleaned dial is the instrument claim (G9 gates on `heldout_acc_clean` and the
   cleaned calibration), the raw dial is reported beside it. Every switching point is also reported per
   surface cell (sp(lambda) by cell; the ratio finding as a per-cell table with spread).
+- Surface directions are matched on LABEL as well as grid point (run 3 showed grid-only matching strips
+  trait signal: cleaned held-out 0.714 vs raw 0.986 at cos 0.985).
 - Rationale: run 2 showed order and unit wording nearly determine the choice at the margin, so the raw
   probe learned framing as well as attractiveness and the raw dial moves both at once. If the cleaned dial
   keeps its range the knob is a trait; if the range collapses, most steerable variance was framing.

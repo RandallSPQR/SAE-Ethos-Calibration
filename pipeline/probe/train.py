@@ -74,22 +74,27 @@ def _cells(z):
     return np.array([f"{o}/{u}" for o, u in zip(z["order"], z["unit"])]) if "order" in z.files else None
 
 
-def surface_directions(X, z, tr):
-    """Difference-of-means surface directions in RAW activation space, at matched grid points:
-    for each (level, param, other-factor) cell average x per factor value; difference; average over cells."""
+def surface_directions(X, z, tr, y=None):
+    """Difference-of-means surface directions in RAW activation space, matched on grid point AND LABEL:
+    for each (level, param, other-factor, label) cell average x per factor value; difference; average
+    over cells. Matching on the label matters: the prompt-final residual already encodes the upcoming
+    choice, so a framing that shifts the choice would otherwise contribute the trait direction to the
+    'surface' estimate and orthogonalization would strip trait signal (2026-09-17 run 3: cleaned held-out
+    fell from 0.986 to 0.714 with grid-only matching)."""
     dirs = {}
     lv, par = z["level"][tr], z["param"][tr]
+    yy = y[tr] if y is not None else np.zeros(len(tr))
     for factor, other in (("order", "unit"), ("unit", "order")):
         vals = sorted(set(z[factor][tr]))
         for a, b in [(vals[0], v) for v in vals[1:]]:
-            diffs = []
-            for key in set(zip(lv, par, z[other][tr])):
-                m = (lv == key[0]) & (par == key[1]) & (z[other][tr] == key[2])
+            diffs, wts = [], []
+            for key in set(zip(lv, par, z[other][tr], yy)):
+                m = (lv == key[0]) & (par == key[1]) & (z[other][tr] == key[2]) & (yy == key[3])
                 xa = X[tr][m & (z[factor][tr] == a)]; xb = X[tr][m & (z[factor][tr] == b)]
                 if len(xa) and len(xb):
-                    diffs.append(xb.mean(0) - xa.mean(0))
+                    diffs.append(xb.mean(0) - xa.mean(0)); wts.append(min(len(xa), len(xb)))
             if diffs:
-                dirs[f"{factor}:{b}-{a}"] = np.mean(diffs, 0)
+                dirs[f"{factor}:{b}-{a}"] = np.average(np.stack(diffs), axis=0, weights=np.array(wts, float))
     return dirs
 
 
@@ -184,7 +189,7 @@ def train_task(task, run_dir, pc, gc):
             ceil = float(np.mean([max(y[te][pv == v].mean(), 1 - y[te][pv == v].mean()) for v in pv]))
             loco[cell] = {"heldout_acc": accuracy((X[te] - mu2) / sd2, y[te], w2, b2), "n": int(len(te)), "ceiling_by_grid": ceil}
     # ---- orthogonalize the RAW-space direction against the surface directions; refit bias; held-out again
-    dirs = surface_directions(X, z, tr) if cells is not None else {}
+    dirs = surface_directions(X, z, tr, y) if cells is not None else {}
     w_clean, basis = orthogonalize(w_raw, dirs)
     w_clean_unit = w_clean / (np.linalg.norm(w_clean) + 1e-12)
     sc, bc = fit_bias(X[tr] @ w_clean_unit, y[tr])
@@ -197,7 +202,7 @@ def train_task(task, run_dir, pc, gc):
             mu2, sd2 = X[tr2].mean(0), X[tr2].std(0) + 1e-6
             w2, b2 = fit_logistic((X[tr2] - mu2) / sd2, y[tr2], C)
             w2_raw = w2 / sd2
-            d2 = surface_directions(X, z, tr2)
+            d2 = surface_directions(X, z, tr2, y)
             w2c, _ = orthogonalize(w2_raw, d2); w2c /= (np.linalg.norm(w2c) + 1e-12)
             s2, b2c = fit_bias(X[tr2] @ w2c, y[tr2])
             loco_clean[cell] = float(np.mean(((s2 * (X[te] @ w2c) + b2c) > 0).astype(int) == y[te]))
