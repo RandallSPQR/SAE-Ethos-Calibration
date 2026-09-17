@@ -10778,7 +10778,7 @@
       "cv_acc": 0.9714285714285713
     }
   },
-  "heldout_acc_clean": 0.7142857142857143,
+  "heldout_acc_clean": 0.8035714285714286,
   "surface_loco": {
     "risky_first/dollars": {
       "heldout_acc": 0.9285714285714286,
@@ -10812,30 +10812,30 @@
     }
   },
   "surface_loco_clean": {
-    "risky_first/dollars": 0.9357142857142857,
-    "risky_first/points": 0.9714285714285714,
-    "risky_first/tokens": 0.32857142857142857,
-    "safe_first/dollars": 0.65,
-    "safe_first/points": 0.9571428571428572,
-    "safe_first/tokens": 0.46785714285714286
+    "risky_first/dollars": 0.95,
+    "risky_first/points": 0.9571428571428572,
+    "risky_first/tokens": 0.37857142857142856,
+    "safe_first/dollars": 0.7571428571428571,
+    "safe_first/points": 0.9785714285714285,
+    "safe_first/tokens": 0.6392857142857142
   },
   "surface_directions": {
     "order:safe_first-risky_first": {
-      "norm": 57.25159224933004,
-      "cos_with_raw_probe": 0.08854237655125569
+      "norm": 55.097124152185,
+      "cos_with_raw_probe": 0.07326711405274644
     },
     "unit:points-dollars": {
-      "norm": 51.67961351527176,
-      "cos_with_raw_probe": 0.023530145317813486
+      "norm": 49.638043571322974,
+      "cos_with_raw_probe": 0.009201083331631105
     },
     "unit:tokens-dollars": {
-      "norm": 35.96636112270242,
-      "cos_with_raw_probe": -0.08589772309423067
+      "norm": 35.14996828104506,
+      "cos_with_raw_probe": -0.06955724331872751
     },
-    "cos_raw_vs_clean": 0.9848283055971121
+    "cos_raw_vs_clean": 0.9904253219833179
   },
-  "clean_scale": 0.3716540496715948,
-  "clean_bias": -6.737458222751897,
+  "clean_scale": 0.6547245015793877,
+  "clean_bias": -11.74057686721812,
   "n_train": 840,
   "n_heldout": 280,
   "position": "X",

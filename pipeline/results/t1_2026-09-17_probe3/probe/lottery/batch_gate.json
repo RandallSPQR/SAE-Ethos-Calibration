@@ -12,9 +12,9 @@
     85,
     84
   ],
-  "max_gap_unsteered": 0.18073654174804688,
+  "max_gap_unsteered": 4.363059997558594e-05,
   "argmax_agree_unsteered": true,
-  "max_gap_steered": 0.24966907501220703,
+  "max_gap_steered": 5.817413330078125e-05,
   "argmax_agree_steered": true,
-  "ok": false
+  "ok": true
 }
