@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# One-time pod setup for T1. Idempotent. Run as:  bash /workspace/pipeline/calibrate/pod_bootstrap.sh
-# Assumes: HF_TOKEN in env (RunPod secret), repo tarballs already in /workspace.
+# Pod setup. Idempotent. Run as:  bash /workspace/pipeline/calibrate/pod_bootstrap.sh
+# Since 2026-09-18 /workspace is the NETWORK VOLUME (EUR-IS-1, id u0isne6ams, 150 GB): the venvs, HF_HOME
+# (weights + token) and the pipeline tarball persist across pods, so after the first pod this script is a
+# version check plus the weight preflight. The HF token is a file on the volume: $HF_HOME/token, root-owned,
+# mode 600, under a 0700 HF_HOME; the harness's disk-secret canary verifies an episode uid cannot read it.
+# First pod only: log in interactively (browser OAuth; pasting a token failed 3x on 2026-09-16):
+#     HF_HOME=/workspace/hf hf auth login      -> "Log in with your browser"
+# then re-run this script. SKIP_WEIGHTS=1 stops before the download/preflight.
 set -euo pipefail
 cd /workspace
 export PIP_DISABLE_PIP_VERSION_CHECK=1 HF_HOME=/workspace/hf
 mkdir -p "$HF_HOME" logs
+chmod 700 "$HF_HOME"; [ -f "$HF_HOME/token" ] && chmod 600 "$HF_HOME/token" || true
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
 python --version
 if [ ! -x venv/bin/python ]; then python -m venv --system-site-packages venv; fi
@@ -39,4 +46,7 @@ print("gemma-2-9b-it ->", p)
 print("sae ->", snapshot_download("google/gemma-scope-9b-it-res", allow_patterns=["layer_31/width_16k/average_l0_76/*"]))
 print("oracle ->", snapshot_download("adamkarvonen/checkpoints_latentqa_cls_past_lens_addition_gemma-2-9b-it"))
 PY
+chmod 700 "$HF_HOME"; chmod 600 "$HF_HOME/token"
+# weight identity against the pinned revision's recorded hashes (cached weights are never trusted unchecked)
+(cd /workspace/pipeline && python -m calibrate.preflight_weights --hash) || { echo "BOOTSTRAP STOP: weight preflight failed"; exit 5; }
 echo BOOTSTRAP_OK

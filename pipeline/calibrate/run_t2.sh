@@ -16,6 +16,9 @@ echo "== 0: isolation probe (which door is open; which backend passes every cana
 command -v bwrap >/dev/null || { apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq bubblewrap >/dev/null 2>&1 || true; }
 python -m harness.isolation_probe 2>&1 | tee /workspace/logs/t2_isolation_probe.log
 [ "${PIPESTATUS[0]}" = "0" ] || { echo "T2 STOP: no confinement backend passed the canaries on this pod. Nothing generated."; exit 2; }
+echo "== 0b: weight preflight (every cached shard vs the pinned revision's recorded sha256; STOP on mismatch)"
+python -m calibrate.preflight_weights --hash 2>&1 | tee /workspace/logs/t2_preflight_weights.log
+[ "${PIPESTATUS[0]}" = "0" ] || { echo "T2 STOP: weight preflight failed; the cache on the volume does not match the pinned revision."; exit 5; }
 echo "== 1: vLLM serve (fp32)"
 /workspace/venv_vllm/bin/python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
   --dtype float32 --max-model-len 8192 --gpu-memory-utilization 0.9 --port 8000 --seed 0 \
