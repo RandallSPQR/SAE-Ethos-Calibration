@@ -20,8 +20,12 @@ Backends:
 
 The precondition stays mechanical: `select()` runs the canaries under each candidate backend and keeps
 the first that passes ALL of them. Locked doors: connect fails, parent-level root-owned file unreadable,
-secrets absent, fork bomb hits the limit, over-time sleep is killed, a detached daemon does not survive
-the episode. Open door (positive canaries, same weight): the uid can write its episode dir and its
+secrets absent from the environment, credential FILES on disk unreadable (the HF token under HF_HOME, and
+a synthetic secret planted there so the test is never vacuous; also ~/.netrc, git credentials, ssh keys
+when present; HF_HOME itself not listable), fork bomb hits the limit, over-time sleep is killed, a
+detached daemon does not survive the episode. A secret on disk is a different door from a secret in the
+environment: the env canary cannot see it, and a token cached on a network volume outlives the pod.
+Open door (positive canaries, same weight): the uid can write its episode dir and its
 TMPDIR, can import pytest/yaml/sqlite3, and runs a trivial test to green; a perfectly isolated harness
 whose episodes cannot run would otherwise be scored as model failure. If no backend passes every canary
 the harness refuses. The manifest records the backend and the canary results.
@@ -54,6 +58,28 @@ SECRET_PREFIXES = ("RUNPOD_", "HF_", "AWS_", "GITHUB_")
 DEFAULT_UID = int(os.environ.get("ARM_A_EPISODE_UID", "61000"))
 LIMITS = {"nproc": 64, "as_bytes": 4 * 1024 ** 3, "fsize_bytes": 64 * 1024 ** 2, "nofile": 256}
 CANARY_NAME = ".arm_a_canary_root_only"
+CANARY_TOKEN_NAME = ".arm_a_canary_token"     # synthetic secret planted in HF_HOME for the disk canary
+
+
+def secret_files():
+    """Credential files that exist on this box and must be unreadable from the episode uid. Built from the
+    environment at verify time; only existing regular files are returned, so the list is a record of what was
+    actually tested, not a wish list."""
+    home = Path.home()
+    cands = []
+    if os.environ.get("HF_HOME"):
+        cands.append(Path(os.environ["HF_HOME"]) / "token")
+    if os.environ.get("HF_TOKEN_PATH"):
+        cands.append(Path(os.environ["HF_TOKEN_PATH"]))
+    cands += [home / ".cache" / "huggingface" / "token", home / ".huggingface" / "token", home / ".netrc",
+              home / ".git-credentials", home / ".config" / "runpod" / "config.toml", home / ".runpod" / "config.toml"]
+    if (home / ".ssh").is_dir():
+        cands += [k for k in sorted((home / ".ssh").glob("id_*")) if k.suffix != ".pub"]
+    out = []
+    for c in cands:
+        if c.is_file() and str(c) not in out:
+            out.append(str(c))
+    return out
 BWRAP_RO = ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc"]
 
 
@@ -342,6 +368,7 @@ def harden(paths):
     """Root-only (0700 dirs / 0600 files) for everything the episode must never see: the run tree, the
     rendered build (answers live in `_side/`), HF_HOME, the ledger. The harness itself runs as root."""
     done = []
+    paths = list(paths) + secret_files()          # the token file itself, not only the dir around it
     for p in paths:
         if not p or not os.path.exists(p):
             continue
@@ -372,6 +399,22 @@ _CANARIES = {
         "keys=%r; pre=%r\n"
         "leak=[k for k in os.environ if k in keys or k.startswith(pre)]\n"
         "print(json.dumps(sorted(leak))); sys.exit(1 if leak else 0)\n" % (SECRET_KEYS, SECRET_PREFIXES), 10),
+    # argv[2] = {"files": [...], "dirs": [...]} from verify(): every existing credential file plus a synthetic
+    # secret planted in HF_HOME. Fails if any file is readable, if HF_HOME is listable, or if NOTHING was
+    # actually blocked (a vacuous pass is a fail).
+    "disk_secrets_unreadable": (
+        "import os,sys,json\n"
+        "spec=json.loads(sys.argv[2]) if len(sys.argv)>2 else {}\n"
+        "readable=[];blocked=[];missing=[];listable=[]\n"
+        "for p in spec.get('files',[]):\n"
+        "  try:\n   open(p,'rb').read(1); readable.append(p)\n"
+        "  except FileNotFoundError: missing.append(p)\n"
+        "  except OSError as e: blocked.append([p,e.errno])\n"
+        "for d in spec.get('dirs',[]):\n"
+        "  try: os.listdir(d); listable.append(d)\n"
+        "  except OSError: pass\n"
+        "print(json.dumps({'readable':readable,'listable':listable,'blocked':blocked,'missing':missing}))\n"
+        "sys.exit(1 if (readable or listable or not blocked) else 0)\n", 10),
     "fork_bomb_hits_limit": (
         "import os,sys,time\n"
         "kids=[]\n"
@@ -416,11 +459,18 @@ _CANARIES = {
 
 
 def verify(backend, uds=None):
-    """Run the five canaries under `backend` in a scratch episode dir. Returns {name: {ok, out, rc}}, all_ok."""
+    """Run every canary under `backend` in a scratch episode dir. Returns {name: {ok, out, rc}}, all_ok.
+    The disk-secret canary tests the REAL credential files present on the box plus a synthetic one planted
+    in HF_HOME (or next to the scratch dir when HF_HOME is unset); callers harden HF_HOME first."""
     scratch = Path(tempfile.mkdtemp(prefix="arm_a_canary_"))
     canary = scratch.parent / CANARY_NAME
+    hf_home = os.environ.get("HF_HOME")
+    hf_dir = Path(hf_home) if hf_home and os.path.isdir(hf_home) else None
+    synthetic = (hf_dir or scratch.parent) / CANARY_TOKEN_NAME
     try:
         canary.write_text("root only\n"); os.chmod(canary, 0o600)
+        synthetic.write_text("hf_canary_not_a_real_token\n"); os.chmod(synthetic, 0o600)
+        disk_spec = {"files": [str(synthetic)] + secret_files(), "dirs": [str(hf_dir)] if hf_dir else []}
         prev = dict(ACTIVE)
         ACTIVE.update({"backend": backend, "uid": ACTIVE["uid"] or DEFAULT_UID, "gid": ACTIVE["gid"] or DEFAULT_UID})
         own(scratch)
@@ -434,7 +484,7 @@ def verify(backend, uds=None):
                 continue
             if uds:
                 os.environ["CANARY_UDS"] = uds        # only for the canary; the child env is the allowlist + this
-            argv = [sys.executable, str(script), str(canary)]
+            argv = [sys.executable, str(script), str(canary), json.dumps(disk_spec)]
             out, rc = run(argv, scratch, timeout=timeout, backend=backend)
             if name == "overtime_is_killed":
                 ok = rc == 124
@@ -455,10 +505,11 @@ def verify(backend, uds=None):
     finally:
         os.environ.pop("CANARY_UDS", None)
         shutil.rmtree(scratch, ignore_errors=True)
-        try:
-            canary.unlink()
-        except OSError:
-            pass
+        for f in (canary, synthetic):
+            try:
+                f.unlink()
+            except OSError:
+                pass
 
 
 def _kill_by_heartbeat(scratch):
@@ -481,7 +532,7 @@ def available_backends():
 
 
 def select(prefer=None, uds=None):
-    """Pick the first backend whose five canaries all hold. Returns a manifest-ready dict."""
+    """Pick the first backend under which every canary holds. Returns a manifest-ready dict."""
     cands = available_backends()
     if prefer and prefer in cands:
         cands = [prefer] + [c for c in cands if c != prefer]

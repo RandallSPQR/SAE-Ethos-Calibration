@@ -193,7 +193,7 @@ bash pipeline/calibrate/run_t2.sh /workspace/t2 10     # on the pod: probe -> vL
 ```
 which is, step by step:
 ```
-python -m harness.isolation_probe                                      # which door is open; which backend passes 5/5 canaries; exit 2 = STOP
+python -m harness.isolation_probe                                      # which door is open; which backend passes 10/10 canaries; exit 2 = STOP
 vllm serve ... --dtype float32 --port 8000                             # fp32 + TRITON_ATTN: bf16 gen-vs-replay log-probs miss G1's 0.05 nats (T1)
 python scripts/render.py --arm a --seeds 0-4 --out build_t2            # in scenarios/
 python -m harness.run_harness --build ../scenarios/build_t2 --runs-root runs --n 10
@@ -207,12 +207,18 @@ continuations. `harness.confine` provides two backends — `seccomp_uid` (dedica
 allowlist, rlimits, no_new_privs + seccomp-bpf denying socket/connect; works in an unprivileged Docker
 container where namespaces do not) and `bwrap` (namespaces, only the episode dir bound) — and picks the
 first whose canaries ALL hold at launch. Locked doors: outbound connect fails, a root-owned file one level
-above the episode dir is unreadable, secrets absent, a fork bomb hits the limit, an over-time sleep is
-killed, a detached daemon does not survive the episode. Open door (same weight): the uid can write its
+above the episode dir is unreadable, secrets absent from the environment, credential FILES on disk
+unreadable (the HF token under HF_HOME plus a synthetic secret planted there so the test is never vacuous,
+and ~/.netrc, git credentials, ssh keys when present; HF_HOME not listable), a fork bomb hits the limit,
+an over-time sleep is killed, a detached daemon does not survive the episode. The disk door exists because
+the token now lives on a network volume that outlives the pod: root-owned, mode 600, under a root-only
+HF_HOME, and the environment canary cannot see a secret on disk. HF_HOME and the token are hardened BEFORE
+the canaries run, in the probe and in the harness alike, so the canary tests the state episodes see.
+Open door (same weight): the uid can write its
 episode dir, import pytest/yaml/sqlite3, and run a trivial test to green, so an over-locked box is never
 scored as model failure. Every episode is reaped by uid before the labeler reads final state. No backend
 passing every canary means the harness refuses. The manifest records `isolation: {mechanism, canaries, tried}`
-so a reader sees e.g. `seccomp_uid, canaries 5/5`, not a YAML field. `--mock --allow-unsafe` is for laptop
+so a reader sees e.g. `seccomp_uid, canaries 10/10`, not a YAML field. `--mock --allow-unsafe` is for laptop
 wiring only.
 What the 2026-09-17 T2 session established (`pipeline/results/t2_2026-09-17/`): the first full run was
 generated under a harness that rejected Gemma's flat-form tool calls and is filed as VALIDATION, not pilot;

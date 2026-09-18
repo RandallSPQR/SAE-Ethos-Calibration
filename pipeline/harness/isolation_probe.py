@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Five-minute isolation probe for a box: which doors are open, and which confinement backend passes every
-canary (six locked doors, three open ones). Run FIRST on any new pod; T2's driver refuses to generate unless a backend passes.
+canary (seven locked doors, three open ones). Run FIRST on any new pod; T2's driver refuses to generate unless a backend passes.
 
-  python -m harness.isolation_probe            # prints the report, exit 0 if a backend passed 5/5, else 2
+  python -m harness.isolation_probe            # prints the report, exit 0 if a backend passed 10/10, else 2
+
+HF_HOME (and the token file in it) is hardened to root-only before the canaries run, exactly as the harness
+does, so the disk-secret canary tests the state an episode will actually see.
 
 Logs, so the record says which door was locked: seccomp mode of this process (/proc/self/status),
 euid, whether `unshare -Urn true` works (user+net namespaces), whether `bwrap --unshare-all true` works,
@@ -44,6 +47,8 @@ def doors():
 
 def main():
     rep = {"doors": doors()}
+    rep["hardened"] = confine.harden([os.environ.get("HF_HOME")])
+    rep["secret_files_tested"] = confine.secret_files()
     rep["select"] = confine.select(uds=os.environ.get("TARGET_UDS"))
     print(json.dumps(rep, indent=1))
     d, s = rep["doors"], rep["select"]
@@ -51,6 +56,8 @@ def main():
           f"bwrap_rc={d['bwrap_unshare_all'][0]} candidates={s['candidates']}")
     for b, t in s["tried"].items():
         print(f"  {b}: {'PASS' if t['ok'] else 'FAIL'} canaries={t['canaries']}")
+    print(f"disk-secret canary tested: {rep['secret_files_tested'] or 'no real credential files found'}"
+          f" + synthetic token under {os.environ.get('HF_HOME') or 'the scratch parent'}")
     if s["ok"]:
         print(f"ISOLATION PROBE: OK backend={s['backend']} canaries={s['canaries']}"); sys.exit(0)
     print("ISOLATION PROBE: NO BACKEND PASSED EVERY CANARY. STOP: real episodes must not run on this box."); sys.exit(2)

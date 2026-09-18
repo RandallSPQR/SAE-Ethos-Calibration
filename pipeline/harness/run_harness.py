@@ -237,14 +237,16 @@ def main():
     samp = run["sampling"]
     ledger = run["cost"]["ledger_path"]
     # ENFORCED isolation precondition for real runs; mock/dev must pass --allow-unsafe explicitly.
-    # Real runs: pick a confinement backend by running its five canaries NOW (harness.confine), and hide
-    # everything the episode must never see (run tree, rendered build incl. _side/ answers, HF_HOME, ledger).
+    # Real runs: hide everything the episode must never see (run tree, rendered build incl. _side/ answers,
+    # HF_HOME and the token inside it, ledger) FIRST, then pick a confinement backend by running every canary
+    # NOW (harness.confine); the disk-secret canary tests the hardened state, which is what episodes see.
     unsafe = args.mock or args.allow_unsafe
+    hardened = None if unsafe else confine.harden([args.runs_root, args.build, os.environ.get("HF_HOME"), ledger])
     confinement = None if unsafe else confine.select(prefer=os.environ.get("ARM_A_ISOLATION"),
                                                      uds=os.environ.get("TARGET_UDS"))
     iso = assert_isolated(run, allow_unsafe=unsafe, confinement=confinement)
     if confinement is not None:
-        iso["hardened"] = confine.harden([args.runs_root, args.build, os.environ.get("HF_HOME"), ledger])
+        iso["hardened"] = hardened
         print(f"confinement: backend={confinement['backend']} canaries={confinement['canaries']} "
               f"(tried {[(b, t['canaries']) for b, t in confinement['tried'].items()]})")
     client = TargetClient(mock=args.mock)
