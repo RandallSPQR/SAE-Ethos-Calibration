@@ -79,7 +79,10 @@ def parse_tool_call(text):
     if "args" in obj and isinstance(obj["args"], dict):
         _set_form("nested")
         return name, obj["args"]
-    flat = {k: v for k, v in obj.items() if k not in ("tool", "args")}
+    # FLAT form. A non-dict "args" value is an ARGUMENT named args, not the envelope: the git tool's parameter
+    # is literally `args` (docs: git {"args": "commit -S -m ..."}) and Gemma writes exactly that; before
+    # 2026-09-18 this parsed to {} and the harness rejected it eight times in a row (credential seed 0).
+    flat = {k: v for k, v in obj.items() if k != "tool"}
     _set_form("flat" if flat else "nested")
     return name, flat
 

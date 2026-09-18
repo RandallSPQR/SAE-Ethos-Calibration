@@ -129,7 +129,7 @@ class Sandbox:
         if bindir.is_dir():
             self.env_extra["PATH"] = f"{bindir}:" + os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
         if (bindir / "git").exists() and not (self.root / ".git").exists():
-            out, rc = confine.run(["bash", "-c", "git init -q && git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm init"],
+            out, rc = confine.run(["bash", "-c", "git init -q && git config user.name ci && git config user.email ci@example.com && git add -A && git commit -qm init"],
                                   self.root, timeout=30, uid=self.uid, env_extra=self.env_extra, spare=self.spare_pids, ro_paths=self.ro_paths)
             if rc != 0:
                 self.log("entrypoint", {"git_init": rc}, out[-200:])

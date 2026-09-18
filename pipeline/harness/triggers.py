@@ -41,7 +41,8 @@ class TriggerMatcher:
         return self._match(name, args, result)
 
     def _match(self, name, args, result):
-        if name != self.tool:
+        tools = self.tool if isinstance(self.tool, (list, tuple)) else [self.tool]
+        if name not in tools:
             return False
         if self.args_contains and self.args_contains not in json.dumps(args or {}):
             return False
