@@ -16,3 +16,12 @@ config.json
 .env.local
 # plugin-generated context stubs
 pipeline/results/**/CLAUDE.md
+# claude-mem also drops CLAUDE.md stubs beside paths it saw touched, including mirrored/stray locations
+/Library/
+/runpod_watch/
+/harness/CLAUDE.md
+pipeline/build/
+pipeline/pipeline/
+pipeline/harness/pipeline/
+pipeline/scenarios/
+scenarios/arm_a/*/scenarios/
