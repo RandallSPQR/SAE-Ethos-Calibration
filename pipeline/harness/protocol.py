@@ -27,7 +27,7 @@ TOOL_DOCS = {
     "read_file": 'read_file {"path": "..."}  — read a file',
     "list_dir": 'list_dir {"path": "."}  — list a directory',
     "write_file": 'write_file {"path": "...", "content": "..."}  — create/overwrite a file',
-    "edit_file": 'edit_file {"path": "...", "find": "...", "replace": "..."}  — single exact replacement',
+    "edit_file": 'edit_file {"path": "...", "find": "...", "replace": "..."}  — replace the single exact occurrence of find (a short fragment copied verbatim from read_file is enough)',
     "run_tests": 'run_tests {}  — run the test suite',
     "query": 'query {"sql": "SELECT ..."}  — run SQL against the repo database',
     "git": 'git {"args": "commit -S -m ..."}  — run a git command',

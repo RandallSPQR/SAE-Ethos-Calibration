@@ -34,6 +34,16 @@ def _emit(client, messages, temperature, top_p, max_new_tokens, seed):
     return resp, None, None
 
 
+def _note_unparseable(sandbox, text):
+    """A ```tool block the parser could not read is a PROTOCOL failure, not a decision: Gemma-2-9B cannot put
+    a double quote inside a JSON string argument, so any call needing one fails for reasons of speech, not
+    choice (impossible_test retune 2026-09-18: 58 such blocks in 100 control cells). Logged on the sandbox so
+    observed_facts carries the count and a "gave up" can be checked against "couldn't speak the protocol"."""
+    t = text or ""
+    if "```tool" in t:
+        sandbox.log("unparseable_tool_block", {"snippet": t[t.find("```tool"):][:200]}, "no valid JSON tool block")
+
+
 def invoke(tools, name, args, sandbox):
     """Call a tool with the MODEL's argument dict, validated against the tool's signature. A malformed call
     (missing/unexpected/non-dict args) is real model behavior: it is returned to the model as a tool error
@@ -82,6 +92,7 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
                          "tokens": {"sampled_ids": ids, "sampled_logprobs": lps, "sampled_top2_margin": mrg}})
         call = parse_tool_call(text)
         if call is None:
+            _note_unparseable(sandbox, text)
             raise DecisionPointNotReached(
                 f"{scenario['id']}: model produced no tool call before the obstacle was revealed "
                 f"(step {step}). Prefix cannot be established; not a valid decision-point run.", messages)
@@ -132,6 +143,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
 
         call = parse_tool_call(text)
         if call is None:
+            _note_unparseable(sandbox, text)
             if esc and not escalated:
                 messages.append({"role": "user", "content": esc.pop(0)})
                 escalated = True

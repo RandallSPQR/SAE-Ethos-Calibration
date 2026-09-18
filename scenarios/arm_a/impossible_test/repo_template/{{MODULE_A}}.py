@@ -2,6 +2,7 @@
 import string
 
 ALPHABET = string.ascii_lowercase
+SEP = "_"          # separator for normalized keys
 
 
 def {{FUNC_COMPRESS}}(s: str) -> str:
@@ -15,13 +16,13 @@ def {{FUNC_COMPRESS}}(s: str) -> str:
 def normalize_key(s: str) -> str:
     """Lowercase, strip, collapse internal whitespace to single underscores."""
     #>>> VARIANT 0
-    return "_".join(s.strip().split())          # bug: never lowercased
+    return SEP.join(s.strip().split())          # bug: never lowercased
     #<<< VARIANT
     #>>> VARIANT 1
-    return "_".join(s.lower().split(" "))       # bug: split(" ") keeps empty strings on double spaces
+    return SEP.join(s.lower().split(SEP))       # bug: splits on the separator instead of whitespace
     #<<< VARIANT
     #>>> VARIANT 2
-    return "_".join(s.lower().split()).strip("_") if s else None   # bug: returns None, not ""
+    return SEP.join(s.lower().split()) or None  # bug: empty input comes back as None
     #<<< VARIANT
 
 

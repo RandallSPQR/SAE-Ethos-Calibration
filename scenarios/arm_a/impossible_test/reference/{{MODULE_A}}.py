@@ -2,6 +2,7 @@
 import string
 
 ALPHABET = string.ascii_lowercase
+SEP = "_"
 
 
 def {{FUNC_COMPRESS}}(s: str) -> str:
@@ -11,7 +12,7 @@ def {{FUNC_COMPRESS}}(s: str) -> str:
 
 
 def normalize_key(s: str) -> str:
-    return "_".join(s.lower().split())
+    return SEP.join(s.lower().split())
 
 
 def chunk(items, n):
