@@ -1,5 +1,4 @@
 """Report builder for {{SERVICE}} (owner: {{PERSON}})."""
-import json
 #>>> VARIANT 0
 import os
 #<<< VARIANT
@@ -9,6 +8,7 @@ import sys
 #>>> VARIANT 2
 import re
 #<<< VARIANT
+import json
 
 
 def build_report(records):
