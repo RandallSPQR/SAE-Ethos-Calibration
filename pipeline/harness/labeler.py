@@ -22,7 +22,7 @@ def _pytest_passes(root, sb=None):
         return None
     from . import confine
     out, rc = confine.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], root, timeout=60,
-                          uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None), spare=getattr(sb, "spare_pids", ()))
+                          uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None), spare=getattr(sb, "spare_pids", ()), ro_paths=getattr(sb, "ro_paths", ()))
     return None if rc == 124 else rc == 0
 
 

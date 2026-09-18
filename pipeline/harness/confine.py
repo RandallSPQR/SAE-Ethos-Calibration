@@ -30,6 +30,14 @@ TMPDIR, can import pytest/yaml/sqlite3, and runs a trivial test to green; a perf
 whose episodes cannot run would otherwise be scored as model failure. If no backend passes every canary
 the harness refuses. The manifest records the backend and the canary results.
 
+Filesystem (2026-09-18): a RunPod network volume (MooseFS over FUSE, allow_other) IGNORES file modes: chmod 700
+reads back 777 and the episode uid can read anything on it, so "root-only by mode" is not a mechanism there.
+The seccomp_uid backend therefore also applies a LANDLOCK ruleset in the child (unprivileged, kernel 5.13+;
+ABI 4 on RunPod's 6.8 kernels): read+execute beneath the system dirs and the harness venv, every right
+beneath the episode dir, nothing else. The volume, the run tree, HF_HOME and the token are then unreachable
+by construction. Landlock is applied when the kernel offers it and recorded in the manifest; where it is
+absent the canaries decide, as always (on a modes-ignoring filesystem they fail and the harness refuses).
+
 Ordering that the labels depend on: episode exits or is killed -> reap() kills everything of the episode
 uid and confirms nothing remains -> the labeler reads final state. TMPDIR is inside the episode dir so
 the world-writable sweep is a backstop, not the mechanism.
@@ -170,6 +178,77 @@ def install_seccomp():
 
 
 # ---------------------------------------------------------------- child setup
+# ---------------------------------------------------------------- landlock (unprivileged fs sandbox)
+_NR_LL_CREATE, _NR_LL_ADD, _NR_LL_RESTRICT = 444, 445, 446      # same numbers on x86_64 and aarch64
+_LL_RULE_PATH_BENEATH = 1
+_LL_EXECUTE, _LL_WRITE_FILE, _LL_READ_FILE, _LL_READ_DIR = 1 << 0, 1 << 1, 1 << 2, 1 << 3
+LANDLOCK_SYSTEM_RO = ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc", "/opt", "/proc"]
+
+
+def landlock_abi():
+    """Landlock ABI version the kernel offers (0 = none). LANDLOCK_CREATE_RULESET_VERSION probe."""
+    if not sys.platform.startswith("linux"):
+        return 0
+    try:
+        libc = ctypes.CDLL(None, use_errno=True)
+        r = libc.syscall(_NR_LL_CREATE, None, 0, 1)
+        return r if r > 0 else 0
+    except (OSError, AttributeError):
+        return 0
+
+
+def _ll_handled(abi):
+    # v1: 13 fs rights; v2 adds REFER; v3 adds TRUNCATE; v5 adds IOCTL_DEV (v4 changed nothing for fs)
+    nbits = 13 if abi == 1 else 14 if abi == 2 else 15 if abi < 5 else 16
+    return (1 << nbits) - 1
+
+
+def landlock_paths(cwd, ro_extra=()):
+    """(ro_paths, rw_paths) for an episode: system dirs + the harness interpreter's prefixes read-only
+    (sys.prefix is the venv root, not sys.executable's resolved target, which is /usr/bin), /dev read/write
+    of existing nodes, the episode dir with every right, plus ro_extra: the sandbox's own read-only paths
+    outside its root (the credential contract's signing-reference dir). Everything else is denied: the
+    network volume, the run tree, HF_HOME, the ledger, /tmp, /root."""
+    ro = list(LANDLOCK_SYSTEM_RO) + [sys.prefix, sys.base_prefix] + [str(p) for p in (ro_extra or ())]
+    ro = [p for p in dict.fromkeys(ro) if os.path.exists(p)]
+    return ro, [str(cwd)]
+
+
+def install_landlock(cwd, ro_extra=()):
+    """Apply the ruleset to the calling process (child side, after setuid, before seccomp). Returns the ABI
+    used, 0 if the kernel has no Landlock (caller decides; canaries judge the result)."""
+    abi = landlock_abi()
+    if abi <= 0:
+        return 0
+    import struct
+    libc = ctypes.CDLL(None, use_errno=True)
+    handled = _ll_handled(abi)
+    attr = struct.pack("Q", handled)                            # struct landlock_ruleset_attr {u64 handled_access_fs}
+    rs = libc.syscall(_NR_LL_CREATE, attr, len(attr), 0)
+    if rs < 0:
+        raise OSError(ctypes.get_errno(), "landlock_create_ruleset: " + os.strerror(ctypes.get_errno()))
+    ro, rw = landlock_paths(cwd, ro_extra)
+    dev_rights = _LL_READ_FILE | _LL_WRITE_FILE | _LL_READ_DIR     # /dev/null, /dev/urandom; no make/remove
+    for path, rights in ([(p, _LL_EXECUTE | _LL_READ_FILE | _LL_READ_DIR) for p in ro]
+                         + [("/dev", dev_rights)] + [(p, handled) for p in rw]):
+        try:
+            pfd = os.open(path, os.O_PATH | os.O_CLOEXEC)
+        except OSError:
+            continue
+        rule = struct.pack("Qi", rights & handled, pfd)          # struct landlock_path_beneath_attr (packed: 12 bytes)
+        r = libc.syscall(_NR_LL_ADD, rs, _LL_RULE_PATH_BENEATH, rule, 0)
+        os.close(pfd)
+        if r != 0:
+            os.close(rs)
+            raise OSError(ctypes.get_errno(), f"landlock_add_rule {path}: " + os.strerror(ctypes.get_errno()))
+    libc.prctl(_PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)
+    r = libc.syscall(_NR_LL_RESTRICT, rs, 0)
+    os.close(rs)
+    if r != 0:
+        raise OSError(ctypes.get_errno(), "landlock_restrict_self: " + os.strerror(ctypes.get_errno()))
+    return abi
+
+
 def _set_rlimits(timeout):
     import resource
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -182,13 +261,15 @@ def _set_rlimits(timeout):
         resource.setrlimit(resource.RLIMIT_AS, (LIMITS["as_bytes"], LIMITS["as_bytes"]))
 
 
-def _preexec(backend, timeout, uid, gid):
+def _preexec(backend, timeout, uid, gid, cwd=None, ro_paths=()):
     def fn():
         _set_rlimits(timeout)
         if backend == "seccomp_uid":
             os.setgroups([])
             os.setgid(gid)
             os.setuid(uid)
+            if cwd is not None:
+                install_landlock(cwd, ro_paths)   # no-op (returns 0) on a kernel without Landlock; canaries judge
             install_seccomp()
     return fn
 
@@ -222,7 +303,7 @@ def _bwrap_cmd(cmd, cwd, uid, gid, extra=None):
 
 
 # ---------------------------------------------------------------- the one executor
-def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000, uid=None, gid=None, env_extra=None, spare=()):
+def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000, uid=None, gid=None, env_extra=None, spare=(), ro_paths=()):
     """Run model-authored/scenario code under the ACTIVE backend. Returns (text, returncode); 124 on
     timeout (the whole process group is killed). backend=None -> ACTIVE (plain subprocess if none).
     uid: the EPISODE uid (per sandbox; concurrent continuations get distinct uids). spare: pids of this
@@ -233,7 +314,7 @@ def run(cmd, cwd, timeout=15, backend=None, capture_limit=4000, uid=None, gid=No
     cwd = Path(cwd)
     argv = _bwrap_cmd(cmd, cwd, uid, gid, env_extra) if backend == "bwrap" else list(cmd)
     env = _env(cwd, env_extra) if backend != "none" else ({**os.environ, **{k: str(v) for k, v in (env_extra or {}).items()}} if env_extra else None)
-    pre = _preexec(backend, timeout, uid, gid) if backend != "none" else None
+    pre = _preexec(backend, timeout, uid, gid, cwd, ro_paths) if backend != "none" else None
     try:
         p = subprocess.Popen(argv, cwd=str(cwd), env=env, preexec_fn=pre, start_new_session=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -294,14 +375,14 @@ def reap(uid=None, spare=(), tries=30):
     return len([p for p in _uid_pids(uid) if p not in spare])
 
 
-def spawn_background(cmd, cwd, uid=None, env_extra=None):
+def spawn_background(cmd, cwd, uid=None, env_extra=None, ro_paths=()):
     """Start a long-lived ENTRYPOINT process (the credential scenario's fake supervisor) as the episode uid,
     with the confined env plus `env_extra` in ITS environment only. Returns the Popen; the caller registers
     its pid as spared and kills it at episode end."""
     backend = ACTIVE["backend"] or "none"
     uid = uid or ACTIVE["uid"] or DEFAULT_UID
     env = _env(Path(cwd), env_extra) if backend != "none" else {**os.environ, **{k: str(v) for k, v in (env_extra or {}).items()}}
-    pre = _preexec(backend, 10 ** 6, uid, uid) if backend != "none" else None
+    pre = _preexec(backend, 10 ** 6, uid, uid, cwd, ro_paths) if backend != "none" else None
     return subprocess.Popen(list(cmd), cwd=str(cwd), env=env, preexec_fn=pre, start_new_session=True,
                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -470,7 +551,8 @@ def verify(backend, uds=None):
     try:
         canary.write_text("root only\n"); os.chmod(canary, 0o600)
         synthetic.write_text("hf_canary_not_a_real_token\n"); os.chmod(synthetic, 0o600)
-        disk_spec = {"files": [str(synthetic)] + secret_files(), "dirs": [str(hf_dir)] if hf_dir else []}
+        disk_spec = {"files": [str(synthetic)] + secret_files(),
+                     "dirs": ([str(hf_dir)] if hf_dir else []) + [str(scratch.parent)]}
         prev = dict(ACTIVE)
         ACTIVE.update({"backend": backend, "uid": ACTIVE["uid"] or DEFAULT_UID, "gid": ACTIVE["gid"] or DEFAULT_UID})
         own(scratch)
@@ -538,7 +620,7 @@ def select(prefer=None, uds=None):
         cands = [prefer] + [c for c in cands if c != prefer]
     bpf_ok, bpf_detail = selftest_bpf()
     report = {"backend": None, "candidates": cands, "tried": {}, "ok": False, "bpf_selftest": bpf_ok,
-              "uid": DEFAULT_UID, "euid": os.geteuid(), "platform": platform.platform()}
+              "landlock_abi": landlock_abi(), "uid": DEFAULT_UID, "euid": os.geteuid(), "platform": platform.platform()}
     if not bpf_ok:
         report["bpf_selftest_detail"] = bpf_detail
         return report

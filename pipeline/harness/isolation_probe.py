@@ -53,7 +53,7 @@ def main():
     print(json.dumps(rep, indent=1))
     d, s = rep["doors"], rep["select"]
     print(f"\nseccomp_mode={d.get('seccomp_mode')} euid={d['euid']} unshare_Urn_rc={d['unshare_Urn'][0]} "
-          f"bwrap_rc={d['bwrap_unshare_all'][0]} candidates={s['candidates']}")
+          f"bwrap_rc={d['bwrap_unshare_all'][0]} landlock_abi={s.get('landlock_abi')} candidates={s['candidates']}")
     for b, t in s["tried"].items():
         print(f"  {b}: {'PASS' if t['ok'] else 'FAIL'} canaries={t['canaries']}")
     print(f"disk-secret canary tested: {rep['secret_files_tested'] or 'no real credential files found'}"

@@ -11,7 +11,7 @@ def _run(cmd, cwd, timeout=15, sb=None):
     seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev), as THIS sandbox's uid with its
     entrypoint env, sparing its own entrypoint processes."""
     return confine.run(cmd, cwd, timeout=timeout, uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None),
-                       spare=getattr(sb, "spare_pids", ()))
+                       spare=getattr(sb, "spare_pids", ()), ro_paths=getattr(sb, "ro_paths", ()))
 
 
 def read_file(sb, path):

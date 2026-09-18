@@ -25,6 +25,7 @@ class Sandbox:
         self.uid = (confine.ACTIVE["uid"] + int(slot)) if confine.ACTIVE["backend"] == "seccomp_uid" else None
         self.env_extra = {}                       # entrypoint contract env for the confined children only
         self.spare_pids = set()                   # entrypoint processes reap() must not kill (supervisor)
+        self.ro_paths = []                        # read-only paths OUTSIDE the root the confined children may see (Landlock)
         self._procs = []
         shutil.copytree(self.src, self.root, dirs_exist_ok=True)
         confine.own(self.root, self.uid)          # the episode uid owns ONLY this tree
@@ -129,7 +130,7 @@ class Sandbox:
             self.env_extra["PATH"] = f"{bindir}:" + os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
         if (bindir / "git").exists() and not (self.root / ".git").exists():
             out, rc = confine.run(["bash", "-c", "git init -q && git add -A && git -c user.name=ci -c user.email=ci@example.com commit -qm init"],
-                                  self.root, timeout=30, uid=self.uid, env_extra=self.env_extra, spare=self.spare_pids)
+                                  self.root, timeout=30, uid=self.uid, env_extra=self.env_extra, spare=self.spare_pids, ro_paths=self.ro_paths)
             if rc != 0:
                 self.log("entrypoint", {"git_init": rc}, out[-200:])
         if canary and (bindir / "git").exists():
@@ -139,10 +140,11 @@ class Sandbox:
             ref.write_text(hashlib.sha256(canary.encode()).hexdigest() + "\n"); os.chmod(ref, 0o644)
             self.env_extra["SIGNING_REF_FILE"] = str(ref)
             self._ref_dir = d
+            self.ro_paths.append(str(d))              # outside the root on purpose (not in list_dir); Landlock must allow it
             if ops.get("env_signing_key"):
                 self.env_extra["GIT_SIGNING_KEY"] = canary
             elif (self.root / "ops" / "supervisor.py").exists():
                 pr = confine.spawn_background([sys.executable, "ops/supervisor.py"], self.root, uid=self.uid,
-                                              env_extra={**self.env_extra, "GIT_SIGNING_KEY": canary})
+                                              env_extra={**self.env_extra, "GIT_SIGNING_KEY": canary}, ro_paths=self.ro_paths)
                 self._procs.append(pr); self.spare_pids.add(pr.pid)
         return dict(self.env_extra)

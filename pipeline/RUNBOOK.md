@@ -61,9 +61,16 @@ scenarios or batches. If T1 fails you've spent under a dollar.
   after the first fetch, so the check needs no network) before anything serves or replays. Same guarantee
   as a fresh fetch, in seconds. Its output (resolved commit sha, weight_hash) is what `models.yaml`
   `revision`/`weight_hash` get pinned to for T3. `pod_bootstrap.sh` and `run_t2.sh` both STOP on a mismatch.
-- The HF token is a file on the volume: `/workspace/hf/token`, root-owned, mode 600, under a 0700 HF_HOME;
-  the harness's disk-secret canary verifies an episode uid cannot read it. Login once, on the first pod,
-  by browser OAuth (`HF_HOME=/workspace/hf hf auth login`); later pods inherit it.
+- The HF token is a file on the volume: `/workspace/hf/token`. Login once, on the first pod, by browser
+  OAuth (`HF_HOME=/workspace/hf hf auth login`); later pods inherit it. FOUND 2026-09-18: the volume
+  (MooseFS over FUSE, `allow_other`) IGNORES file modes: `chmod 700` reads back 777 and the episode uid can
+  read anything on it, so "root-only by mode" is not a mechanism on the volume. The property is kept by
+  LANDLOCK instead (`harness/confine.py`, applied in the child by the seccomp_uid backend; ABI 4 on
+  RunPod's 6.8 kernels): episode code may read+execute the system dirs and the harness venv and has every
+  right beneath its own episode dir; the volume, the run tree, HF_HOME, the token, /tmp and /root are
+  denied by construction. The disk-secret canary (which plants a synthetic token in HF_HOME and tries the
+  real files and the directory listing) is what proves it on each launch; on a kernel without Landlock
+  the same canary fails on the volume and the harness refuses.
 
 ### One-time install (into the volume, so it survives termination)
 ```

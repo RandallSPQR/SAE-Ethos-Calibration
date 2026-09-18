@@ -20,7 +20,9 @@ endpoint:
 target_model:
   hf_id: "google/gemma-2-9b-it"
   base_hf_id: "google/gemma-2-9b"            # for the base-vs-IT comparison (§4.5.3.4)
-  revision: null                             # pin to a HF commit SHA before T3 (provenance.assert_pinned enforces)
+  # PINNED 2026-09-18 by calibrate/preflight_weights.py --hash on the EUR-IS-1 volume (11 files, sha256 vs LFS metadata)
+  revision: "11c9b309abf73637e4b6f9a3fa1e92e615547819"
+  weight_hash: "7055bc8c5f456ced"            # preflight identity over (file, sha256) pairs of the verified snapshot
   dtype: "bfloat16"
 
 # White-box artifacts tied to the target.
@@ -30,7 +32,8 @@ sae:
   # which is also ~0.74 depth (31/42), a fine late-middle location. Do NOT dynamically compute the layer.
   release: "gemma-scope-9b-it-res-canonical"
   sae_id: "layer_31/width_16k/canonical"        # 16k for the proof-of-pipeline rig; 131k is a later CHOICE, not a debug variable
-  revision: null                                # pin to the SAE artifact revision/hash before T3
+  revision: "e86af97a5b6fbbccca28ab654f2fda1b0768f770"   # google/gemma-scope-9b-it-res, pinned 2026-09-18 (preflight)
+  weights_hash: "f0177489f26ef768"              # layer_31/width_16k/average_l0_76 params, sha256-verified
   layer: 31
   # The SAELens hook name for this SAE:
   saelens_hook_name: "blocks.31.hook_resid_post"
@@ -70,7 +73,8 @@ oracle:
   window: 8                                  # consecutive positions injected per query
   patch_inject_layer: 6                      # patchscopes fallback backend
   kind: "lora"
-  revision: null                             # pin the oracle adapter revision/hash before T3
+  revision: "44b5056006a4e14b9bb6fa99a98cf6e2bc86fcdf"   # pinned 2026-09-18 (preflight, 5 files sha256-verified)
+  weights_hash: "1a8c60a79eedcf5c"
   depths: [0.25, 0.50, 0.75]
 
 # When you move to 27B: target -> gemma-3-27b-it, base -> gemma-3-27b, and re-derive the SAE block:
