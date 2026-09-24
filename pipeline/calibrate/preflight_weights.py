@@ -42,11 +42,18 @@ def default_repos(cfg):
     """(repo_id, revision, allow_patterns) for everything a run loads. The SAE release maps to its HF repo
     and one layer folder; the oracle is the whole adapter repo."""
     tm, sae, orc = cfg["target_model"], cfg["sae"], cfg["oracle"]
-    sae_repo = "google/gemma-scope-9b-it-res"                    # release gemma-scope-9b-it-res-canonical -> this repo
-    sae_folder = "layer_31/width_16k/average_l0_76/*"           # canonical layer_31/width_16k (published L0 76)
+    # The SAE's HF location comes from models.yaml (sae.hf_repo / sae.hf_folder). Fallback = the mapping the
+    # config documents: release "<name>-canonical" -> repo google/<name>; sae_id "L/W/canonical" -> folder
+    # "L/W/average_l0_<published.l0>". A hardcoded literal here once verified an artifact the config could
+    # have moved away from (review 2026-09-24).
+    sae_repo = sae.get("hf_repo") or "google/" + str(sae["release"]).replace("-canonical", "")
+    sae_folder = sae.get("hf_folder")
+    if not sae_folder:
+        sid = str(sae["sae_id"]); l0 = (sae.get("published") or {}).get("l0")
+        sae_folder = sid.replace("/canonical", f"/average_l0_{l0}") if l0 is not None else sid
     return [
         (tm["hf_id"], tm.get("revision"), ["*.json", "*.safetensors", "tokenizer*"]),
-        (sae_repo, sae.get("revision"), [sae_folder]),
+        (sae_repo, sae.get("revision"), [sae_folder.rstrip("/") + "/*"]),
         (orc["hf_id"], orc.get("revision"), None),
     ]
 

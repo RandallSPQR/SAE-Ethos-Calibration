@@ -67,6 +67,7 @@ def assert_isolated(cfg, allow_unsafe=False, confinement=None):
     if confinement is not None:
         if confinement.get("ok"):
             return {"isolated": True, "mechanism": confinement["backend"], "canaries": confinement.get("canaries"),
+                    "landlock_abi": confinement.get("landlock_abi"), "bpf_selftest": confinement.get("bpf_selftest"),
                     "tried": {b: t["canaries"] for b, t in confinement.get("tried", {}).items()}}
         raise IsolationError("Refusing to run a real episode: no confinement backend passed every canary "
                              f"(candidates {confinement.get('candidates')}; tried "

@@ -32,7 +32,10 @@ sae:
   # which is also ~0.74 depth (31/42), a fine late-middle location. Do NOT dynamically compute the layer.
   release: "gemma-scope-9b-it-res-canonical"
   sae_id: "layer_31/width_16k/canonical"        # 16k for the proof-of-pipeline rig; 131k is a later CHOICE, not a debug variable
-  revision: "e86af97a5b6fbbccca28ab654f2fda1b0768f770"   # google/gemma-scope-9b-it-res, pinned 2026-09-18 (preflight)
+  # where the artifact lives on the Hub (calibrate/preflight_weights.py verifies exactly this folder):
+  hf_repo: "google/gemma-scope-9b-it-res"
+  hf_folder: "layer_31/width_16k/average_l0_76"
+  revision: "e86af97a5b6fbbccca28ab654f2fda1b0768f770"   # pinned 2026-09-18 (preflight)
   weights_hash: "f0177489f26ef768"              # layer_31/width_16k/average_l0_76 params, sha256-verified
   layer: 31
   # The SAELens hook name for this SAE:

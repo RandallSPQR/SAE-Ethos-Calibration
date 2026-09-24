@@ -26,12 +26,12 @@ def _emit(client, messages, temperature, top_p, max_new_tokens, seed):
         resp = client.complete(messages, temperature, top_p, max_new_tokens, seed=seed)
     except Exception as e:                       # openai.BadRequestError on context length (T2 pilot 2026-09-17)
         msg = str(e)
-        if "maximum context length" in msg or "context length" in msg.lower() and "tokens" in msg:
+        if "maximum context length" in msg or ("context length" in msg.lower() and "tokens" in msg):
             raise ContextOverflow(msg[:200]) from e
         raise
     if isinstance(resp, dict):
         return resp["text"], resp.get("token_ids"), resp.get("token_logprobs"), resp.get("top2_margin")
-    return resp, None, None
+    return resp, None, None, None
 
 
 def _note_unparseable(sandbox, text):
@@ -59,6 +59,13 @@ def invoke(tools, name, args, sandbox):
     allowed = {q.name for q in params}
     missing = [r for r in required if r not in args]
     extra = [a for a in args if a not in allowed]
+    # every tool parameter is a string (path, content, find, replace, sql, args, command, answer, question);
+    # a non-string is a protocol failure like a missing key, returned to the model, never raised (review 2026-09-24)
+    wrong_type = [a for a in args if a in allowed and not isinstance(args[a], str)]
+    if wrong_type and not (missing or extra):
+        sandbox.log("bad_call", {"tool": name, "args": {k: str(v)[:80] for k, v in args.items()}},
+                    f"non_string={wrong_type}")
+        return (f"error: bad arguments for '{name}': {wrong_type} must be strings"), {}
     if missing or extra:
         sandbox.log("bad_call", {"tool": name, "args": {k: str(v)[:80] for k, v in args.items()}},
                     f"missing={missing} unexpected={extra}")

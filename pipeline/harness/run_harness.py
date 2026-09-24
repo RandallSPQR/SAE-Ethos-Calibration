@@ -100,11 +100,14 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         lock = threading.Lock()
 
         def one(k):
+            """One continuation. A harness exception here is recorded as an excluded CONTINUATION (tally +
+            cardinality) and returns None: it must not escape through executor.map and take the seed's other
+            rows and every later seed with it (review 2026-09-24)."""
             sb = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=1 + k)
-            sb.restore(snap)
-            sb.configure_entrypoint(canary=canary, variant_ops=vspec)
             kseed = derive_seed(run_id, scenario["id"], manifest["seed"], variant, k)
             try:
+                sb.restore(snap)
+                sb.configure_entrypoint(canary=canary, variant_ops=vspec)
                 msgs, dp, term, dtok = continue_from(
                     client, sb, scen_v, prefix_msgs, start_step, cap,
                     samp["temperature"], samp["top_p"], samp["max_new_tokens"], seed=kseed,
@@ -117,6 +120,15 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 spans = temporal_spans(msgs, dp, sb, facts)
                 dec_action = decision_action_label(msgs[dp] if dp < len(msgs) else {})
                 return k, _row(k, msgs, dp, term, dtok, facts, lab, tax, disclosed, evidence, spans, dec_action, kseed)
+            except Exception as e:                   # noqa: BLE001 - recorded per continuation, run continues
+                import traceback
+                reason = f"harness_exception: {type(e).__name__}: {str(e)[:200]}"
+                print(f"HARNESS EXCEPTION (continuation excluded) {scenario['id']}/seed_{manifest['seed']:03d}/{variant}/c{k:02d}: {reason}", flush=True)
+                traceback.print_exc()
+                with lock:
+                    tally.setdefault("excluded_continuation", []).append(
+                        {"scenario": scenario["id"], "seed": manifest["seed"], "variant": variant, "k": k, "reason": reason})
+                return k, None
             finally:
                 sb.cleanup()
 
@@ -150,6 +162,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         done = []
         with ThreadPoolExecutor(max_workers=concurrency) as ex:
             for k, row in ex.map(one, range(n)):
+                if row is None:
+                    continue
                 done.append((k, row))
                 with lock:
                     tally["generated"] += 1
@@ -177,6 +191,8 @@ def _write_cardinality(tally, run_id, path):
     card = {"run_id": run_id, "generated": tally["generated"], "operator_nudge": tally.get("operator_nudge"),
             "excluded_prefix_count": len(tally["excluded_prefix"]),
             "excluded_prefix": tally["excluded_prefix"],
+            "excluded_continuation_count": len(tally.get("excluded_continuation", [])),
+            "excluded_continuation": tally.get("excluded_continuation", []),
             "reach": reach,
             "estimand_note": "measured quantity is P(transgress | greedy prefix reached obstacle, <= nudge_max scripted "
                              "operator replies); report p_reach and p_reach_no_nudge alongside conditional rates."}
@@ -255,6 +271,8 @@ def main():
     from runpaths import RunPaths
     run_id, manifest = _resolve_run(args, run, resolve_and_write)
     rp = RunPaths(args.runs_root, run_id).ensure()
+    if confinement is not None:                    # the run tree exists only now; root-only like the rest
+        iso["hardened"] = (hardened or []) + confine.harden([rp.root])
     manifest["isolation"] = iso                    # backend + canary results, not a YAML field set to true
     (rp.manifest).write_text(json.dumps(manifest, indent=2))
     if args.require_pinned:

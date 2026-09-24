@@ -284,6 +284,8 @@ def _env(cwd, extra=None):
             # one BLAS/OpenMP thread: on a 32-vCPU pod OpenBLAS reserves per-thread address space at numpy import
             # and dies (SIGINT) under RLIMIT_AS; the T2 probe's trivial_test_green canary caught it (2026-09-17)
             "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
+    if os.environ.get("CANARY_UDS"):              # set by verify() for the network canary only
+        e["CANARY_UDS"] = os.environ["CANARY_UDS"]
     if extra:
         e.update({k: str(v) for k, v in extra.items()})
     return e
@@ -410,8 +412,8 @@ class ConfineError(RuntimeError):
 def own(path, uid=None, gid=None):
     """Give the episode directory to the episode uid (seccomp_uid backend); no-op otherwise. Verified,
     not assumed: some network-volume backends ignore or refuse chown, and the positive canaries below
-    would then show an episode dir the uid cannot write. Mode 0700 so a parallel episode (if ever) cannot
-    read it; today episodes run sequentially under one uid (ARM_A_EPISODE_UID)."""
+    would then show an episode dir the uid cannot write. Mode 0700 so a concurrent episode (its own uid:
+    ARM_A_EPISODE_UID + slot) cannot read it."""
     if ACTIVE["backend"] != "seccomp_uid":
         return
     uid = uid or ACTIVE["uid"]; gid = gid or uid
@@ -548,12 +550,12 @@ def verify(backend, uds=None):
     hf_home = os.environ.get("HF_HOME")
     hf_dir = Path(hf_home) if hf_home and os.path.isdir(hf_home) else None
     synthetic = (hf_dir or scratch.parent) / CANARY_TOKEN_NAME
+    prev = dict(ACTIVE)                       # restored in finally: a failed verify must not leave ACTIVE armed
     try:
         canary.write_text("root only\n"); os.chmod(canary, 0o600)
         synthetic.write_text("hf_canary_not_a_real_token\n"); os.chmod(synthetic, 0o600)
         disk_spec = {"files": [str(synthetic)] + secret_files(),
                      "dirs": ([str(hf_dir)] if hf_dir else []) + [str(scratch.parent)]}
-        prev = dict(ACTIVE)
         ACTIVE.update({"backend": backend, "uid": ACTIVE["uid"] or DEFAULT_UID, "gid": ACTIVE["gid"] or DEFAULT_UID})
         own(scratch)
         results = {}
@@ -582,9 +584,9 @@ def verify(backend, uds=None):
             else:
                 ok = rc == 0
             results[name] = {"ok": bool(ok), "rc": rc, "out": out.strip()[-300:]}
-        ACTIVE.update(prev)
         return results, all(r["ok"] for r in results.values())
     finally:
+        ACTIVE.update(prev)
         os.environ.pop("CANARY_UDS", None)
         shutil.rmtree(scratch, ignore_errors=True)
         for f in (canary, synthetic):
@@ -633,17 +635,6 @@ def select(prefer=None, uds=None):
             ACTIVE.update({"backend": b, "uid": DEFAULT_UID, "gid": DEFAULT_UID})
             break
     return report
-
-
-# the canary env: run() builds the allowlist; CANARY_UDS must pass through for the network canary only
-_orig_env = _env
-
-
-def _env(cwd, extra=None):        # noqa: F811
-    e = _orig_env(cwd, extra)
-    if os.environ.get("CANARY_UDS"):
-        e["CANARY_UDS"] = os.environ["CANARY_UDS"]
-    return e
 
 
 if __name__ == "__main__":

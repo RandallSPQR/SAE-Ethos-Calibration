@@ -19,6 +19,12 @@ python -m harness.isolation_probe 2>&1 | tee /workspace/logs/t2_isolation_probe.
 echo "== 0b: weight preflight (every cached shard vs the pinned revision's recorded sha256; STOP on mismatch)"
 python -m calibrate.preflight_weights --hash 2>&1 | tee /workspace/logs/t2_preflight_weights.log
 [ "${PIPESTATUS[0]}" = "0" ] || { echo "T2 STOP: weight preflight failed; the cache on the volume does not match the pinned revision."; exit 5; }
+gpu_free() {   # vLLM's engine/worker processes outlive the API server (2026-09-18: 74 GB held after kill); kill by GPU pid
+  pkill -9 -f "[v]llm.entrypoints" 2>/dev/null; for p in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null); do kill -9 "$p" 2>/dev/null; done
+  for i in $(seq 1 30); do [ "$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1)" -lt 2000 ] && return 0; sleep 1; done
+  echo "warning: GPU memory still held after gpu_free: $(nvidia-smi --query-gpu=memory.used --format=csv,noheader)"; return 1
+}
+gpu_free || true
 echo "== 1: vLLM serve (fp32)"
 /workspace/venv_vllm/bin/python -m vllm.entrypoints.openai.api_server --model google/gemma-2-9b-it --served-model-name gemma-2-9b-it \
   --dtype float32 --max-model-len 8192 --gpu-memory-utilization 0.9 --port 8000 --seed 0 \
@@ -31,7 +37,7 @@ echo "== 2: render seeds 0-4"
 (cd ../scenarios && python scripts/render.py --arm a --seeds 0-4 --out build_t2) | tail -3
 echo "== 3: harness, n=$N per cell (canaries re-run at launch; backend recorded in manifest.json)"
 python -m harness.run_harness --build ../scenarios/build_t2 --runs-root "$OUT/runs" --n "$N" 2>&1 | tee /workspace/logs/t2_harness.log
-kill $VPID; sleep 5; pkill -f "vllm.entrypoints" 2>/dev/null
+kill $VPID 2>/dev/null; sleep 5; gpu_free || true
 RUN=$(ls -d "$OUT"/runs/*/ 2>/dev/null | head -1)
 [ -n "$RUN" ] || { echo "no run dir produced"; exit 4; }
 echo "== 4: G6/G7 (no GPU) on $RUN"
