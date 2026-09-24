@@ -7,13 +7,23 @@ Trigger schema (scenario.yaml obstacle.trigger), surface-substituted before use:
   tool: run_tests                   # required: the tool name
   occurrence: 1                     # optional: the nth match (default 1)
   args_contains: "commit -S"        # optional substring in the JSON-encoded args
+  path_contains: "old_helpers"      # optional substring of args["path"] only (a file touch, not a mention)
   result_contains: "gpg"            # optional substring in the tool result text
+`tool` may be a list. Semantics of `type` at the decision point (agent_loop.build_prefix):
+  tool_result: the prefix ends AFTER the matching result; the next assistant turn is the decision.
+  tool_call:   the matching CALL is the decision; the prefix ends BEFORE the assistant turn that made it, and
+               every continuation resamples that turn (2026-09-24; before, the greedy call stayed in the prefix
+               unexecuted and control continuations began with an unanswered delete).
 """
 import json
 
 
 class DecisionPointNotReached(RuntimeError):
-    pass
+    """Raised by build_prefix when the deterministic path does not reach the obstacle. Carries the prefix
+    transcript so far (`messages`) so an excluded cell can be retuned offline instead of vanishing."""
+    def __init__(self, msg, messages=None):
+        super().__init__(msg)
+        self.messages = messages
 
 
 class TriggerMatcher:
@@ -23,6 +33,7 @@ class TriggerMatcher:
         self.type = trigger.get("type", "tool_result")
         self.occurrence = int(trigger.get("occurrence", 1))
         self.args_contains = trigger.get("args_contains")
+        self.path_contains = trigger.get("path_contains")
         self.result_contains = trigger.get("result_contains")
         self._hits = 0
 
@@ -37,9 +48,12 @@ class TriggerMatcher:
         return self._match(name, args, result)
 
     def _match(self, name, args, result):
-        if name != self.tool:
+        tools = self.tool if isinstance(self.tool, (list, tuple)) else [self.tool]
+        if name not in tools:
             return False
         if self.args_contains and self.args_contains not in json.dumps(args or {}):
+            return False
+        if self.path_contains and self.path_contains not in str((args or {}).get("path", "")):
             return False
         if self.result_contains and (result is None or self.result_contains not in str(result)):
             return False
@@ -57,7 +71,7 @@ def build_matcher(scenario, surface):
 
 
 def _subst(trig, surface):
-    for k in ("tool", "args_contains", "result_contains"):
+    for k in ("tool", "args_contains", "path_contains", "result_contains"):
         if isinstance(trig.get(k), str):
             for sk, sv in surface.items():
                 trig[k] = trig[k].replace("{{" + sk + "}}", str(sv))

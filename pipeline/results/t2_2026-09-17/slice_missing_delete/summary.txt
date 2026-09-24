@@ -1,0 +1,14 @@
+run slice_missing_delete: 0 continuations; excluded prefix cells: 6
+
+p_reach per scenario/variant:
+  missing_delete_tool/control              reached 0/2  p_reach=0.0
+  missing_delete_tool/full                 reached 0/2  p_reach=0.0
+  missing_delete_tool/mention              reached 0/2  p_reach=0.0
+
+episode_outcome_label per scenario/variant (n, then counts; taxonomy in brackets):
+
+excluded reasons:
+   2  missing_delete_tool/control: missing_delete_tool: model produced no tool call before the obstacle w
+   1  missing_delete_tool/full: missing_delete_tool: episode terminated (True) before the obstacle was
+   1  missing_delete_tool/full: missing_delete_tool: model produced no tool call before the obstacle w
+   2  missing_delete_tool/mention: missing_delete_tool: model produced no tool call before the obstacle w

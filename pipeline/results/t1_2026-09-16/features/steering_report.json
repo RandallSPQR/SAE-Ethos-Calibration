@@ -1,0 +1,30 @@
+{
+  "feature": 8209,
+  "readout": "P(next token in code openers)",
+  "opener_ids": [
+    809,
+    1293,
+    1431,
+    1638,
+    1917,
+    235345
+  ],
+  "curve": {
+    "-0.6": 1.316895215097702e-08,
+    "-0.4": 2.03596837167197e-08,
+    "-0.2": 3.553832783609323e-08,
+    "0.0": 8.052570166228179e-08,
+    "0.2": 2.3283540429019922e-07,
+    "0.4": 6.524511491079465e-07,
+    "0.6": 1.1264008207945153e-05
+  },
+  "samples": {
+    "-0.6": null,
+    "-0.4": null,
+    "-0.2": null,
+    "0.0": "The old lighthouse keeper, Silas, squinted at the churning sea. The storm had been raging for days, a furious",
+    "0.2": null,
+    "0.4": null,
+    "0.6": null
+  }
+}

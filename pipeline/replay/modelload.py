@@ -38,7 +38,14 @@ def load_target(which="target", device="cuda"):
     models = models_cfg()
     tm = models["target_model"]
     hf_id = tm["hf_id" if which == "target" else "base_hf_id"]
-    dtype = getattr(torch, tm.get("dtype", "bfloat16"))
+    import os
+    dtype = getattr(torch, os.environ.get("T1_DTYPE") or tm.get("dtype", "bfloat16"))   # T1_DTYPE=float32 for the fp32 G1 check
+    if os.environ.get("T1_TF32") == "1":
+        # fp32 storage with TF32 tensor-core matmuls (~8x faster on A100). Allowed only where a gate proves
+        # the numbers still meet tolerance (probe.batch_gate re-run under T1_TF32=1 before P4 uses it).
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        print("TF32 matmuls ENABLED (T1_TF32=1)")
     kw = dict(device_map=device, torch_dtype=dtype, attn_implementation="eager", dispatch=True)
     if tm.get("revision"):
         kw["revision"] = tm["revision"]

@@ -31,7 +31,9 @@ def resample_row(client, row, n, samp, ledger):
         new["uid"] = f"{row['scenario']}/seed_{row['seed']:03d}/{row['variant']}/c{k:02d}"
         new["judge"] = None            # re-judged downstream
         # carry the ids the target actually emitted so G0/G1 have a measurement
-        new["tokens"] = {"sampled_ids": sampled_ids} if sampled_ids else {}
+        new["tokens"] = ({"sampled_ids": sampled_ids, "sampled_logprobs": resp.get("token_logprobs"),
+                          "sampled_top2_margin": resp.get("top2_margin")} if sampled_ids else {})
+        new["sampling"] = {"temperature": samp["temperature"], "top_p": samp["top_p"]}
         new["cost_usd"] = _est_cost(prefix, text)
         out.append(new)
         _log_cost(ledger, new["uid"], new["cost_usd"])

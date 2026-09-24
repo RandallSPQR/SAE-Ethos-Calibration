@@ -1,0 +1,42 @@
+== state: calibrate procs=0 gpu_mem=0 MiB tf32_flag=3
+== batch gate under TF32 14:37:26
+TF32 matmuls ENABLED (T1_TF32=1)
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+batch gate [lottery] unsteered: max |dlogprob| over top-20 = 0.00727 (tol 0.05) argmax agree=True
+batch gate [lottery] steered: max |dlogprob| over top-20 = 0.00628 (tol 0.05) argmax agree=True
+BATCH_GATE OK
+== P4 TF32 batched: clean + raw dials, per cell  14:37:51
+TF32 matmuls ENABLED (T1_TF32=1)
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[lottery] batched sampling ENABLED (batch gate passed)
+[lottery] lambda=0 checksum: served sp=53.7+-1.5  sampler sp=57.4+-4.0  gap=3.7  tol=2.0xSE=8.5  -> OK
+  [lottery] clean lambda=-0.80 sp=None (none)  by cell risky/dol:- risky/poi:- risky/tok:- safe_/dol:69 safe_/poi:59 safe_/tok:107
+  [lottery] clean lambda=-0.60 sp=59.9 (logistic_lapse)  by cell risky/dol:- risky/poi:104 risky/tok:- safe_/dol:63 safe_/poi:55 safe_/tok:77
+  [lottery] clean lambda=-0.40 sp=54.1 (logistic_lapse)  by cell risky/dol:85 risky/poi:53 risky/tok:91 safe_/dol:53 safe_/poi:53 safe_/tok:53
+  [lottery] clean lambda=-0.20 sp=64.4 (logistic_lapse)  by cell risky/dol:100 risky/poi:53 risky/tok:77 safe_/dol:55 safe_/poi:51 safe_/tok:53
+  [lottery] clean lambda=-0.10 sp=53.5 (logistic_lapse)  by cell risky/dol:54 risky/poi:51 risky/tok:67 safe_/dol:53 safe_/poi:37 safe_/tok:53
+  [lottery] clean lambda=+0.00 sp=61.0 (logistic_lapse)  by cell risky/dol:77 risky/poi:53 risky/tok:65 safe_/dol:58 safe_/poi:50 safe_/tok:51
+  [lottery] clean lambda=+0.10 sp=53.9 (logistic_lapse)  by cell risky/dol:55 risky/poi:51 risky/tok:53 safe_/dol:53 safe_/poi:53 safe_/tok:58
+  [lottery] clean lambda=+0.20 sp=55.0 (logistic_lapse)  by cell risky/dol:65 risky/poi:49 risky/tok:53 safe_/dol:55 safe_/poi:51 safe_/tok:51
+  [lottery] clean lambda=+0.40 sp=57.7 (logistic_lapse)  by cell risky/dol:82 risky/poi:54 risky/tok:53 safe_/dol:55 safe_/poi:37 safe_/tok:42
+  [lottery] clean lambda=+0.60 sp=52.0 (logistic_lapse)  by cell risky/dol:53 risky/poi:48 risky/tok:53 safe_/dol:45 safe_/poi:- safe_/tok:50
+  [lottery] clean lambda=+0.80 sp=None (none)  by cell risky/dol:15 risky/poi:- risky/tok:50 safe_/dol:51 safe_/poi:- safe_/tok:-
+  [lottery] raw lambda=-0.80 sp=None (none)  by cell risky/dol:- risky/poi:- risky/tok:- safe_/dol:125 safe_/poi:69 safe_/tok:-
+  [lottery] raw lambda=-0.60 sp=79.8 (logistic_lapse)  by cell risky/dol:- risky/poi:52 risky/tok:- safe_/dol:92 safe_/poi:65 safe_/tok:55
+  [lottery] raw lambda=-0.40 sp=55.7 (logistic_lapse)  by cell risky/dol:89 risky/poi:53 risky/tok:106 safe_/dol:55 safe_/poi:53 safe_/tok:55
+  [lottery] raw lambda=-0.20 sp=59.2 (logistic_lapse)  by cell risky/dol:83 risky/poi:53 risky/tok:82 safe_/dol:55 safe_/poi:50 safe_/tok:53
+  [lottery] raw lambda=-0.10 sp=54.1 (logistic_lapse)  by cell risky/dol:54 risky/poi:53 risky/tok:72 safe_/dol:53 safe_/poi:50 safe_/tok:53
+  [lottery] raw lambda=+0.00 sp=61.0 (logistic_lapse)  by cell risky/dol:77 risky/poi:53 risky/tok:65 safe_/dol:58 safe_/poi:50 safe_/tok:51
+  [lottery] raw lambda=+0.10 sp=54.0 (logistic_lapse)  by cell risky/dol:55 risky/poi:54 risky/tok:53 safe_/dol:53 safe_/poi:53 safe_/tok:56
+  [lottery] raw lambda=+0.20 sp=53.2 (logistic_lapse)  by cell risky/dol:62 risky/poi:46 risky/tok:53 safe_/dol:51 safe_/poi:51 safe_/tok:51
+  [lottery] raw lambda=+0.40 sp=50.8 (logistic_lapse)  by cell risky/dol:79 risky/poi:13 risky/tok:53 safe_/dol:51 safe_/poi:10 safe_/tok:58
+  [lottery] raw lambda=+0.60 sp=51.9 (logistic_lapse)  by cell risky/dol:53 risky/poi:54 risky/tok:54 safe_/dol:- safe_/poi:- safe_/tok:51
+  [lottery] raw lambda=+0.80 sp=None (none)  by cell risky/dol:- risky/poi:- risky/tok:- safe_/dol:45 safe_/poi:- safe_/tok:-
+[lottery] CLEAN dial: monotone=False mae=None (fan:2) range=None (fan:[30, 200]) saturated=['-0.8', '0.8']
+[lottery] RAW dial for comparison: monotone=False sp(lambda) -0.8:- -0.6:80 -0.4:56 -0.2:59 -0.1:54 0.0:61 0.1:54 0.2:53 0.4:51 0.6:52 0.8:-
+[ultimatum] skipped: no dial on this model (see baseline.json)
+[FAIL] G9_probe_external_fixture: rules=2026-09-16.2, lottery=lottery: heldout_acc_clean=0.804 (raw 0.986) ceiling(grid/cell)=0.871/1.0 surface_loco_clean(min)=0.379 [level=70] raw_dial_monotone=False (fan:0.82) by_layer=[L20:0.971 L26:0.996 L31:0.986] mae=None (fan:2) baseline_sp=53.7 (fan:125) layer=31 (fan:48) coverage=0.00 range=None (fan:[30, 200]) saturated=['-0.8', '0.8'], lottery_checks={'monotone': False, 'mae_ok': False, 'coverage_ok': False}, ultimatum=ultimatum: NO DIAL on this model (unsteered sp=0.8275394968799965, graded grid points=1); reported, not gated
+
+full: 0/1 gates passed.
+BLOCKED by: G9_probe_external_fixture
+P4_DONE 14:55:13

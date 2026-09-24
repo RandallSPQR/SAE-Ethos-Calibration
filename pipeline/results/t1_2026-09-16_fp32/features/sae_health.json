@@ -1,0 +1,150 @@
+{
+  "chosen": {
+    "hook": "blocks.31.hook_resid_post",
+    "var_explained": 0.7569175759331752,
+    "fvu": 0.24308242406682481,
+    "l0": 85.81547546386719,
+    "var_explained_per_token": 0.8632192015647888,
+    "rel_mse": 0.1367957890033722,
+    "n_tokens": 6785
+  },
+  "candidates": [
+    {
+      "hook": "layers.31.hidden_states_only",
+      "var_explained": -0.6083189683447341,
+      "fvu": 1.608318968344734,
+      "l0": 35.900367736816406,
+      "var_explained_per_token": -0.2821323573589325,
+      "rel_mse": 1.2822378873825073,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.mlp_output",
+      "var_explained": -921.5602627610837,
+      "fvu": 922.5602627610837,
+      "l0": 17.76728057861328,
+      "var_explained_per_token": -451.4248352050781,
+      "rel_mse": 452.4495544433594,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.attn_output",
+      "var_explained": -157.78707516303157,
+      "fvu": 158.78707516303157,
+      "l0": 17.966102600097656,
+      "var_explained_per_token": -36.00703048706055,
+      "rel_mse": 36.980289459228516,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.input_resid",
+      "var_explained": 0.6458086461761363,
+      "fvu": 0.35419135382386374,
+      "l0": 68.82181549072266,
+      "var_explained_per_token": 0.7937873005867004,
+      "rel_mse": 0.20623528957366943,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "blocks.31.hook_resid_post_x0.8",
+      "var_explained": 0.7169248999726208,
+      "fvu": 0.2830751000273793,
+      "l0": 58.89211654663086,
+      "var_explained_per_token": 0.8408780097961426,
+      "rel_mse": 0.1591394543647766,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "blocks.31.hook_resid_post_x1.2",
+      "var_explained": 0.7680213650084688,
+      "fvu": 0.2319786349915311,
+      "l0": 117.6843032836914,
+      "var_explained_per_token": 0.869521975517273,
+      "rel_mse": 0.13049234449863434,
+      "n_tokens": 6785
+    }
+  ],
+  "published": {
+    "l0": 76,
+    "fvu": null,
+    "tol": 0.15,
+    "dataset": "monology/pile-uncopyrighted",
+    "context_size": 1024
+  },
+  "sae": {
+    "release": "gemma-scope-9b-it-res-canonical",
+    "sae_id": "layer_31/width_16k/canonical"
+  },
+  "rules": "2026-09-16.2",
+  "dtype": "torch.float32",
+  "per_doc_l0": [
+    101.20821380615234,
+    65.748779296875,
+    82.532470703125,
+    88.90933990478516,
+    86.46321868896484,
+    97.62197875976562,
+    80.2114486694336,
+    92.98722839355469,
+    81.0955581665039,
+    82.73648834228516,
+    71.6500015258789,
+    90.49679565429688,
+    78.86296844482422,
+    85.02703094482422,
+    87.23567199707031,
+    87.19355010986328
+  ],
+  "per_doc_var_explained": [
+    0.7325424374058331,
+    0.6721613992004065,
+    0.7377640434109389,
+    0.7400594750626674,
+    0.7190324445370817,
+    0.7396779102538784,
+    0.6334985681644909,
+    0.726179495925041,
+    0.7419645673841642,
+    0.7231681832658725,
+    0.6704259255995471,
+    0.7411095038738793,
+    0.6953541693261429,
+    0.7400027255371449,
+    0.7350977231474252,
+    0.7085506806548315
+  ],
+  "n_docs": 16,
+  "ctx": 1024,
+  "bos_excluded": true,
+  "jumprelu_below_threshold_frac": 0.0,
+  "jumprelu_n_active": 582258,
+  "chat_health": {
+    "var_explained": 0.711713739958127,
+    "fvu": 0.2882862600418729,
+    "l0": 87.15151977539062,
+    "var_explained_per_token": 0.8617286682128906,
+    "rel_mse": 0.13827350735664368,
+    "n_tokens": 132
+  },
+  "artifact": {
+    "release_requested": "gemma-scope-9b-it-res-canonical",
+    "sae_id_requested": "layer_31/width_16k/canonical",
+    "hook_name": "blocks.31.hook_resid_post",
+    "d_in": 3584,
+    "d_sae": 16384,
+    "hf_repo_id": "google/gemma-scope-9b-it-res",
+    "hf_path": "layer_31/width_16k/average_l0_76",
+    "neuronpedia_id": "gemma-2-9b-it/31-gemmascope-res-16k",
+    "published_l0_reference": 76,
+    "path_names_l0": 76,
+    "reference_matches_artifact": true,
+    "is_it_release": true
+  },
+  "identity": {
+    "min_cos": 0.9999997615814209,
+    "max_norm_rel": 5.125006737216609e-06,
+    "ref": "transformerlens:blocks.31.hook_resid_post",
+    "dtype": "torch.float32",
+    "cross_nnpost_vs_tlpre_median_cos": 0.9661559462547302
+  }
+}

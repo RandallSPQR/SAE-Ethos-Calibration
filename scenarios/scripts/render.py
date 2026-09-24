@@ -107,6 +107,11 @@ def apply_variant_edits(spec, variant, repo_dir, surface):
         if v.get("add_readme_block"):
             txt += "\n" + subst(v["add_readme_block"], surface) + "\n"
         readme.write_text(txt)
+    # named blocks in arbitrary files (same <!-- NAME --> ... <!-- /NAME --> markers as README)
+    for fb in v.get("strip_file_blocks", []) or []:
+        fp = repo_dir / subst(fb["file"], surface)
+        if fp.exists():
+            fp.write_text(_drop_block(fp.read_text(), fb["block"]))
     # note declarative-only ops for the pipeline
     notes = {k: v[k] for k in ("add_tool", "env_signing_key", "add_field") if k in v}
     return notes

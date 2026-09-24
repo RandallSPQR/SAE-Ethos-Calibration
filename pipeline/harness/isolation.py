@@ -56,13 +56,23 @@ def bwrap_available():
     return shutil.which("bwrap") is not None
 
 
-def assert_isolated(cfg, allow_unsafe=False):
+def assert_isolated(cfg, allow_unsafe=False, confinement=None):
     """Raise IsolationError unless isolation is MECHANICALLY established. Preferred: we are running inside
     the launcher's namespace (WORKER_ENV_MARKER set) — the launcher created the guarantees, so they are
     not mere YAML claims. Fallback (declared in run.yaml) is accepted only with the cheap active checks,
     and is explicitly weaker. allow_unsafe bypasses for mock/dev and is recorded in the manifest."""
     if allow_unsafe:
         return {"isolated": False, "bypassed": True, "reason": "allow_unsafe (mock/dev only)"}
+    # strongest path: a confinement backend whose canaries all held at launch (harness.confine.select)
+    if confinement is not None:
+        if confinement.get("ok"):
+            return {"isolated": True, "mechanism": confinement["backend"], "canaries": confinement.get("canaries"),
+                    "landlock_abi": confinement.get("landlock_abi"), "bpf_selftest": confinement.get("bpf_selftest"),
+                    "tried": {b: t["canaries"] for b, t in confinement.get("tried", {}).items()}}
+        raise IsolationError("Refusing to run a real episode: no confinement backend passed every canary "
+                             f"(candidates {confinement.get('candidates')}; tried "
+                             f"{ {b: t['canaries'] for b, t in confinement.get('tried', {}).items()} }). "
+                             "Run `python -m harness.isolation_probe` to see which door is locked.")
     # strong path: inside the launched worker namespace
     if os.environ.get(WORKER_ENV_MARKER) == "1":
         if _network_really_off() is False:

@@ -1,0 +1,83 @@
+{
+  "task": "ultimatum",
+  "baseline_sp": null,
+  "lambda_curve": {
+    "-0.6": null,
+    "-0.4": null,
+    "-0.2": null,
+    "0.0": null,
+    "0.2": null,
+    "0.4": null,
+    "0.6": null
+  },
+  "lambda_methods": {
+    "-0.6": "none",
+    "-0.4": "none",
+    "-0.2": "none",
+    "0.0": "none",
+    "0.2": "none",
+    "0.4": "none",
+    "0.6": "none"
+  },
+  "dropped_per_lambda": {
+    "-0.6": 0,
+    "-0.4": 0,
+    "-0.2": 0,
+    "0.0": 0,
+    "0.2": 0,
+    "0.4": 0,
+    "0.6": 18
+  },
+  "monotone": false,
+  "direction": 0,
+  "monotone_fit": {
+    "lambda": [],
+    "sp": []
+  },
+  "targets": {
+    "20": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "30": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "40": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "50": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    }
+  },
+  "mae": null,
+  "range_achieved": null,
+  "saturated_lambdas": [
+    "-0.6",
+    "-0.4",
+    "-0.2",
+    "0.0",
+    "0.2",
+    "0.4",
+    "0.6"
+  ],
+  "mock": false,
+  "fan2026_reference": {
+    "baseline_sp": 30,
+    "probe_layer": 48,
+    "heldout_acc": null,
+    "mae": null,
+    "range": [
+      30,
+      60
+    ],
+    "model": "Llama-3.3-70B-Instruct",
+    "arxiv": "2609.16436"
+  }
+}

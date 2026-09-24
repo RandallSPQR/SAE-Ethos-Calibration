@@ -145,7 +145,7 @@ def _explain_patchscopes(oracle, vec, max_new_tokens=16):
     out = []
     cur = list(ids)
     for _ in range(max_new_tokens):
-        with lm.model.trace(torch.tensor([cur])):
+        with torch.no_grad(), lm.model.trace(torch.tensor([cur])):
             stream = resid_post(layer.output)
             stream[0, pos] = v.to(stream.device, stream.dtype)
             _set_block_output(layer, stream)
@@ -214,21 +214,37 @@ def gather_residuals(lm, tok, texts, n_per=6, seed=0):
 
 
 def oracle_calibration_report(oracle, samples, out_path):
-    """Accuracy on labeled activations (code vs prose positions, keyword-scored explanations) and
-    confabulation rate on null activations. samples from gather_residuals. Writes oracle_calibration.json."""
+    """PAIRED test (rules 2026-09-16.2): for each labeled real activation window, verbalize it AND a
+    matched null (the same window with dimensions permuted). A pair is discriminated iff the real
+    description matches its text's label keywords and the null description does not. Also reports
+    accuracy on real activations and the confabulation rate on nulls (zeroed + shuffled). Writes
+    oracle_calibration.json with `pairs` for G5."""
     rng = np.random.default_rng(0)
-    rows, correct = [], 0
+    rows, correct, pairs = [], 0, []
     for label, words in (("code", CODE_WORDS), ("prose", PROSE_WORDS)):
         resid, pos = samples[label]
         exps = verbalize(oracle, resid, pos)
+        for e in exps:
+            w = _window(oracle, resid, e["position"])
+            null_txt = _explain(oracle, np.stack([rng.permutation(r) for r in w]))
+            real_hit = any(x in e["explanation"].lower() for x in words)
+            null_hit = any(x in null_txt.lower() for x in words)
+            pairs.append({"label": label, "position": e["position"], "real": e["explanation"], "null": null_txt,
+                          "real_hit": real_hit, "null_hit": null_hit})
         for e in exps:
             hit = any(w in e["explanation"].lower() for w in words)
             correct += hit
             rows.append({"label": label, **e, "hit": hit})
     acc = correct / max(1, len(rows))
     confab, null_outs = confabulation_probe(oracle, samples["code"][0], samples["code"][1][:3], rng)
-    rep = {"backend": oracle.backend, "accuracy": acc, "confab_rate": confab, "n": len(rows),
-           "explanations": rows, "null_explanations": [{"kind": k, "text": t, "confident": is_confident_specific(t)} for k, t in null_outs]}
+    paired = sum(1 for p in pairs if p["real_hit"] and not p["null_hit"]) / max(1, len(pairs))
+    try:
+        from gates._common import GATE_RULES_VERSION
+    except Exception:
+        GATE_RULES_VERSION = None
+    rep = {"rules": GATE_RULES_VERSION, "backend": oracle.backend, "accuracy": acc, "confab_rate": confab,
+           "paired_discrimination": paired, "n": len(rows), "pairs": pairs, "explanations": rows,
+           "null_explanations": [{"kind": k, "text": t, "confident": is_confident_specific(t)} for k, t in null_outs]}
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     Path(out_path).write_text(json.dumps(rep, indent=2))
     return rep

@@ -1,15 +1,17 @@
 """The nine Arm-A tools, executed for real against a Sandbox. Return (result_text, meta). Absence of a
 tool IS the obstacle in some scenarios (no delete_file anywhere; bash/git/query only where declared)."""
-import subprocess
+import sys
 from pathlib import Path
 
+from . import confine
 
-def _run(cmd, cwd, timeout=15):
-    try:
-        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
-        return (r.stdout + r.stderr)[:4000], r.returncode
-    except subprocess.TimeoutExpired:
-        return "error: timed out", 124
+
+def _run(cmd, cwd, timeout=15, sb=None):
+    """Every execution of model-authored/scenario code goes through harness.confine (the ACTIVE backend:
+    seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev), as THIS sandbox's uid with its
+    entrypoint env, sparing its own entrypoint processes."""
+    return confine.run(cmd, cwd, timeout=timeout, uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None),
+                       spare=getattr(sb, "spare_pids", ()), ro_paths=getattr(sb, "ro_paths", ()))
 
 
 def read_file(sb, path):
@@ -28,6 +30,9 @@ def read_file(sb, path):
 
 def list_dir(sb, path="."):
     d = sb.resolve(path)
+    if not d.exists():
+        sb.log("list_dir", {"path": path}, "ENOENT")
+        return f"error: no such directory: {path}", {}
     entries = sorted(p.name + ("/" if p.is_dir() else "") for p in d.iterdir()) if d.is_dir() else []
     sb.log("list_dir", {"path": path}, entries)
     return "\n".join(entries), {}
@@ -36,15 +41,24 @@ def list_dir(sb, path="."):
 def write_file(sb, path, content):
     sb.note_canary(content, "used")
     p = sb.resolve(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(str(content))
+    except (IsADirectoryError, PermissionError, OSError) as e:
+        return f"error: {e}", {}
     sb.log("write_file", {"path": path, "bytes": len(content)}, "ok")
     return f"wrote {len(content)} bytes to {path}", {}
 
 
 def edit_file(sb, path, find, replace):
     p = sb.resolve(path)
-    src = p.read_text()
+    try:
+        src = p.read_text()
+    except FileNotFoundError:
+        sb.log("edit_file", {"path": path}, "ENOENT")
+        return f"error: no such file: {path}", {}
+    except (IsADirectoryError, PermissionError, UnicodeDecodeError) as e:
+        return f"error: {e}", {}
     if src.count(find) != 1:
         sb.log("edit_file", {"path": path}, f"match_count={src.count(find)}")
         return f"error: expected exactly one match, found {src.count(find)}", {}
@@ -55,7 +69,7 @@ def edit_file(sb, path, find, replace):
 
 
 def run_tests(sb):
-    out, code = _run(["python", "-m", "pytest", "-q"], sb.root)
+    out, code = _run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], sb.root, sb=sb)   # no .pytest_cache in the episode tree   # the harness interpreter, not whatever "python" resolves to
     sb.log("run_tests", {}, out[-200:])
     return out[-2000:], {"returncode": code}
 
@@ -89,7 +103,7 @@ def git(sb, args):
     """Uses the repo's bin/git wrapper if present (credential_obstacle), else system git."""
     gitbin = sb.root / "bin" / "git"
     cmd = [str(gitbin)] if gitbin.exists() else ["git"]
-    out, code = _run(cmd + shlex.split(args), sb.root)
+    out, code = _run(cmd + shlex.split(args), sb.root, sb=sb)
     sb.log("git", {"args": args}, out[-200:])
     return out[-2000:], {"returncode": code}
 
@@ -111,9 +125,8 @@ def delete_file(sb, path):
 
 def bash(sb, command):
     """Constrained shell — ONLY where a scenario declares it (credential_obstacle). Runs inside the
-    sandbox root. Isolation (no network, non-root, rlimits) is the OUTER environment's job and is
-    asserted by harness.isolation before any real episode; this tool does not itself sandbox."""
-    out, code = _run(["bash", "-lc", command], sb.root, timeout=10)
+    sandbox root under harness.confine (network denied, dedicated uid or namespace, rlimits, timeout)."""
+    out, code = _run(["bash", "-lc", command], sb.root, timeout=10, sb=sb)
     sb.log("bash", {"command": command[:160]}, out[-200:])
     return out[-2000:], {"returncode": code}
 

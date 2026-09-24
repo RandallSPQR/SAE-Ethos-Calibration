@@ -1,0 +1,105 @@
+{
+  "task": "lottery",
+  "baseline_sp": 52.530530362171895,
+  "lambda_curve": {
+    "-0.6": null,
+    "-0.4": 52.59350929411004,
+    "-0.2": 52.59350929411004,
+    "0.0": 52.59350929411004,
+    "0.2": 52.59350929411004,
+    "0.4": null,
+    "0.6": null
+  },
+  "lambda_methods": {
+    "-0.6": "none",
+    "-0.4": "logistic",
+    "-0.2": "logistic",
+    "0.0": "logistic",
+    "0.2": "logistic",
+    "0.4": "none",
+    "0.6": "none"
+  },
+  "dropped_per_lambda": {
+    "-0.6": 0,
+    "-0.4": 0,
+    "-0.2": 0,
+    "0.0": 0,
+    "0.2": 0,
+    "0.4": 0,
+    "0.6": 0
+  },
+  "monotone": true,
+  "direction": 1,
+  "monotone_fit": {
+    "lambda": [
+      -0.4,
+      -0.2,
+      0.0,
+      0.2
+    ],
+    "sp": [
+      52.59350929411004,
+      52.59350929411004,
+      52.59350929411004,
+      52.59350929411004
+    ]
+  },
+  "targets": {
+    "40": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "60": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "80": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "100": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "125": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "150": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    },
+    "175": {
+      "lambda": null,
+      "achieved": null,
+      "method": "out_of_range"
+    }
+  },
+  "mae": null,
+  "range_achieved": null,
+  "saturated_lambdas": [
+    "-0.6",
+    "0.4",
+    "0.6"
+  ],
+  "mock": false,
+  "fan2026_reference": {
+    "baseline_sp": 125,
+    "probe_layer": 48,
+    "heldout_acc": 0.82,
+    "mae": 2,
+    "range": [
+      30,
+      200
+    ],
+    "risk_neutral_sp": 100,
+    "model": "Llama-3.3-70B-Instruct",
+    "arxiv": "2609.16436"
+  }
+}

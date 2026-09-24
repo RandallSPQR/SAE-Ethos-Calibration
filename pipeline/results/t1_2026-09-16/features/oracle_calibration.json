@@ -1,0 +1,124 @@
+{
+  "backend": "karvonen",
+  "accuracy": 0.9166666666666666,
+  "confab_rate": 1.0,
+  "n": 12,
+  "explanations": [
+    {
+      "label": "code",
+      "position": 13,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 41,
+      "explanation": "The text is a Python function that calculates the Fibonacci sequence.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 47,
+      "explanation": "The text is about a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 71,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 86,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 112,
+      "explanation": "The text explores the relationship between prime numbers and Fibonacci numbers.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 57,
+      "explanation": "The text is about a community facing the aftermath of a flood.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 68,
+      "explanation": "The text is about a group of children who are disappointed when their day off school is ruined by rain.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 73,
+      "explanation": "The text is about a group of children who are excited about the flooding of their village.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 82,
+      "explanation": "The text is about a village flooded by the rising river.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 97,
+      "explanation": "The text is about a flood in a small town.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 106,
+      "explanation": "The text is about a gloomy day in a small town.",
+      "source": "karvonen",
+      "hit": false
+    }
+  ],
+  "null_explanations": [
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a new study that found a link between air pollution and an increased risk of heart disease.",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a new study that found a link between air pollution and heart disease.",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a new feature in the latest version of the Android operating system.",
+      "confident": true
+    }
+  ]
+}

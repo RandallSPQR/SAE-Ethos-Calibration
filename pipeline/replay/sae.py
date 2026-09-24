@@ -85,14 +85,59 @@ def sae_health(sae, residual: "np.ndarray", skip_bos=True):
             "rel_mse": mse_norm, "n_tokens": int(x.shape[0])}
 
 
-def hook_identification_report(lm, sae, residuals_by_hook, out_path):
-    """Health at the CHOSEN hook AND every decoy; emits the JSON G2 consumes.
-    residuals_by_hook: {hook_name: np.ndarray[seq, d_model]}. Writes {chosen, candidates, published}."""
+def jumprelu_integrity(sae, residual):
+    """Encode integrity: among ACTIVE features (act > 0), the fraction whose activation lies below that
+    feature's own JumpReLU threshold must be exactly 0. A plain ReLU on the pre-activations (thresholds
+    loaded but not applied) inflates L0 with plausible reconstruction; this catches it."""
+    import torch
+    thr = getattr(sae, "threshold", None)
+    if thr is None:
+        return {"below_threshold_frac": None, "n_active": None, "note": "no per-feature threshold on this SAE"}
+    with torch.no_grad():
+        acts = sae.encode(_to_sae(sae, residual)).float()
+        t = thr.detach().float().to(acts.device)[None, :]
+        active = acts > 0
+        below = (active & (acts < t)).sum().item()
+        n_active = int(active.sum().item())
+    return {"below_threshold_frac": (below / n_active) if n_active else 0.0, "n_active": n_active,
+            "threshold_min": float(t.min()), "threshold_median": float(t.median())}
+
+
+def sae_artifact_identity(sae):
+    """What artifact is actually loaded: repo / path / hook / width, so the published-L0 reference can be
+    checked against the IT release specifically (the canonical picks differ across releases and widths)."""
+    s = sae_cfg()
+    cfg = sae.cfg
+    meta = getattr(cfg, "metadata", None)
+    get = lambda k: getattr(meta, k, None) if meta is not None else getattr(cfg, k, None)
+    repo, path, npid = get("hf_repo_id"), get("hf_path"), get("neuronpedia_id")
+    if not repo or not path:                      # SAELens >= 6 keeps these in the pretrained directory, not the cfg
+        try:
+            from sae_lens.loading.pretrained_saes_directory import get_pretrained_saes_directory
+            entry = get_pretrained_saes_directory()[s["release"]]
+            repo = repo or entry.repo_id
+            path = path or entry.saes_map.get(s["sae_id"])
+            npid = npid or (entry.neuronpedia_id or {}).get(s["sae_id"])
+        except Exception as ex:
+            repo = repo or f"lookup failed: {ex}"
+    out = {"release_requested": s["release"], "sae_id_requested": s["sae_id"], "hook_name": _hook_name(sae),
+           "d_in": int(cfg.d_in), "d_sae": int(cfg.d_sae), "hf_repo_id": repo, "hf_path": path,
+           "neuronpedia_id": npid, "published_l0_reference": s["published"].get("l0")}
+    path = str(out["hf_path"] or "")
+    out["path_names_l0"] = int(path.rsplit("average_l0_", 1)[1]) if "average_l0_" in path else None
+    out["reference_matches_artifact"] = (out["path_names_l0"] == out["published_l0_reference"]) if out["path_names_l0"] else None
+    out["is_it_release"] = ("9b-it" in str(out["hf_repo_id"] or "")) or ("it-res" in s["release"])
+    return out
+
+
+def hook_identification_report(lm, sae, residuals_by_hook, out_path, skip_bos=True, extra_candidates=()):
+    """Health at the CHOSEN hook AND every decoy (including any extra candidates such as scaled copies);
+    emits the JSON G2 consumes. residuals_by_hook: {hook_name: np.ndarray[seq, d_model]}."""
     s = sae_cfg()
     chosen_name = s["hook_point"]
-    chosen = {"hook": chosen_name, **sae_health(sae, residuals_by_hook[chosen_name])}
-    cands = [{"hook": h, **sae_health(sae, residuals_by_hook[h])}
-             for h in s.get("hook_candidates", []) if h in residuals_by_hook]
+    chosen = {"hook": chosen_name, **sae_health(sae, residuals_by_hook[chosen_name], skip_bos=skip_bos)}
+    names = [h for h in s.get("hook_candidates", []) if h in residuals_by_hook] + list(extra_candidates)
+    cands = [{"hook": h, **sae_health(sae, residuals_by_hook[h], skip_bos=skip_bos)} for h in names]
     rep = {"chosen": chosen, "candidates": cands, "published": dict(s["published"]),
            "sae": {"release": s["release"], "sae_id": s["sae_id"]}}
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)

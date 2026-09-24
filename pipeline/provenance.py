@@ -35,17 +35,45 @@ def _sha_text(s):
 
 
 def _git_commit(path):
+    """The commit of the code that is RUNNING. On the box the code arrives as a tarball (no .git), so
+    `calibrate/pack.sh` writes GIT_COMMIT next to it and this reads it; the T2 validation run of
+    2026-09-17 recorded git_commit=None for exactly that reason."""
     try:
-        return subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
-                              capture_output=True, text=True).stdout.strip() or None
+        c = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                           capture_output=True, text=True).stdout.strip()
+        if c:
+            return c
     except Exception:
-        return None
+        pass
+    for f in (Path(path) / "GIT_COMMIT", Path(path).parent / "GIT_COMMIT"):
+        if f.exists():
+            return f.read_text().strip() or None
+    return None
+
+
+def _code_hash(root):
+    """Content hash of the pipeline's own Python (independent of git): what actually ran."""
+    h = hashlib.sha256()
+    for f in sorted(Path(root).rglob("*.py")):
+        rel = f.relative_to(root)
+        if any(part in ("results", "runs", "pipeline", "__pycache__") for part in rel.parts):
+            continue
+        h.update(str(rel).encode()); h.update(f.read_bytes())
+    return h.hexdigest()[:16]
 
 
 def _pkg_version(name):
     try:
         import importlib.metadata as m
         return m.version(name)
+    except Exception:
+        return None
+
+
+def _gate_rules_version():
+    try:
+        from gates._common import GATE_RULES_VERSION
+        return GATE_RULES_VERSION
     except Exception:
         return None
 
@@ -57,6 +85,7 @@ def build_manifest(run_id, scenarios_dir=None):
     manifest = {
         "run_id": run_id,
         "git_commit": _git_commit(ROOT),
+        "code_hash": _code_hash(ROOT),
         "scenario_commit": _git_commit(scenarios_dir) if scenarios_dir else None,
         # hashes are read from config if present (a `resolve` step on the box fills them); None until then
         "model": {"hf_id": tm["hf_id"], "base_hf_id": tm.get("base_hf_id"),
@@ -77,6 +106,7 @@ def build_manifest(run_id, scenarios_dir=None):
                    "models_yaml_hash": _sha_file(CFG / "models.yaml"),
                    "sampling": run["sampling"]},
         "isolation_declared": run.get("isolation", {}),
+        "gate_rules_version": _gate_rules_version(),
     }
     manifest["unverified"] = [k for k, v in {
         "model.weight_hash": manifest["model"]["weight_hash"],

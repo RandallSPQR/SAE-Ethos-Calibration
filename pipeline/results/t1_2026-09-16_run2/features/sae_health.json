@@ -1,0 +1,150 @@
+{
+  "chosen": {
+    "hook": "blocks.31.hook_resid_post",
+    "var_explained": 0.7568511530110953,
+    "fvu": 0.24314884698890465,
+    "l0": 85.72454071044922,
+    "var_explained_per_token": 0.8631849884986877,
+    "rel_mse": 0.13683009147644043,
+    "n_tokens": 6785
+  },
+  "candidates": [
+    {
+      "hook": "layers.31.hidden_states_only",
+      "var_explained": -0.6093104081113057,
+      "fvu": 1.6093104081113057,
+      "l0": 35.92409896850586,
+      "var_explained_per_token": -0.28260335326194763,
+      "rel_mse": 1.2827091217041016,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.mlp_output",
+      "var_explained": -921.4657777562605,
+      "fvu": 922.4657777562605,
+      "l0": 17.765365600585938,
+      "var_explained_per_token": -450.9725036621094,
+      "rel_mse": 451.9972839355469,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.attn_output",
+      "var_explained": -157.92583597547974,
+      "fvu": 158.92583597547974,
+      "l0": 17.966249465942383,
+      "var_explained_per_token": -36.009239196777344,
+      "rel_mse": 36.98248291015625,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "layers.31.input_resid",
+      "var_explained": 0.6456073508879281,
+      "fvu": 0.35439264911207197,
+      "l0": 68.72542572021484,
+      "var_explained_per_token": 0.7936906814575195,
+      "rel_mse": 0.20633190870285034,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "blocks.31.hook_resid_post_x0.8",
+      "var_explained": 0.7168389671215043,
+      "fvu": 0.2831610328784957,
+      "l0": 58.8421516418457,
+      "var_explained_per_token": 0.8408355712890625,
+      "rel_mse": 0.1591818481683731,
+      "n_tokens": 6785
+    },
+    {
+      "hook": "blocks.31.hook_resid_post_x1.2",
+      "var_explained": 0.768014322744219,
+      "fvu": 0.231985677255781,
+      "l0": 117.5798110961914,
+      "var_explained_per_token": 0.8695293664932251,
+      "rel_mse": 0.13048498332500458,
+      "n_tokens": 6785
+    }
+  ],
+  "published": {
+    "l0": 76,
+    "fvu": null,
+    "tol": 0.15,
+    "dataset": "monology/pile-uncopyrighted",
+    "context_size": 1024
+  },
+  "sae": {
+    "release": "gemma-scope-9b-it-res-canonical",
+    "sae_id": "layer_31/width_16k/canonical"
+  },
+  "rules": "2026-09-16.2",
+  "dtype": "torch.bfloat16",
+  "per_doc_l0": [
+    101.04692077636719,
+    65.6001968383789,
+    82.4935073852539,
+    88.78296661376953,
+    86.33995819091797,
+    97.6111068725586,
+    80.13215637207031,
+    92.83829498291016,
+    81.0989761352539,
+    82.66554260253906,
+    71.67500305175781,
+    90.47115325927734,
+    78.76998138427734,
+    85.00675964355469,
+    87.26114654541016,
+    87.11612701416016
+  ],
+  "per_doc_var_explained": [
+    0.7325711525796911,
+    0.6722586637639882,
+    0.7378338092180279,
+    0.7400091490754827,
+    0.7188435510742613,
+    0.7395372036330237,
+    0.6336111305941474,
+    0.7259298706754138,
+    0.7418782026598738,
+    0.7230577107090113,
+    0.6704802407881727,
+    0.7410295838349233,
+    0.6951914298007467,
+    0.7398104814188385,
+    0.7349493637375311,
+    0.7084730914181451
+  ],
+  "n_docs": 16,
+  "ctx": 1024,
+  "bos_excluded": true,
+  "jumprelu_below_threshold_frac": 0.0,
+  "jumprelu_n_active": 581641,
+  "chat_health": {
+    "var_explained": 0.7161901444673031,
+    "fvu": 0.28380985553269683,
+    "l0": 81.34259033203125,
+    "var_explained_per_token": 0.8646793961524963,
+    "rel_mse": 0.13531963527202606,
+    "n_tokens": 108
+  },
+  "artifact": {
+    "release_requested": "gemma-scope-9b-it-res-canonical",
+    "sae_id_requested": "layer_31/width_16k/canonical",
+    "hook_name": "blocks.31.hook_resid_post",
+    "d_in": 3584,
+    "d_sae": 16384,
+    "hf_repo_id": null,
+    "hf_path": null,
+    "neuronpedia_id": "gemma-2-9b-it/31-gemmascope-res-16k",
+    "published_l0_reference": 76,
+    "path_names_l0": null,
+    "reference_matches_artifact": null,
+    "is_it_release": true
+  },
+  "identity": {
+    "min_cos": 0.9949008822441101,
+    "max_norm_rel": 0.02055703103542328,
+    "ref": "transformerlens:blocks.31.hook_resid_post",
+    "dtype": "torch.bfloat16",
+    "cross_nnpost_vs_tlpre_median_cos": 0.9661124348640442
+  }
+}

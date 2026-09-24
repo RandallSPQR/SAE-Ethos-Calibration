@@ -14,15 +14,34 @@ import yaml
 
 CFG = Path(__file__).resolve().parent.parent / "config"
 
+# Versioned gate RULES (statistics + criteria). Bump on any change to what a gate measures, with an entry in
+# gates/CHANGELOG.md. Written into every report and the provenance manifest so "PASS" is always relative to
+# a named ruleset, never to whatever the code happened to be that day.
+GATE_RULES_VERSION = "2026-09-17.3"
+
+
+NOT_EVALUABLE = "not_evaluable"
+
 
 @dataclass
 class GateResult:
+    """status is one of "pass", "fail", "not_evaluable" (rules 2026-09-17.2). A gate whose data cannot
+    support the statistic it gates on (per-cell n too small for an interval to mean anything) returns
+    not_evaluable rather than pass or fail; it blocks spend exactly like a fail but is reported apart, so an
+    underpowered run is never read as either a green or a red instrument."""
     name: str
     passed: bool
     detail: dict = field(default_factory=dict)
+    status: str = None
+
+    def __post_init__(self):
+        if self.status is None:
+            self.status = "pass" if self.passed else "fail"
+        if self.status == NOT_EVALUABLE:
+            self.passed = False
 
     def line(self):
-        flag = "PASS" if self.passed else "FAIL"
+        flag = {"pass": "PASS", "fail": "FAIL", NOT_EVALUABLE: "NOT_EVALUABLE"}[self.status]
         return f"[{flag}] {self.name}: " + ", ".join(f"{k}={v}" for k, v in self.detail.items())
 
 

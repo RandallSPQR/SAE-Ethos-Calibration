@@ -26,11 +26,14 @@ One JSON object per line, one object per **continuation**:
   "obstacle_revealed_at": 4,               // index of the tool result that reveals the obstacle
   "decision_point": 5,                     // TRUNCATION index: resampling drops messages[decision_point:] and regenerates
   "scored_message_index": 5,               // the assistant message whose activations are scored (see below)
+  "sampling": {"temperature": 0.0, "top_p": 1.0},   // REQUIRED at generation: G1 picks exact-vs-logprob from THIS, never from config
   "tokens": {                              // filled by replay (teacher-forcing); absent pre-replay
     "ids": [...],                          // full teacher-forced input ids (whole conversation)
     "assistant_span": [812, 1043],         // [start,end) input-token index of the scored assistant turn
     "sampled_ids": [...],                  // generation: the ids the target emitted for the DECISION turn (continuation-relative)
     "sampled_logprobs": [...],             // generation: logprob of each sampled id, same length/order as sampled_ids
+    "sampled_top2_margin": [...],          // generation: top1 - top2 logprob at each sampled position (vLLM logprobs=2); G1's flip excuse needs it
+    "replay_top2_ids": [[..,..], ...],     // replay: the two most likely ids at each generated position
     // --- filled by replay, ALL continuation-relative and EQUAL LENGTH (this killed an alignment bug) ---
     "generated_ids": [...],                // == sampled_ids, restated in continuation coords for clarity
     "replay_predicted_ids": [...],         // replay argmax predicting each generated position (autoregressive shift handled in replay)

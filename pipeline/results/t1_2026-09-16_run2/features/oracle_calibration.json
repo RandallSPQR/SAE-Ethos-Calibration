@@ -1,0 +1,224 @@
+{
+  "rules": "2026-09-16.2",
+  "backend": "karvonen",
+  "accuracy": 0.9166666666666666,
+  "confab_rate": 1.0,
+  "paired_discrimination": 0.9166666666666666,
+  "n": 12,
+  "pairs": [
+    {
+      "label": "code",
+      "position": 13,
+      "real": "The text is a Python function that calculates the nth Fibonacci number.",
+      "null": "The text is about a new study that found a link between air pollution and an increased risk of heart disease.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 41,
+      "real": "The text is a Python function that calculates the Fibonacci sequence.",
+      "null": "The text is about a new study that found a link between air pollution and heart disease.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 47,
+      "real": "The text is about a Python function that calculates the nth Fibonacci number.",
+      "null": "The text is about a new feature in the latest version of the Android operating system.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 71,
+      "real": "The text is a Python function that calculates the nth Fibonacci number.",
+      "null": "The text is about the cost of living in different cities.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 86,
+      "real": "The text is a Python function that calculates the nth Fibonacci number.",
+      "null": "The text is about the different ways to access the same content on a website.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 112,
+      "real": "The text explores the relationship between prime numbers and Fibonacci numbers.",
+      "null": "The text is about the history of the NBA.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 57,
+      "real": "The text is about a community facing the aftermath of a flood.",
+      "null": "The text is about a computer program that can solve Sudoku puzzles.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 68,
+      "real": "The text is about a group of children who are disappointed when their day off school is ruined by rain.",
+      "null": "The text is about a new AI model called Vicuna.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 73,
+      "real": "The text is about a group of children who are excited about the flooding of their village.",
+      "null": "The text is about the dangers of using social media for personal gain.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 82,
+      "real": "The text is about a village flooded by the rising river.",
+      "null": "The text is about a man who is trying to find a way to make his relationship work.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 97,
+      "real": "The text is about a flood in a small town.",
+      "null": "The text is about the mathematical concept of the NAME_1 function.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 106,
+      "real": "The text is about a gloomy day in a small town.",
+      "null": "The text is about a new yoga studio in the city.",
+      "real_hit": false,
+      "null_hit": false
+    }
+  ],
+  "explanations": [
+    {
+      "label": "code",
+      "position": 13,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 41,
+      "explanation": "The text is a Python function that calculates the Fibonacci sequence.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 47,
+      "explanation": "The text is about a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 71,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 86,
+      "explanation": "The text is a Python function that calculates the nth Fibonacci number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 112,
+      "explanation": "The text explores the relationship between prime numbers and Fibonacci numbers.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 57,
+      "explanation": "The text is about a community facing the aftermath of a flood.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 68,
+      "explanation": "The text is about a group of children who are disappointed when their day off school is ruined by rain.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 73,
+      "explanation": "The text is about a group of children who are excited about the flooding of their village.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 82,
+      "explanation": "The text is about a village flooded by the rising river.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 97,
+      "explanation": "The text is about a flood in a small town.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 106,
+      "explanation": "The text is about a gloomy day in a small town.",
+      "source": "karvonen",
+      "hit": false
+    }
+  ],
+  "null_explanations": [
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a young boy who is being bullied.",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a new feature in the Google Maps app that allows users to view the current traffic conditions in their area",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a legal case involving a dispute over a loan.",
+      "confident": true
+    }
+  ]
+}

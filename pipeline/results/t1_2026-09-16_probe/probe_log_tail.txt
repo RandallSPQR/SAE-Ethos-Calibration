@@ -1,0 +1,33 @@
+== P1: vLLM serve + trials
+[lottery] n=280 dropped=0 sp=52.530530362171895 (logistic)  fan2026 baseline_sp=125
+[ultimatum] n=152 dropped=0 sp=None (none)  fan2026 baseline_sp=30
+== P2: extract
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+[lottery] activations: n=280 layers=[20, 26, 31] d=3584
+[ultimatum] activations: n=152 layers=[20, 26, 31] d=3584
+== P3: train
+[lottery] layer=20 (fan:48) C=0.01 cv_acc=1.000 heldout_acc=1.000 (fan:0.82) n_train=224 n_heldout=56 -> steering vector probe_lottery
+[ultimatum] layer=20 (fan:48) C=0.01 cv_acc=1.000 heldout_acc=1.000 (fan:None) n_train=122 n_heldout=30 -> steering vector probe_ultimatum
+== P4: calibrate
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+  [lottery] lambda=-0.60 sp=None (none)
+  [lottery] lambda=-0.40 sp=52.6 (logistic)
+  [lottery] lambda=-0.20 sp=52.6 (logistic)
+  [lottery] lambda=+0.00 sp=52.6 (logistic)
+  [lottery] lambda=+0.20 sp=52.6 (logistic)
+  [lottery] lambda=+0.40 sp=None (none)
+  [lottery] lambda=+0.60 sp=None (none)
+[lottery] monotone=True mae=None (fan:2) range=None (fan:[30, 200]) saturated=['-0.6', '0.4', '0.6']
+  [ultimatum] lambda=-0.60 sp=None (none)
+  [ultimatum] lambda=-0.40 sp=None (none)
+  [ultimatum] lambda=-0.20 sp=None (none)
+  [ultimatum] lambda=+0.00 sp=None (none)
+  [ultimatum] lambda=+0.20 sp=None (none)
+  [ultimatum] lambda=+0.40 sp=None (none)
+  [ultimatum] lambda=+0.60 sp=None (none)
+[ultimatum] monotone=False mae=None (fan:None) range=None (fan:[30, 60]) saturated=['-0.6', '-0.4', '-0.2', '0.0', '0.2', '0.4', '0.6']
+[FAIL] G9_probe_external_fixture: lottery=lottery: heldout_acc=1.0 (fan:0.82) mae=None (fan:2) baseline_sp=52.5 (fan:125) layer=20 (fan:48) coverage=0.00 range=None (fan:[30, 200]) saturated=['-0.6', '0.4', '0.6'], lottery_checks={'mae_ok': False, 'coverage_ok': False}, ultimatum=ultimatum: heldout_acc=1.0 (fan:None) mae=None (fan:None) baseline_sp=None (fan:30) layer=20 (fan:48) coverage=0.00 range=None (fan:[30, 60]) saturated=['-0.6', '-0.4', '-0.2', '0.0', '0.2', '0.4', '0.6'], ultimatum_checks={'monotone': False, 'mae_ok': False, 'baseline_ok': False, 'coverage_ok': False}
+
+full: 0/1 gates passed.
+BLOCKED by: G9_probe_external_fixture
+PROBE_DONE

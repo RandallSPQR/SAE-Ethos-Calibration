@@ -1,0 +1,60 @@
+{
+  "chosen": {
+    "hook": "blocks.31.hook_resid_post",
+    "var_explained": 0.7325711525796911,
+    "fvu": 0.2674288474203089,
+    "l0": 101.04692077636719,
+    "var_explained_per_token": 0.8776007294654846,
+    "rel_mse": 0.1224096342921257,
+    "n_tokens": 1023
+  },
+  "candidates": [
+    {
+      "hook": "layers.31.hidden_states_only",
+      "var_explained": -0.6308872256817704,
+      "fvu": 1.6308872256817704,
+      "l0": 32.587486267089844,
+      "var_explained_per_token": -0.18641389906406403,
+      "rel_mse": 1.1864948272705078,
+      "n_tokens": 1023
+    },
+    {
+      "hook": "layers.31.mlp_output",
+      "var_explained": -1090.2252057106198,
+      "fvu": 1091.2252057106198,
+      "l0": 17.918865203857422,
+      "var_explained_per_token": -494.8187561035156,
+      "rel_mse": 495.8354187011719,
+      "n_tokens": 1023
+    },
+    {
+      "hook": "layers.31.attn_output",
+      "var_explained": -185.95514980212084,
+      "fvu": 186.95514980212084,
+      "l0": 17.977516174316406,
+      "var_explained_per_token": -38.12214279174805,
+      "rel_mse": 39.08434295654297,
+      "n_tokens": 1023
+    },
+    {
+      "hook": "layers.31.input_resid",
+      "var_explained": 0.6012664006898965,
+      "fvu": 0.39873359931010355,
+      "l0": 79.30303192138672,
+      "var_explained_per_token": 0.8046331405639648,
+      "rel_mse": 0.19538582861423492,
+      "n_tokens": 1023
+    }
+  ],
+  "published": {
+    "l0": 76,
+    "fvu": null,
+    "tol": 0.15,
+    "dataset": "monology/pile-uncopyrighted",
+    "context_size": 1024
+  },
+  "sae": {
+    "release": "gemma-scope-9b-it-res-canonical",
+    "sae_id": "layer_31/width_16k/canonical"
+  }
+}

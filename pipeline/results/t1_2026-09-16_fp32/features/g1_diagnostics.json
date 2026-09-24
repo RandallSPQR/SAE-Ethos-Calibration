@@ -1,0 +1,9 @@
+{
+  "rules": "2026-09-16.2",
+  "dtype": "torch.float32",
+  "sampled_len": 70,
+  "span_len": 70,
+  "span_ids_equal_sampled": true,
+  "raw_ids_exact_match": 1.0,
+  "raw_ids_mismatches": []
+}
