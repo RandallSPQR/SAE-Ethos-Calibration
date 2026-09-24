@@ -28,3 +28,6 @@ scenarios/arm_a/*/scenarios/
 # mirrored stub trees anywhere (claude-mem writes CLAUDE.md beside touched paths, recursively under results)
 **/pipeline/pipeline/
 **/results/**/pipeline/
+# plugin stubs outside pipeline/ (the tracked ones under pipeline/ stay tracked; gitignore does not affect them)
+scenarios/**/CLAUDE.md
+tools/**/CLAUDE.md
