@@ -106,7 +106,10 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
         name, args = call
         messages[-1]["tool_calls"] = [{"name": name, "args": args, "form": protocol.last_call_form()}]
         if matcher.on_tool_call(name, args):
-            return messages, step + 1, nudges_used
+            # the CALL is the decision: drop the greedy turn that made it so every continuation resamples it
+            # (triggers.py, type tool_call). start_step = this step, since the turn is re-emitted.
+            messages.pop()
+            return messages, step, nudges_used
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue
