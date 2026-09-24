@@ -24,13 +24,19 @@ Two money-savers that matter more than card choice:
 ```
 # in the repo (scenarios/ and pipeline/ side by side)
 cd pipeline
-python -m gates.run_gates --fixture      # 8/8 — proves gate logic
+python -m gates.run_gates --fixture      # 10/10 — proves gate logic
 python smoke/smoke_test.py               # proves scenario -> seed -> transcript -> resample -> gates
+python -m harness.fixtures               # scripted agents through the REAL executor + labeler
 cd ../scenarios && python scripts/validate.py --arm a   # 4/4 scenarios solvable
 ```
 
 STOP if any of these is red. Fix it here where it's free. When they're all green, you have proven
 everything except the four GPU-bound stubs.
+
+Shipping code to a pod: `bash pipeline/calibrate/pack.sh out.tgz` from the repo root, always. It refuses
+an uncommitted tree and stamps `GIT_COMMIT` so the manifest records what ran. The root tarballs
+`pipeline.tar.gz` / `scenarios.tar.gz` were removed on 2026-09-24: they were a second, older copy of the
+code that a reader could unpack by mistake.
 
 Also at T0: fill the blanks in `config/models.yaml` you already know —
 `oracle.hf_id` (exact Karvonen 9B adapter), and from the Gemma Scope release card the
