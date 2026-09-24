@@ -148,20 +148,37 @@ def build_null(features_dir, transcripts_dir, feature_index, split="test", trial
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--run-dir", default=None, help="runs/<run_id>/: sets --features/--transcripts/--replayed/--concept-index")
     ap.add_argument("--features", default="features")
     ap.add_argument("--transcripts", default="transcripts")
-    ap.add_argument("--concept-index", default="features/concept_index.json")
+    ap.add_argument("--replayed", default=None, help="replay-derived token metadata (runs/<run_id>/replay); "
+                                                    "REQUIRED for real analysis: without it every uid lacks its token count")
+    ap.add_argument("--concept-index", default=None)
+    ap.add_argument("--split", default="test", choices=["test", "discover"],
+                    help="which seeds to report on; 'test' is the reporting split (analyze/split.py); "
+                         "'discover' is for dry runs on discover-only data and is labeled as such")
+    ap.add_argument("--trials", type=int, default=200)
     args = ap.parse_args()
-    ci = Path(args.concept_index)
+    if args.run_dir:
+        rd = Path(args.run_dir)
+        args.features, args.transcripts = str(rd / "features"), str(rd / "generation")
+        args.replayed = args.replayed or str(rd / "replay")
+    ci = Path(args.concept_index or (Path(args.features) / "concept_index.json"))
     if not ci.exists():
         print("(no concept_index.json yet — run discovery first)"); return
     assert_no_leakage(ci)
+    # 2026-09-24 mock dry run found this CLI never joined the replay metadata (no --replayed), so every uid
+    # lacked assistant_token_count and the strict cardinality check refused; the wiring is now explicit.
+    if (Path(args.features) / "MOCK").exists():
+        print("NOTE: features/MOCK present: this store is synthetic (replay --mock); numbers are plumbing, not science")
     for concept, rec in json.loads(ci.read_text()).items():
-        eff = run_effect(args.features, args.transcripts, rec["feature"])
-        null = build_null(args.features, args.transcripts, rec["feature"])
+        eff = run_effect(args.features, args.transcripts, rec["feature"], split=args.split, replayed_dir=args.replayed)
+        null = build_null(args.features, args.transcripts, rec["feature"], split=args.split, trials=args.trials,
+                          replayed_dir=args.replayed)
         import statistics as st
         p = (sum(1 for x in null if abs(x) >= abs(eff["cohens_d"])) + 1) / (len(null) + 1)
-        print(concept, {**eff, "perm_p": round(p, 4), "null_mean_abs_d": round(st.mean(abs(x) for x in null), 3)})
+        print(concept, {**eff, "perm_p": round(p, 4), "null_mean_abs_d": round(st.mean(abs(x) for x in null), 3),
+                        "split": args.split})
 
 
 if __name__ == "__main__":

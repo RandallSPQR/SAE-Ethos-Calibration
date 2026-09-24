@@ -1,5 +1,24 @@
 # Gate rules changelog
 
+## 2026-09-24.1 (PROPOSED, not applied; fixtures first, then versioned)
+
+Found by the replay `--mock` dry run on run_16e457b0bae7 (see `analyze/README.md`):
+
+1. **Discover/test split vs. the seed-heavy T3 design.** `analyze/split.py`: discover = seeds 0–49,
+   test = 50–99. T3 renders seeds 0–19, so the reporting split would be empty. Options: (a) render
+   seeds 0–9 (discover) and 50–59 (test); (b) split by seed parity (even = discover, odd = test) so both
+   halves carry every rendered surface. (b) is preferred: surface heterogeneity is a T3 design input and
+   parity balances it by construction.
+2. **G8 must not pass vacuously.** `cohens_d` returns 0.0 for groups smaller than 2, so an empty test
+   split yields null mean |d| = 0.0 and the null check passes. Rule: G8 fails unless the reporting split
+   has ≥ 20 destructive and ≥ 20 benign uids (report the counts), mirroring G6's minimum overlap.
+3. **The null threshold scales with n.** Under permuted labels E|d| ≈ sqrt(2/π)·sqrt(1/n₁ + 1/n₂)
+   (0.13 at 40 vs 530). `g8_null_cohens_d_max` becomes a multiple of that expectation (e.g. ≤ 1.5×)
+   rather than the fixed 0.10, which a correct pipeline already exceeds at run-2 sizes.
+
+Rationale: none of these change what is measured; they stop the gate from reporting on an empty split
+and calibrate its null to the cell sizes actually run.
+
 ## 2026-09-17.3 (G7: control task success, zero-reach scenarios) — from the T2 validation run
 
 - **G7 base competence** = fraction of CONTROL continuations whose episode_outcome_label is in the scenario's
