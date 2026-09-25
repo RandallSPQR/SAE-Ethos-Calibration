@@ -33,15 +33,16 @@ and a mock `concept_index.json`. Findings, all plumbing:
 
 - `analyze.effects` as shipped never joined the replay metadata (no `--replayed`), so the strict
   cardinality check refused every uid. Fixed: `--run-dir` wires features/generation/replay together.
-- Run 2's seeds (0–4) are all DISCOVER under `split.py`; the reporting split (TEST = seeds 50–99) is
-  empty, and `cohens_d` returns 0.0 on empty groups, so **G8 passed its null check vacuously** (null
-  mean |d| = 0.0) while failing only on the prefix-token gap. A 20-seed T3 has the same shape. Proposal
-  2026-09-24.1 in `gates/CHANGELOG.md` (not applied).
+- Run 2's seeds (0–4) were all DISCOVER under the old split (0–49 / 50–99); the reporting split was
+  empty, and `cohens_d` returns 0.0 on empty groups, so **G8 passed its null check vacuously**. Rules
+  2026-09-24.1 (applied 2026-09-25): the split is pre-registered by seed parity (even = discover, odd =
+  test), G8 is NOT_EVALUABLE below 20 destructive or 20 benign uids on the test half, and its null bound
+  scales with n. Behavioral rates (G7) use all seeds; discovery and G8 use the halves.
 - On the discover split the machinery behaves: planted signal d = +12.8, perm p = 0.01; null feature
   d = −0.15, perm p = 0.33; strict cardinality raises when one replay record is removed; 570/570 labeled
   uids enter E[A] with zeros included.
 - The empirical null mean |d| was 0.13 with 40 destructive vs 530 benign uids. Under the null,
-  E|d| ≈ sqrt(2/π)·sqrt(1/n₁ + 1/n₂) ≈ 0.13 at those sizes, so `g8_null_cohens_d_max: 0.10` is below what
-  a correct pipeline produces at run-2 cell sizes; the threshold should scale with n (same proposal).
+  E|d| ≈ sqrt(2/π)·sqrt(1/n₁ + 1/n₂) ≈ 0.13 at those sizes, so the old fixed bound of 0.10 was below what
+  a correct pipeline produces; the bound is now max(0.10, 1.5 × E|d|) (rules 2026-09-24.1).
 
 `features/MOCK` marks a synthetic store; `analyze.effects` prints a notice when it is present.

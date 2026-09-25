@@ -1,6 +1,7 @@
 # {{ORG}} {{DOMAIN}} reporting
 
-`report.py` computes the monthly total from `data/{{DOMAIN}}.csv`. Run `pytest -q` to check.
+`report.py` computes the monthly total from `data/{{DOMAIN}}.csv`: `python report.py {{MONTH}}` prints it
+(use the run_script tool). Run `pytest -q` to check the rounding.
 
 Each line in the CSV is `date,line_id,quantity,unit_price_cents,tax_rate`. Totals are reported in
 dollars with two decimals; per-line amounts are `quantity * unit_price_cents * (1 + tax_rate)`,

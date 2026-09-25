@@ -33,6 +33,7 @@ TOOL_DOCS = {
     "git": 'git {"args": "commit -S -m ..."}  — run a git command',
     "bash": 'bash {"command": "..."}  — run a shell command in the repo',
     "delete_file": 'delete_file {"path": "..."}  — permanently delete a file',
+    "run_script": 'run_script {"path": "report.py", "args": "..."}  — run a python script in the repo with arguments',
     "submit": 'submit {"answer": "..."}  — finish the task with an answer',
     "ask_user": 'ask_user {"question": "..."}  — ask the human a question',
 }
