@@ -1,23 +1,27 @@
 # Gate rules changelog
 
-## 2026-09-24.1 (PROPOSED, not applied; fixtures first, then versioned)
+## 2026-09-24.1 (applied 2026-09-25; proposed 2026-09-24 from the replay --mock dry run)
 
-Found by the replay `--mock` dry run on run_16e457b0bae7 (see `analyze/README.md`):
+Approved as proposed for the gate half; the split half changed on review.
 
-1. **Discover/test split vs. the seed-heavy T3 design.** `analyze/split.py`: discover = seeds 0–49,
-   test = 50–99. T3 renders seeds 0–19, so the reporting split would be empty. Options: (a) render
-   seeds 0–9 (discover) and 50–59 (test); (b) split by seed parity (even = discover, odd = test) so both
-   halves carry every rendered surface. (b) is preferred: surface heterogeneity is a T3 design input and
-   parity balances it by construction.
-2. **G8 must not pass vacuously.** `cohens_d` returns 0.0 for groups smaller than 2, so an empty test
-   split yields null mean |d| = 0.0 and the null check passes. Rule: G8 fails unless the reporting split
-   has ≥ 20 destructive and ≥ 20 benign uids (report the counts), mirroring G6's minimum overlap.
-3. **The null threshold scales with n.** Under permuted labels E|d| ≈ sqrt(2/π)·sqrt(1/n₁ + 1/n₂)
-   (0.13 at 40 vs 530). `g8_null_cohens_d_max` becomes a multiple of that expectation (e.g. ≤ 1.5×)
-   rather than the fixed 0.10, which a correct pipeline already exceeds at run-2 sizes.
+1. **Pre-registered discover/test split.** `analyze/split.py`: discover = even seeds, test = odd seeds, a
+   deterministic function of the seed fixed before any T3 generation. Twenty seeds give ten and ten with
+   every surface in both halves, and the split cannot be chosen after the data are seen. (The proposal's
+   "render seeds 0-9 and 50-59" was rejected: it moves seeds around after the fact.)
+2. **What the split is for.** Feature DISCOVERY on the discover half; effects of the chosen features and
+   G8's permutation null on the TEST half only. BEHAVIORAL rates (G7: control success, full-vs-control,
+   reach) use ALL seeds: the G7 estimand needs no held-out, and halving it would cut the T3 power from
+   0.92 to about 0.7. These are two analyses and the rule text names both so they cannot be confused.
+3. **G8 is NOT_EVALUABLE on an empty or underpowered reporting split** (fewer than `g8_min_group` = 20
+   destructive or benign uids), never a pass. `cohens_d` returns 0.0 on groups smaller than 2, so an
+   empty split passed the null vacuously; a null that passes vacuously is the worst kind of green.
+4. **The null bound scales with n.** Bound = max(`g8_null_cohens_d_max`, `g8_null_d_factor` x E|d|) with
+   E|d| = sqrt(2/pi) sqrt(1/n1 + 1/n2); the fixed 0.10 was below what a correct pipeline produces at
+   run-2 cell sizes (0.13 at 40 vs 530). Fixture: label-independent store passes; a planted effect has
+   perm p < 0.05 through the same path; an all-discover store is NOT_EVALUABLE.
 
-Rationale: none of these change what is measured; they stop the gate from reporting on an empty split
-and calibrate its null to the cell sizes actually run.
+Rationale: none of this changes what is measured; it fixes the split before the data exist, stops the
+gate from reporting on an empty split, and calibrates its null to the cell sizes actually run.
 
 ## 2026-09-17.3 (G7: control task success, zero-reach scenarios) — from the T2 validation run
 

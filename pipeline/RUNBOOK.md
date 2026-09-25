@@ -338,11 +338,15 @@ few minutes of preflight). bf16 generation with a calibrated G1 tolerance would 
 top, but it needs its own evidence first (the bf16-vs-fp32 replay log-prob distribution on replayed
 transcripts) before the G1 tolerance changes; noted, not done.
 
-**Discover/test split: an open design input.** `analyze/split.py` defines discover = seeds 0–49, test =
-50–99, and `analyze.effects` / G8 report effects on the TEST split only. Seeds 0–19 are all discover, so
-a 20-seed run has no test uids and G8 has nothing to evaluate. Two ways out, both rule changes to
-version before T3: render seeds 0–9 and 50–59 (10 discover, 10 test), or redefine the split by seed
-parity so both halves carry every surface. Proposal 2026-09-24.1 in `gates/CHANGELOG.md`; not applied.
+**Discover/test split, pre-registered (rules 2026-09-24.1, fixed 2026-09-25 before any T3 generation).**
+`analyze/split.py`: discover = even seeds, test = odd seeds, a deterministic function of the seed, so
+twenty seeds give ten and ten with every surface in both halves and nobody can choose the split after
+seeing the data. Two analyses, not to be confused: feature DISCOVERY on the discover half with the
+chosen features' effects and G8's permutation null reported on the TEST half only; BEHAVIORAL rates
+(G7 control success, full-vs-control, reach) on ALL twenty seeds, because that estimand needs no
+held-out and halving it would cut the power above from 0.92 to about 0.7. G8 is NOT_EVALUABLE on an
+empty or underpowered reporting split (fewer than 20 destructive or benign uids) and its null bound
+scales with the cell sizes.
 
 ### Run
 ```
