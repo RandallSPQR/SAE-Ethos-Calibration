@@ -1,0 +1,98 @@
+{
+  "run_id": "run_261148c07cd2",
+  "git_commit": "d400588140a88c4c5cc3451d3a5cd8e76f9f01e8",
+  "code_hash": "14559adc89523b78",
+  "scenario_commit": "d400588140a88c4c5cc3451d3a5cd8e76f9f01e8",
+  "model": {
+    "hf_id": "google/gemma-2-9b-it",
+    "base_hf_id": "google/gemma-2-9b",
+    "revision": "11c9b309abf73637e4b6f9a3fa1e92e615547819",
+    "weight_hash": "7055bc8c5f456ced",
+    "dtype": "bfloat16"
+  },
+  "tokenizer": {
+    "revision": "11c9b309abf73637e4b6f9a3fa1e92e615547819",
+    "chat_template_hash": null
+  },
+  "sae": {
+    "release": "gemma-scope-9b-it-res-canonical",
+    "id": "layer_31/width_16k/canonical",
+    "revision": "e86af97a5b6fbbccca28ab654f2fda1b0768f770",
+    "hook": "blocks.31.hook_resid_post",
+    "layer": 31,
+    "weights_hash": "f0177489f26ef768",
+    "published": {
+      "l0": 76,
+      "fvu": null,
+      "tol": 0.15,
+      "dataset": "monology/pile-uncopyrighted",
+      "context_size": 1024
+    }
+  },
+  "oracle": {
+    "id": "adamkarvonen/checkpoints_latentqa_cls_past_lens_addition_gemma-2-9b-it",
+    "kind": "lora",
+    "revision": "44b5056006a4e14b9bb6fa99a98cf6e2bc86fcdf",
+    "weights_hash": "1a8c60a79eedcf5c"
+  },
+  "software": {
+    "python": "3.12.3",
+    "torch": "2.8.0+cu128",
+    "vllm": null,
+    "nnsight": "0.7.0",
+    "sae_lens": "6.51.1",
+    "transformers": "5.17.0"
+  },
+  "config": {
+    "run_yaml_hash": "5599edd10cd9dae1",
+    "models_yaml_hash": "f5006b896d229d3d",
+    "sampling": {
+      "continuations_per_seed": 20,
+      "temperature": 0.8,
+      "top_p": 0.95,
+      "max_new_tokens": 600
+    }
+  },
+  "isolation_declared": {
+    "network_disabled": false,
+    "isolated_mount": false,
+    "no_host_credentials": false,
+    "non_root_uid": false,
+    "resource_limits": false,
+    "process_timeout": false,
+    "controlled_env": false
+  },
+  "gate_rules_version": "2026-09-17.3",
+  "unverified": [
+    "tokenizer.chat_template_hash",
+    "sae.published.fvu"
+  ],
+  "isolation": {
+    "isolated": true,
+    "mechanism": "seccomp_uid",
+    "canaries": "10/10",
+    "landlock_abi": 4,
+    "bpf_selftest": true,
+    "tried": {
+      "seccomp_uid": {
+        "network_connect_fails": true,
+        "parent_level_file_unreadable": true,
+        "secrets_absent": true,
+        "disk_secrets_unreadable": true,
+        "fork_bomb_hits_limit": true,
+        "overtime_is_killed": true,
+        "episode_dir_writable": true,
+        "imports_available": true,
+        "trivial_test_green": true,
+        "no_survivors": true
+      }
+    },
+    "hardened": [
+      "../scenarios/build_t2",
+      "/workspace/hf",
+      "/workspace/hf/token",
+      "/workspace/t2/runs/run_261148c07cd2",
+      "/workspace/hf/token"
+    ]
+  }
+}

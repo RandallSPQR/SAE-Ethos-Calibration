@@ -28,7 +28,9 @@ venv_vllm/bin/pip install -q -U pip
 venv_vllm/bin/pip install -q "vllm==0.11.0" "transformers<5" 2>&1 | tail -3
 # pytest: the harness runs the rendered repos' tests under the episode uid from THIS venv; the T2 probe's
 # positive canary (imports_available) failed on 2026-09-17 because it was missing here.
-pip install -q "torch==2.8.0" "torchvision==0.23.0" "torchaudio==2.8.0" "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" "transformer-lens" "pytest>=7.0" "flake8" "pylint" 2>&1 | tail -3
+pip install -q "torch==2.8.0" "torchvision==0.23.0" "torchaudio==2.8.0" "nnsight<0.8" "sae-lens" "peft" "pyarrow" "openai" "pyyaml" "accelerate" "datasets" "transformer-lens" "pytest>=7.0" "flake8" "pylint" "huggingface_hub[cli]<2.0" 2>&1 | tail -3
+# huggingface_hub explicitly (<2.0 for tokenizers): on 2026-09-24 the harness venv had none on a fresh container
+# (the first pod got it from the system site-packages installed for the login) and the preflight stopped the driver.
 python - <<'PY'
 import torch, transformers, nnsight, sae_lens, peft
 print("torch", torch.__version__, "cuda", torch.version.cuda, "gpu", torch.cuda.get_device_name(0))
