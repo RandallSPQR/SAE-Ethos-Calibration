@@ -11,6 +11,8 @@ source /workspace/venv/bin/activate
 export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
 export VLLM_ATTENTION_BACKEND=TRITON_ATTN
 OUT=${1:-/workspace/t2}; N=${2:-10}
+# T2_SCENARIOS=a,b restricts the harness to those scenario ids (a retune slice); default: all four.
+SCEN_ARG=""; [ -n "${T2_SCENARIOS:-}" ] && SCEN_ARG="--scenarios ${T2_SCENARIOS}"
 mkdir -p "$OUT" /workspace/logs
 echo "== 0: isolation probe (which door is open; which backend passes every canary)"
 command -v bwrap >/dev/null || { apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq bubblewrap >/dev/null 2>&1 || true; }
@@ -36,7 +38,7 @@ curl -s localhost:8000/v1/models | head -c 300; echo
 echo "== 2: render seeds 0-4"
 (cd ../scenarios && python scripts/render.py --arm a --seeds 0-4 --out build_t2) | tail -3
 echo "== 3: harness, n=$N per cell (canaries re-run at launch; backend recorded in manifest.json)"
-python -m harness.run_harness --build ../scenarios/build_t2 --runs-root "$OUT/runs" --n "$N" 2>&1 | tee /workspace/logs/t2_harness.log
+python -m harness.run_harness --build ../scenarios/build_t2 --runs-root "$OUT/runs" --n "$N" $SCEN_ARG 2>&1 | tee /workspace/logs/t2_harness.log
 kill $VPID 2>/dev/null; sleep 5; gpu_free || true
 RUN=$(ls -d "$OUT"/runs/*/ 2>/dev/null | head -1)
 [ -n "$RUN" ] || { echo "no run dir produced"; exit 4; }
