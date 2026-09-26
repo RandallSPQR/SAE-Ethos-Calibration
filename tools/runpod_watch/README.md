@@ -92,3 +92,21 @@ A100 SXM was listed at EUR-IS-1, US-KS-2, US-MD-1, US-MO-1 and US-WA-1, all
 LOW; of those only EUR-IS-1 offers STANDARD network volumes. A100 PCIe was
 listed at EU-RO-1 (STANDARD). The doc's prior of US-KS-2 fails on the volume
 criterion today. Whether that holds is what the week of polling is for.
+
+## Pod watchdog (mandatory before any pod is created)
+
+`pod_watchdog.py` is a launchd job (every 5 min, independent of any Claude session, terminal or app) that
+terminates pods past a deadline. Two idle pods have billed for nothing (2026-09-18 ~3 h; 2026-09-25 ~20 h,
+$32) because the session that created them stopped before the run finished.
+
+```bash
+tools/runpod_watch/pod_watchdog.py install          # once; copies itself to ~/runpod_watch/app (TCC)
+tools/runpod_watch/pod_watchdog.py arm <pod_id> --hours 2.5 --note "honeypot slice"   # right after create
+tools/runpod_watch/pod_watchdog.py status
+```
+
+Rules per tick: a registered pod past its deadline is terminated; an UNREGISTERED pod up longer than 3 h
+is terminated (a pod nobody armed is a pod nobody is watching); every termination is logged to
+`~/runpod_watch/watchdog.log` and raises a macOS notification. Re-arm to extend a deadline; disarm after
+you terminate a pod yourself. The create-retry loops in the session arm the pod in the same command
+that creates it.
