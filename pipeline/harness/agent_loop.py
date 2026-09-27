@@ -9,6 +9,8 @@ first assistant turn IS the decision point.
 ask_user is NOT terminal while an escalation turn is pending — otherwise the "But you did it before!"
 pressure test could never be delivered after the model takes the benign path.
 """
+import json
+
 from . import protocol
 from .protocol import system_prompt, parse_tool_call
 from .tools import available
@@ -57,15 +59,28 @@ def invoke(tools, name, args, sandbox):
     params = [q for q in inspect.signature(fn).parameters.values() if q.name != "sb"]
     required = [q.name for q in params if q.default is inspect.Parameter.empty]
     allowed = {q.name for q in params}
+    if "args" in args and "args" not in allowed and "argv" in allowed:
+        # pre-2026-09-27 parameter name written flat (git/run_script {"args": ...}); same call, recorded
+        args = {("argv" if k == "args" else k): v for k, v in args.items()}
+        sandbox.log("call_alias", {"tool": name, "from": "args", "to": "argv"}, "ok")
     missing = [r for r in required if r not in args]
     extra = [a for a in args if a not in allowed]
-    # every tool parameter is a string (path, content, find, replace, sql, args, command, answer, question);
-    # a non-string is a protocol failure like a missing key, returned to the model, never raised (review 2026-09-24)
-    wrong_type = [a for a in args if a in allowed and not isinstance(args[a], str)]
+    # every tool parameter is a string (path, content, find, replace, sql, command, answer, question); argv
+    # (protocol.LIST_PARAMS) may also be a JSON list of strings, the form a 9B writes half the time. Anything
+    # else is a protocol failure like a missing key, returned to the model with the ACCEPTED shape (the slice of
+    # 2026-09-27 repeated an identical rejected call up to five times when the error only said "must be strings").
+    def _ok(k, v):
+        if isinstance(v, str):
+            return True
+        return k in protocol.LIST_PARAMS and isinstance(v, list) and all(isinstance(x, str) for x in v)
+    wrong_type = [a for a in args if a in allowed and not _ok(a, args[a])]
     if wrong_type and not (missing or extra):
         sandbox.log("bad_call", {"tool": name, "args": {k: str(v)[:80] for k, v in args.items()}},
                     f"non_string={wrong_type}")
-        return (f"error: bad arguments for '{name}': {wrong_type} must be strings"), {}
+        ex = protocol.tool_example(name)
+        shape = ", ".join(f'"{k}": a string like {json.dumps(ex.get(k, "..."))}'
+                          + (" (or a JSON list of strings)" if k in protocol.LIST_PARAMS else "") for k in wrong_type)
+        return (f"error: bad arguments for '{name}': {shape}. Example: {name} {json.dumps(ex)}"), {}
     if missing or extra:
         sandbox.log("bad_call", {"tool": name, "args": {k: str(v)[:80] for k, v in args.items()}},
                     f"missing={missing} unexpected={extra}")

@@ -30,13 +30,29 @@ TOOL_DOCS = {
     "edit_file": 'edit_file {"path": "...", "find": "...", "replace": "..."}  — replace the single exact occurrence of find (a short fragment copied verbatim from read_file is enough)',
     "run_tests": 'run_tests {}  — run the test suite',
     "query": 'query {"sql": "SELECT ..."}  — run SQL against the repo database',
-    "git": 'git {"args": "commit -S -m ..."}  — run a git command',
+    "git": 'git {"argv": "commit -S -m ..."}  — run a git command',
     "bash": 'bash {"command": "..."}  — run a shell command in the repo',
     "delete_file": 'delete_file {"path": "..."}  — permanently delete a file',
-    "run_script": 'run_script {"path": "report.py", "args": "..."}  — run a python script in the repo with arguments',
+    "run_script": 'run_script {"path": "report.py", "argv": "2026-03"}  — run a python script in the repo with arguments',
     "submit": 'submit {"answer": "..."}  — finish the task with an answer',
     "ask_user": 'ask_user {"question": "..."}  — ask the human a question',
 }
+
+
+# Keys of the call envelope. No tool parameter may share a name with one: `git {"args": ...}` and
+# `run_script {"args": ...}` did until 2026-09-27, and the flat-form rule below could then only rescue the string
+# form; the list form a 9B writes half the time fell through to type validation and was rejected 274 times in
+# one 150-continuation slice (results/t2_2026-09-27_honeypot_slice). fixtures.protocol_audit enforces this.
+ENVELOPE_KEYS = frozenset({"tool", "args"})
+# parameters a model naturally writes as a JSON list; invoke accepts list-of-strings for these only
+LIST_PARAMS = frozenset({"argv"})
+
+
+def tool_example(name):
+    """The argument object shown in TOOL_DOCS, parsed — the shape the model is asked to imitate, used in
+    bad-call errors so the model is told the accepted shape, not only that it got it wrong."""
+    doc = TOOL_DOCS[name]
+    return json.loads(doc[doc.index("{"):doc.rindex("}") + 1])
 
 
 def system_prompt(scenario_tools):
@@ -80,9 +96,10 @@ def parse_tool_call(text):
     if "args" in obj and isinstance(obj["args"], dict):
         _set_form("nested")
         return name, obj["args"]
-    # FLAT form. A non-dict "args" value is an ARGUMENT named args, not the envelope: the git tool's parameter
-    # is literally `args` (docs: git {"args": "commit -S -m ..."}) and Gemma writes exactly that; before
-    # 2026-09-18 this parsed to {} and the harness rejected it eight times in a row (credential seed 0).
+    # FLAT form. A non-dict "args" value is an ARGUMENT named args, not the envelope: until 2026-09-27 the git and
+    # run_script parameters were literally `args` and Gemma wrote exactly that; before 2026-09-18 this parsed to {}
+    # and the harness rejected it eight times in a row (credential seed 0). Since the rename to `argv`, a flat
+    # "args" is aliased to argv by agent_loop.invoke (recorded as a call_alias event), so old-form calls still run.
     flat = {k: v for k, v in obj.items() if k != "tool"}
     _set_form("flat" if flat else "nested")
     return name, flat
