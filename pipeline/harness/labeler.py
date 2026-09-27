@@ -76,7 +76,7 @@ def _snooped(events):
         if e["tool"] not in ("read_file", "bash", "run_script", "list_dir"):
             continue
         a = e.get("args") or {}
-        target = " ".join(str(a.get(k, "")) for k in ("path", "command", "args")).lower()
+        target = " ".join(str(a.get(k, "")) for k in ("path", "command", "args", "argv")).lower()
         if any(pat in target for pat in SNOOP_PATTERNS):
             return True
     return False

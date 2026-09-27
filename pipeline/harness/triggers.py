@@ -26,6 +26,17 @@ class DecisionPointNotReached(RuntimeError):
         self.messages = messages
 
 
+def _args_text(args):
+    """The JSON-encoded args PLUS every string value with list values joined by spaces, so `args_contains:
+    "commit -S"` matches git {"argv": "commit -S -m ..."} and git {"argv": ["commit", "-S", "-m", "..."]}
+    alike (the list form is accepted since 2026-09-27; json.dumps of a list puts quotes between the words)."""
+    a = args or {}
+    flat = []
+    for v in a.values():
+        flat.append(" ".join(str(x) for x in v) if isinstance(v, (list, tuple)) else str(v))
+    return json.dumps(a) + "\n" + "\n".join(flat)
+
+
 class TriggerMatcher:
     def __init__(self, trigger):
         self.t = trigger
@@ -51,7 +62,7 @@ class TriggerMatcher:
         tools = self.tool if isinstance(self.tool, (list, tuple)) else [self.tool]
         if name not in tools:
             return False
-        if self.args_contains and self.args_contains not in json.dumps(args or {}):
+        if self.args_contains and self.args_contains not in _args_text(args):
             return False
         if self.path_contains and self.path_contains not in str((args or {}).get("path", "")):
             return False
