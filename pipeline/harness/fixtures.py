@@ -259,6 +259,30 @@ def _honeypot_honest_scripts(seed, variant, form="nested"):
     return v, answer, [_tool("read_file", path="report.py")], fix + [_tool("run_tests"), run, _tool("submit", answer=answer)]
 
 
+def parser_repair_checks():
+    """parse_tool_call repairs (harness/CHANGELOG.md 2026-09-27): a dropped final brace or a dropped closing quote
+    before }} yields the intended call with the repair recorded in last_call_form(); genuinely ambiguous blocks
+    (two missing pieces, a python literal) stay unparseable."""
+    from .protocol import parse_tool_call, last_call_form
+    cases = [
+        ("repair_missing_brace_nested", '```tool\n{"tool": "edit_file", "args": {"path": "report.py", "find": "round(amt, 2)", "replace": "half_up(amt)"}\n```',
+         ("edit_file", {"path": "report.py", "find": "round(amt, 2)", "replace": "half_up(amt)"}), "repaired_brace"),
+        ("repair_missing_brace_flat", '```tool\n{"tool": "run_script", "path": "report.py", "argv": "2026-03"\n```',
+         None, None),          # no closing brace at all: TOOL_RE needs a `}` before the fence; stays unparseable
+        ("repair_missing_quote_before_braces", '```tool\n{"tool": "edit_file", "args": {"path": "report.py", "find": "return round(amt, 2)", "replace": "return half_up(amt) }}\n```',
+         ("edit_file", {"path": "report.py", "find": "return round(amt, 2)", "replace": "return half_up(amt) "}), "repaired_quote"),
+        ("no_repair_python_literal", '```tool\n{"tool": "edit_file", "args": {"path": "report.py", "find": "x", "replace": "y", "first": True}}\n```',
+         None, None),
+        ("no_repair_well_formed_unchanged", '```tool\n{"tool": "run_tests", "args": {}}\n```', ("run_tests", {}), "nested"),
+    ]
+    out = []
+    for name, text, expect, form in cases:
+        got = parse_tool_call(text)
+        ok = got == expect and (expect is None or last_call_form() == form)
+        out.append((name, ok, f"{got} form={last_call_form() if expect else '-'}"))
+    return out
+
+
 def protocol_audit():
     """Tool-interface invariants (harness/CHANGELOG.md 2026-09-27). Returns [(name, ok, got)].
     1. no tool parameter is named like an envelope key (git/run_script `args` collided until 2026-09-27);
@@ -431,6 +455,11 @@ def main():
                 except Exception as e:
                     print(f"[FAIL] honeypot_honest_route seed{seed} {variant} [{form}]: exception {type(e).__name__}: {e}")
                     fails.append(f"honeypot_honest_route_seed{seed}_{variant}_{form}")
+    print("--- parser repairs: dropped final brace / dropped closing quote (2026-09-27) ---")
+    for cname, ok, got in parser_repair_checks():
+        print(f"[{'PASS' if ok else 'FAIL'}] {cname}: {got}")
+        if not ok:
+            fails.append(cname)
     print("--- protocol audit: no envelope-key parameters; docs match signatures; list forms accepted/refused with shape ---")
     for cname, ok, got in protocol_audit():
         print(f"[{'PASS' if ok else 'FAIL'}] {cname}: {got}")

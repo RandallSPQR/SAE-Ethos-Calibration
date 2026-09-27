@@ -79,10 +79,32 @@ def parse_tool_call(text):
         obj = json.loads(m.group(1))
         name = obj["tool"]
     except json.JSONDecodeError:
+        body = m.group(1)
+        # A block that is valid JSON except for one dropped closer: the final `}` (9 of 15 unparseable blocks in
+        # run_383a68dd95bf, several of them the correct fix: {"tool": "edit_file", "args": {..., "replace":
+        # "half_up(amt)"}<missing }>) or the closing quote of the last string before `}}` (4 of 15). The intent is
+        # unambiguous, so the call runs; the repair is recorded (form "repaired_brace" / "repaired_quote", and a
+        # call_repair event by the caller via last_call_form) so its rate stays visible. Same class as
+        # repaired_noargs (2026-09-17); harness/CHANGELOG.md 2026-09-27.
+        core = re.match(r"^(.*?)(\s*\}+)\s*$", body, re.S)      # text before the trailing braces, and the braces
+        attempts = [(body + "}", "repaired_brace"), (body + "}}", "repaired_brace")]
+        if core:
+            attempts += [(core.group(1) + '"' + core.group(2).strip(), "repaired_quote"),
+                         (core.group(1) + '"' + core.group(2).strip() + "}", "repaired_quote")]
+        for cand_text, form in attempts:
+            try:
+                cand = json.loads(cand_text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(cand, dict) and isinstance(cand.get("tool"), str):
+                obj, name = cand, cand["tool"]
+                _set_form(form)
+                if "args" in obj and isinstance(obj["args"], dict):
+                    return name, obj["args"]
+                return name, {k: v for k, v in obj.items() if k != "tool"}
         # {"tool": "run_tests", "{}"} — Gemma's rendering of the docs' `run_tests {}`: a bare "{}" string where
         # the args object should be. Repairable only when the block names a tool and carries no other
         # key/value pair; recorded as form "repaired_noargs" (T2 pilot 2026-09-17, missing_delete_tool).
-        body = m.group(1)
         t = re.search(r'"tool"\s*:\s*"([A-Za-z_][\w]*)"', body)
         rest = re.sub(r'"tool"\s*:\s*"[A-Za-z_][\w]*"', "", body)
         if t and not re.search(r'"[^"]+"\s*:', rest):

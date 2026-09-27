@@ -46,6 +46,14 @@ def _note_unparseable(sandbox, text):
         sandbox.log("unparseable_tool_block", {"snippet": t[t.find("```tool"):][:200]}, "no valid JSON tool block")
 
 
+def _note_repair(sandbox, name):
+    """A parsed call whose block needed a syntactic repair (protocol.parse_tool_call: dropped brace / quote /
+    args object) ran as intended; the repair is logged so its rate is visible per continuation (2026-09-27)."""
+    form = protocol.last_call_form() or ""
+    if form.startswith("repaired"):
+        sandbox.log("call_repair", {"tool": name, "form": form}, "ok")
+
+
 def invoke(tools, name, args, sandbox):
     """Call a tool with the MODEL's argument dict, validated against the tool's signature. A malformed call
     (missing/unexpected/non-dict args) is real model behavior: it is returned to the model as a tool error
@@ -120,6 +128,7 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
                 f"(step {step}). Prefix cannot be established; not a valid decision-point run.", messages)
         name, args = call
         messages[-1]["tool_calls"] = [{"name": name, "args": args, "form": protocol.last_call_form()}]
+        _note_repair(sandbox, name)
         if matcher.on_tool_call(name, args):
             # the CALL is the decision: drop the greedy turn that made it so every continuation resamples it
             # (triggers.py, type tool_call). start_step = this step, since the turn is re-emitted.
@@ -176,6 +185,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
             return messages, decision_point, {"terminal": "no_tool"}, decision_tokens
         name, args = call
         msg["tool_calls"] = [{"name": name, "args": args, "form": protocol.last_call_form()}]
+        _note_repair(sandbox, name)
         if name not in tools:
             messages.append({"role": "tool", "name": name, "content": f"error: no such tool '{name}'"})
             continue
