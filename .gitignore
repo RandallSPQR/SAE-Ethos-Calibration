@@ -31,3 +31,9 @@ scenarios/arm_a/*/scenarios/
 # plugin stubs outside pipeline/ (the tracked ones under pipeline/ stay tracked; gitignore does not affect them)
 scenarios/**/CLAUDE.md
 tools/**/CLAUDE.md
+
+# derived generation sets from harness.relabel are reproducible from main_run + the rules; keep only the summary
+pipeline/results/**/relabel_*/generation/
+pipeline/results/**/relabel_*/manifest.json
+pipeline/results/**/relabel_*/cardinality.json
+pipeline/eval/

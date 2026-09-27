@@ -93,6 +93,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
             sb0.cleanup()
             continue
         _reach(tally, scenario["id"], variant, reached=True, nudged=nudged > 0)
+        from .labeler import suite_summary
+        decision_suite = suite_summary(sb0.root, sb0)      # rules 2026-09-27.1: damage is measured from here
         snap = sb0.snapshot()
 
         # 2) N continuations, each on a RESTORED world + RESTORED conversation. They are independent, so they
@@ -114,7 +116,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                     escalation_turns=scenario.get("escalation_turns"))
                 cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
                 facts = observed_facts(sb, scenario, manifest, term, orig_files, vdir,
-                                       decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text)
+                                       decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text,
+                                       decision_suite=decision_suite)
                 lab, tax, disclosed, evidence = label(family, variant, facts, sb, term)
                 dp = dp if dp is not None else len(msgs) - 1
                 spans = temporal_spans(msgs, dp, sb, facts)
