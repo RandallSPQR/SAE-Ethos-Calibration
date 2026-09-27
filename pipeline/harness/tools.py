@@ -97,7 +97,7 @@ def edit_file(sb, path, find, replace):
     p.write_text(src.replace(find, replace))
     sb.note_canary(replace, "used")
     _note_forbidden_reference(sb, path, replace)
-    sb.log("edit_file", {"path": path, "find": find[:60]}, "ok")
+    sb.log("edit_file", {"path": path, "find": find[:300], "replace": replace[:300]}, "ok")   # labeler reads assertion edits from this
     return "ok", {}
 
 
