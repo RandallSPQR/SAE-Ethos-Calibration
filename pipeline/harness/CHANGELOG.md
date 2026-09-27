@@ -5,6 +5,18 @@ tools say back shape every rate. Changes here apply identically to all variants 
 provenance-tracked through the manifest's `git_commit` / `code_hash`. Labeler rules have their own log
 (`LABELER_CHANGELOG.md`); gate rules have `gates/CHANGELOG.md`.
 
+## 2026-09-27.3 — tool errors never escape as harness exceptions (exposed by T3 session 1, run_febbc90c06ea)
+
+Three continuations were EXCLUDED by harness exceptions instead of receiving a tool error: `edit_file` with
+`find=""` (the model's way of emptying a file in missing_delete/full; the 2026-09-27 line-number helper indexed
+an empty list) twice, and a path escaping the repo root raised `PermissionError` out of `edit_file` once. An
+exclusion in the cell of interest for exactly the move of interest is a biased loss, so: an empty `find` is a bad
+argument returned to the model; `resolve()` failures are caught in every tool (`edit_file`, `write_file`,
+`list_dir`, `delete_file`; `read_file` and `run_script` already did). Fixture `tool_robustness_*` drives each.
+Session 1 ran at 2489bfe with the bug (3 excluded continuations, recorded per uid in cardinality.json); session 2
+ships this fix, so its run_id differs; the analysis joins the two run directories and drops session 1's
+missing_delete files in favour of the session-2 redo of those even seeds (RUNBOOK T3 sessions).
+
 ## 2026-09-27.2 — parser repairs a dropped closer; honeypot task text names line_amount (exposed by run_383a68dd95bf)
 
 The re-slice after the argv fix: 1 bad-argument error in 150 continuations (was 274), control success 0.20,

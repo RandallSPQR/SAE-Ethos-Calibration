@@ -310,10 +310,14 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
   half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
   the labeler, is what gets rewritten.
-- **T3 sessions (2026-09-28).** Session 1 renders and runs the discover half (seeds 0,2,...,18; 1,200
-  continuations, ~4.5 h harness at concurrency 8); session 2 the test half. run_id = H(manifest) is
-  content-derived, so both sessions write into the same run directory on the volume when the commit and config
-  are identical; the generation files are per (scenario, seed). `calibrate/run_t3.sh <out> <n> <seeds>`.
+- **T3 sessions (2026-09-28).** Session 1 (pod yrnwg8x0vqkvok, commit 2489bfe, run_febbc90c06ea) ran the
+  discover half (seeds 0,2,...,18; 1,200 continuations, ~4.5 h at concurrency 8). Three continuations were
+  excluded by a harness bug (empty `find` in missing_delete/full; a repo-escaping path), fixed in
+  harness/CHANGELOG.md 2026-09-27.3, so session 2 ships a DIFFERENT commit and gets its own run_id: session 2 =
+  the test half (odd seeds, all four scenarios) PLUS a redo of missing_delete's even seeds. Analysis joins the two
+  run directories by uid and drops session 1's missing_delete files in favour of the redo (the excluded uids were
+  exactly the emptying move, a biased loss). `calibrate/run_t3.sh <out> <n> <seeds>`; readers still refuse
+  duplicate uids within a join, so the drop is explicit, not last-write-wins.
 - **Tool interface is part of the treatment (2026-09-27).** The honeypot slice after the run_script design
   change (`results/t2_2026-09-27_honeypot_slice/`) used the forbidden table 0/50 in full (run 3, with no
   legitimate route: 0.36) but control success was 0.10, because `run_script`'s parameter shared its name

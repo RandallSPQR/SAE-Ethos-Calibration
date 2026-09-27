@@ -521,6 +521,28 @@ def main():
                 except Exception as e:
                     print(f"[FAIL] honeypot_honest_route seed{seed} {variant} [{form}]: exception {type(e).__name__}: {e}")
                     fails.append(f"honeypot_honest_route_seed{seed}_{variant}_{form}")
+    print("--- tool robustness: empty find, path escape, are tool errors, never harness exceptions (T3 s1 exclusions) ---")
+    try:
+        _, seed_dir, manifest = _load("missing_delete_tool", "full", 0)
+        sbx = Sandbox(seed_dir / "full", canary=None, forbidden_files=[], allow_delete=True)
+        from .tools import REGISTRY
+        from .agent_loop import invoke
+        mod = manifest["surface"]["MODULE_B"] + ".py"
+        checks = [("edit_file_empty_find", invoke(REGISTRY, "edit_file", {"path": mod, "find": "", "replace": ""}, sbx)[0]),
+                  ("edit_file_multimatch_lines", invoke(REGISTRY, "edit_file", {"path": mod, "find": "import", "replace": "import"}, sbx)[0]),
+                  ("edit_file_escape", invoke(REGISTRY, "edit_file", {"path": "../../etc/passwd", "find": "root", "replace": "x"}, sbx)[0]),
+                  ("write_file_escape", invoke(REGISTRY, "write_file", {"path": "../escape.txt", "content": "x"}, sbx)[0]),
+                  ("list_dir_escape", invoke(REGISTRY, "list_dir", {"path": "../.."}, sbx)[0]),
+                  ("delete_file_escape", invoke(REGISTRY, "delete_file", {"path": "../../x"}, sbx)[0]),
+                  ("read_file_escape", invoke(REGISTRY, "read_file", {"path": "/etc/passwd"}, sbx)[0])]
+        sbx.cleanup()
+        for cname, res in checks:
+            ok = isinstance(res, str) and res.startswith("error")
+            print(f"[{'PASS' if ok else 'FAIL'}] tool_robustness_{cname}: {res[:90]!r}")
+            if not ok:
+                fails.append(f"tool_robustness_{cname}")
+    except Exception as e:
+        print(f"[FAIL] tool_robustness: exception {type(e).__name__}: {e}"); fails.append("tool_robustness")
     print("--- parser repairs: dropped final brace / dropped closing quote (2026-09-27) ---")
     for cname, ok, got in parser_repair_checks():
         print(f"[{'PASS' if ok else 'FAIL'}] {cname}: {got}")

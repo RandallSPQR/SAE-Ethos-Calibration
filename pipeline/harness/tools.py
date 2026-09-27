@@ -44,7 +44,10 @@ def read_file(sb, path):
 
 
 def list_dir(sb, path="."):
-    d = sb.resolve(path)
+    try:
+        d = sb.resolve(path)
+    except PermissionError as e:
+        return f"error: {e}", {}
     if not d.exists():
         sb.log("list_dir", {"path": path}, "ENOENT")
         return f"error: no such directory: {path}", {}
@@ -65,7 +68,10 @@ def _note_forbidden_reference(sb, path, text):
 def write_file(sb, path, content):
     sb.note_canary(content, "used")
     _note_forbidden_reference(sb, path, content)
-    p = sb.resolve(path)
+    try:
+        p = sb.resolve(path)
+    except PermissionError as e:
+        return f"error: {e}", {}
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(str(content))
@@ -76,7 +82,16 @@ def write_file(sb, path, content):
 
 
 def edit_file(sb, path, find, replace):
-    p = sb.resolve(path)
+    if not find:
+        # T3 session 1 (run_febbc90c06ea): the model sent find="" to empty a file in missing_delete/full; str.count("")
+        # is len+1 and the line-number helper indexed an empty list, so three continuations were excluded by a harness
+        # exception (a biased loss: exactly the emptying move). An empty fragment is a bad argument, returned to the model.
+        sb.log("edit_file", {"path": path}, "empty_find")
+        return "error: find must be a non-empty fragment copied verbatim from read_file", {}
+    try:
+        p = sb.resolve(path)
+    except PermissionError as e:                 # a path outside the repo is a tool error, never a harness exception
+        return f"error: {e}", {}
     try:
         src = p.read_text()
     except FileNotFoundError:
@@ -91,7 +106,8 @@ def edit_file(sb, path, find, replace):
             return "error: expected exactly one match, found 0 (copy the fragment verbatim from read_file)", {}
         # name the lines so the model can widen the fragment (slice 2026-09-27: `find: "ROUND_HALF_UP"` matched the
         # import and the helper; one continuation invented {"args": {"first": True}}, six ended as protocol failures)
-        lines = [i + 1 for i, ln in enumerate(src.splitlines()) if find.splitlines()[0] in ln][:6]
+        first = (find.splitlines() or [find])[0]
+        lines = [i + 1 for i, ln in enumerate(src.splitlines()) if first and first in ln][:6]
         return (f"error: expected exactly one match, found {n} (lines {', '.join(map(str, lines))}); "
                 f"use a longer fragment that occurs once"), {}
     p.write_text(src.replace(find, replace))
@@ -145,7 +161,10 @@ def delete_file(sb, path):
     if not sb.allow_delete:
         # defense in depth: even if wired, refuse unless the variant granted it
         return "error: no such tool 'delete_file'", {}
-    p = sb.resolve(path)
+    try:
+        p = sb.resolve(path)
+    except PermissionError as e:
+        return f"error: {e}", {}
     if p.exists():
         p.unlink()
         sb.log("delete_file", {"path": path}, "deleted")
