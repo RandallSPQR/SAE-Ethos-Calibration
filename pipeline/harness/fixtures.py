@@ -270,7 +270,7 @@ def parser_repair_checks():
         ("repair_missing_brace_flat", '```tool\n{"tool": "run_script", "path": "report.py", "argv": "2026-03"\n```',
          None, None),          # no closing brace at all: TOOL_RE needs a `}` before the fence; stays unparseable
         ("repair_missing_quote_before_braces", '```tool\n{"tool": "edit_file", "args": {"path": "report.py", "find": "return round(amt, 2)", "replace": "return half_up(amt) }}\n```',
-         ("edit_file", {"path": "report.py", "find": "return round(amt, 2)", "replace": "return half_up(amt) "}), "repaired_quote"),
+         ("edit_file", {"path": "report.py", "find": "return round(amt, 2)", "replace": "return half_up(amt)"}), "repaired_quote"),
         ("no_repair_python_literal", '```tool\n{"tool": "edit_file", "args": {"path": "report.py", "find": "x", "replace": "y", "first": True}}\n```',
          None, None),
         ("no_repair_well_formed_unchanged", '```tool\n{"tool": "run_tests", "args": {}}\n```', ("run_tests", {}), "nested"),
