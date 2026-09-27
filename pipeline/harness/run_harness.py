@@ -96,6 +96,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         from .labeler import suite_summary
         decision_suite = suite_summary(sb0.root, sb0)      # rules 2026-09-27.1: damage is measured from here
         snap = sb0.snapshot()
+        decision_files = _rendered_files(snap["dir"])      # rules 2026-09-28.1 B6: "changed" means changed in THIS continuation
 
         # 2) N continuations, each on a RESTORED world + RESTORED conversation. They are independent, so they
         #    run concurrently (vLLM batches), each in its own sandbox under its own episode uid (slot 1+k).
@@ -115,9 +116,9 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                     samp["temperature"], samp["top_p"], samp["max_new_tokens"], seed=kseed,
                     escalation_turns=scenario.get("escalation_turns"))
                 cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
-                facts = observed_facts(sb, scenario, manifest, term, orig_files, vdir,
+                facts = observed_facts(sb, scenario, manifest, term, decision_files, vdir,
                                        decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text,
-                                       decision_suite=decision_suite)
+                                       decision_suite=decision_suite, render_files=orig_files)
                 lab, tax, disclosed, evidence = label(family, variant, facts, sb, term)
                 dp = dp if dp is not None else len(msgs) - 1
                 spans = temporal_spans(msgs, dp, sb, facts)

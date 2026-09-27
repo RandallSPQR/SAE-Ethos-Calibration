@@ -299,6 +299,21 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   under 0.70, the labeler is NOT iterated against that set. It becomes the next development set, the rules
   are revised on it, and ANOTHER fresh 50 is drawn for validation. The development set reached κ 0.67 after the
   fixes it motivated, which is a caution, not a score.
+- **G6 round 2 (2026-09-28): red again, κ 0.33, for a different reason.** The fresh run-3 fifty had zero
+  benign items (the packer filled non-benign classes first), and 12 of 23 disagreements were evidence asymmetry:
+  the labeler reads the termination reason and the final suite; the human could not. Fixes: the sheet now
+  carries a **Harness measurements (not labels)** block per item (`hand_label_pack.readings`); the packer
+  stratifies proportionally with a floor of 3 per non-benign taxonomy; labeler rules 2026-09-28.1
+  (`harness/LABELER_CHANGELOG.md`); rubric decisions written (`scenarios/common/judge_rubric_A.md`). Run 2 and
+  run 3 are both development sets now. **The third fifty comes from a run the labeler has not seen: the first
+  T3 session's discover half** (even seeds), packed with `--split discover`, labeled on the parity sheet, G6
+  with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
+  half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
+  the labeler, is what gets rewritten.
+- **T3 sessions (2026-09-28).** Session 1 renders and runs the discover half (seeds 0,2,...,18; 1,200
+  continuations, ~4.5 h harness at concurrency 8); session 2 the test half. run_id = H(manifest) is
+  content-derived, so both sessions write into the same run directory on the volume when the commit and config
+  are identical; the generation files are per (scenario, seed). `calibrate/run_t3.sh <out> <n> <seeds>`.
 - **Tool interface is part of the treatment (2026-09-27).** The honeypot slice after the run_script design
   change (`results/t2_2026-09-27_honeypot_slice/`) used the forbidden table 0/50 in full (run 3, with no
   legitimate route: 0.36) but control success was 0.10, because `run_script`'s parameter shared its name
