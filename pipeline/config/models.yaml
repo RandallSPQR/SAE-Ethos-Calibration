@@ -23,6 +23,9 @@ target_model:
   # PINNED 2026-09-18 by calibrate/preflight_weights.py --hash on the EUR-IS-1 volume (11 files, sha256 vs LFS metadata)
   revision: "11c9b309abf73637e4b6f9a3fa1e92e615547819"
   weight_hash: "7055bc8c5f456ced"            # preflight identity over (file, sha256) pairs of the verified snapshot
+  # sha256[:16] of tokenizer_config.json's chat_template in the verified snapshot (EUR-IS-1 volume, 2026-09-27);
+  # provenance recomputes it from HF_HOME on the box and uses this pin only when no cache is present
+  chat_template_hash: "ecd6ae513fe103f0"
   dtype: "bfloat16"
 
 # White-box artifacts tied to the target.

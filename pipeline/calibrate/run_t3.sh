@@ -12,6 +12,8 @@ cd /workspace/pipeline
 source /workspace/venv/bin/activate
 export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
 export VLLM_ATTENTION_BACKEND=TRITON_ATTN
+# vLLM is served from its own venv; hand its version to the harness interpreter for the pinned manifest (software.vllm)
+export VLLM_VERSION=$(/workspace/venv_vllm/bin/python -c 'import vllm; print(vllm.__version__)' 2>/dev/null)
 OUT=${1:-/workspace/t3}; N=${2:-10}; SEEDS=${3:-0-19}
 # T3_SCENARIOS=a,b restricts the harness to those scenario ids; default: all four.
 SCEN_ARG=""; [ -n "${T3_SCENARIOS:-}" ] && SCEN_ARG="--scenarios ${T3_SCENARIOS}"

@@ -63,11 +63,35 @@ def _code_hash(root):
 
 
 def _pkg_version(name):
+    """Installed version, or the box-side value handed over in the environment (VLLM_VERSION: vLLM lives in its own
+    venv on the pod, so the harness interpreter cannot import it; T3 session 1 was refused for software.vllm=null)."""
     try:
         import importlib.metadata as m
         return m.version(name)
     except Exception:
-        return None
+        pass
+    import os
+    return os.environ.get(name.upper().replace("-", "_") + "_VERSION") or None
+
+
+def _chat_template_hash(hf_id, revision, pinned=None):
+    """sha256[:16] of the tokenizer's chat_template as served, read from the HF cache snapshot at the pinned revision
+    (HF_HOME). Falls back to the models.yaml pin when the cache is not present (a laptop resolve). A box-side value
+    that disagrees with the pin is reported as the box value with the pin in `unverified`-style mismatch."""
+    import os
+    root = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub" / ("models--" + hf_id.replace("/", "--")) / "snapshots"
+    cands = [root / revision] if revision else []
+    cands += sorted(root.glob("*")) if root.exists() else []
+    for snap in cands:
+        cfg = snap / "tokenizer_config.json"
+        if cfg.exists():
+            try:
+                ct = json.loads(cfg.read_text()).get("chat_template")
+            except json.JSONDecodeError:
+                continue
+            if ct:
+                return hashlib.sha256((ct if isinstance(ct, str) else json.dumps(ct, sort_keys=True)).encode()).hexdigest()[:16]
+    return pinned
 
 
 def _gate_rules_version():
@@ -92,7 +116,8 @@ def build_manifest(run_id, scenarios_dir=None):
                   "revision": tm.get("revision"), "weight_hash": tm.get("weight_hash"),
                   "dtype": tm.get("dtype")},
         "tokenizer": {"revision": tm.get("revision"),
-                      "chat_template_hash": tm.get("chat_template_hash")},
+                      "chat_template_hash": _chat_template_hash(tm["hf_id"], tm.get("revision"), tm.get("chat_template_hash")),
+                      "chat_template_hash_pinned": tm.get("chat_template_hash")},
         "sae": {"release": sae["release"], "id": sae["sae_id"], "revision": sae.get("revision"),
                 "hook": sae["saelens_hook_name"], "layer": sae["layer"],
                 "weights_hash": sae.get("weights_hash"), "published": sae.get("published")},
