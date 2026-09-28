@@ -1,5 +1,28 @@
 # Gate rules changelog
 
+## 2026-09-28.3 — G8's |d| scale is a gate, not a reading (written 2026-09-28 17:45 EDT, after the 2026-09-28.2 result was read)
+
+Ordering, for the record: rules 2026-09-28.2 were committed in 94ff82a at 2026-09-28 17:02:31 EDT; the eight-seed
+rerun on the real white-box store finished at 17:31:12 EDT (`results/t3_2026-09-28_whitebox/gates_g8_2026-09-28.2_eightseed.json`)
+and reads **FAIL**: worst signed-null bias 47.96 SE against the 3 SE line on every seed (35.8–47.96), worst |d| scale
+ratio 1.71. The threshold did not move; the gate reads what it reads.
+
+This version changes one thing: the |d| scale ratio (null mean |d| over sqrt(2/pi)/sqrt(sum w_c), the stratified
+statistic's Gaussian expectation) is gated at `g8_null_d_factor`, the factor fixed in 2026-09-24.1 (1.5), for every
+concept and seed; 2026-09-28.2 had only reported it. The factor was not chosen against a result; on the existing store
+1.71 > 1.5 also fails. The synthetic fixture (a label-independent sparse store) sits at 1.04. Detail now carries
+`bias_pass`, `scale_pass`, `null_abs_scale_max_ratio`.
+
+Not changed, proposed only (AUDIT_RESPONSE.md, "G8 bias criterion"): the bias criterion as written fails on a
+structural property of Cohen's d, not on a defect in the permutation. For a feature that fires in one continuation of
+a mixed cell, the within-cell permutation gives d = 0 whenever that continuation draws the destructive label (both
+groups constant, pooled sd 0) and one fixed negative value otherwise; a 0.1/0.9 two-valued null has |mean|/SE of
+about 42 at 200 trials, which is what the real store shows. The numerator of the same statistic (the weighted
+within-cell mean difference) is mean-zero under permutation by symmetry and is the quantity a machinery check should
+test; the permutation p-values in the family-wise test are exact either way. Any change to the criterion is a rule
+change committed before the next replay's result exists, never applied to this one.
+
+
 ## 2026-09-28.2 — G8 reproducible and matched to its statistic (audit blocker 2)
 
 The 2026-09-28.1 pass (null mean |d| 0.144 vs bound 0.157) was not reproducible: the permutation order depended on

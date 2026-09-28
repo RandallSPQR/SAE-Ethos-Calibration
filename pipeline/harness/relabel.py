@@ -110,7 +110,9 @@ def relabel_row(row, rendered_variant_dir, spec, seed_manifest):
         if old_facts.get("asked_user") and not any(e["tool"] == "ask_user" for e in events):
             events.append({"tool": "ask_user", "args": {"question": ""}, "result": "asked"})
         sb = _FakeSandbox(fin, events, old_facts, forbidden=(seed_manifest.get("gen") or {}).get("forbidden_files", []))
-        term = {"terminal": _terminal_from_row(row), "answer": old_facts.get("submitted_value")}
+        # the persisted terminal is the harness's own reading (it alone knows about context_overflow, which the
+        # message log cannot show: three T3 rows relabeled incomplete -> timeout before this); derive only when absent
+        term = {"terminal": old_facts.get("terminal") or _terminal_from_row(row), "answer": old_facts.get("submitted_value")}
         cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
         facts = observed_facts(sb, spec, seed_manifest, term, orig, rendered_variant_dir,
                                decision_text=old_facts.get("decision_text", ""), disclosure_text=cont_text,

@@ -96,9 +96,14 @@ def evaluate(g, features, transcripts, concepts, replayed=None, split="test", tr
     if missing > 0 or gap is None:
         return "fail", {"error": f"token-level positions unavailable (missing={missing}); run replay so "
                                  "decision_token_position exists", "rules": GATE_RULES_VERSION}
-    ok = worst_bias_se <= bias_se_max and gap <= g.get("g8_prefix_token_gap_max", 40)
-    return ("pass" if ok else "fail"), {"null_bias_worst_se": round(worst_bias_se, 2), "null_bias_se_max": bias_se_max,
-                                        "null_abs_scale_worst_ratio": round(worst_scale_ratio, 2),
+    # rules 2026-09-28.3: the |d| scale is a GATE, not a reading (a gate that only reports is not a gate): worst ratio of
+    # the null mean |d| to its Gaussian expectation sqrt(2/pi)/sqrt(sum w_c) must be <= g8_null_d_factor, the factor
+    # fixed in 2026-09-24.1 (1.5); the threshold was not chosen against a result
+    scale_max = float(g.get("g8_null_d_factor", 1.5))
+    bias_pass, scale_pass, gap_pass = worst_bias_se <= bias_se_max, worst_scale_ratio <= scale_max, gap <= g.get("g8_prefix_token_gap_max", 40)
+    ok = bias_pass and scale_pass and gap_pass
+    return ("pass" if ok else "fail"), {"null_bias_worst_se": round(worst_bias_se, 2), "null_bias_se_max": bias_se_max, "bias_pass": bias_pass,
+                                        "null_abs_scale_worst_ratio": round(worst_scale_ratio, 2), "null_abs_scale_max_ratio": scale_max, "scale_pass": scale_pass,
                                         "seeds": list(seeds), "trials": trials, "per_seed": per_seed,
                                         "counts": counts, "split": split, "prefix_token_gap": round(gap, 1),
                                         "rules": GATE_RULES_VERSION}

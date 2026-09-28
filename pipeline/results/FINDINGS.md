@@ -216,8 +216,10 @@ statistics). Details: `t3_2026-09-28_whitebox/README.md`.
   reconstructs real decision-turn residuals at VE 0.68 with every decoy hook rejected (G2). Replay logprobs agree
   with generation within 0.05 nats on 99.5 % of the rows that re-tokenize exactly (a diagnostic; G1 fails as a gate
   because 8 % of rows mis-tokenize at the turn suffix and 25 were shifted by an interior end-of-turn the model ran
-  past, generation having had no stop tokens). The single-seed G8 pass did not reproduce across seeds and is
-  superseded by an eight-seed bias check (rules 2026-09-28.2, `t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).
+  past, generation having had no stop tokens). The single-seed G8 pass did not reproduce across seeds; the
+  eight-seed bias check (rules 2026-09-28.2, criterion committed before the result) reads FAIL on this store (bias
+  47.96 SE vs 3; scale 1.71 vs 1.5), so the instrument statement rests on G2 alone
+  (`t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).
 - **Two calibration instruments do not transfer.** The known code feature separates JSON tool blocks from prose at
   AUROC 0.62 (T1: passed on calibration texts), and the activation oracle confabulates on every null window
   (accuracy 0.42, paired 0.33). Neither carries weight here; labels are Neuronpedia's.

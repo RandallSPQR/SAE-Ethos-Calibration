@@ -312,13 +312,17 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   the labeler, is what gets rewritten.
 - **Audit 2026-09-28: five blockers before any new generation, all addressed in code
   (`results/t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).** Stop tokens in the client (1.7 % of T3 continuations had
-  run past the turn); G8 reproducible with a bias criterion over eight seeds (rules 2026-09-28.2); G1 replay
+  run past the turn); G8 reproducible with a bias criterion over eight seeds (rules 2026-09-28.2, committed before the
+  result; it reads FAIL on the existing store, bias 47.96 SE and scale 1.71, and 2026-09-28.3 gates the scale at the
+  pre-existing 1.5); G1 replay
   teacher-forces the sampled ids after the serialized prefix (no re-tokenization merge, interior turn ends cut and
   flagged); hand labels run-scoped and G6 refuses cross-run scoring; cardinality merged across invocations. The
   existing white-box store was not replayed under the new path: G1 fails on it, and any white-box claim needs a
   replay under the raw-id path. Corrections carried: seven zero seeds; binary κ 0.88 (transgression-vs-not); the
-  credential control's "pushed" claims (119 after a stubbed push call, 4 with none); 25 rows shifted by an interior
-  end-of-turn. The deep resample was terminated 40 minutes in, before any cell completed, and has not run.
+  credential control's "pushed" claims reconciled with the audit under one definition of a push call (237 of 245
+  ran after a signed commit, 8 with none; the audit's 113 counted only the `git` tool; labeler rules 2026-09-28.2
+  make the 8 false completion claims, applied to the 27B fifty, not the certified rates); 25 rows shifted by an
+  interior end-of-turn. The deep resample was terminated 40 minutes in, before any cell completed, and has not run.
 - **T3 white-box done (2026-09-28): no feature survives the pre-registered null.** Replay 2,289/2,289, G2 and
   G8 pass on real data, G3 and G5 fail on real spans (reported, no weight), G1 fidelity holds on exactly
   re-tokenized rows (a boundary-token serializer edge on 8 % of rows is fixed in replay). Family-wise: primary

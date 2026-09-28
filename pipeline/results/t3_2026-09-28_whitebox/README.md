@@ -2,9 +2,11 @@
 
 **AUDIT 2026-09-28 (see `AUDIT_RESPONSE.md`): the replay under this store mis-tokenized 8 % of decision spans and
 mis-cut 25 (interior end-of-turn); G1 FAILS as a gate on it; the G8 pass reported below was not reproducible across
-RNG seeds under gate rules 2026-09-28.1 and is superseded by the eight-seed result in
-`gates_g8_2026-09-28.2_eightseed.json`; the instrument statement rests on G2 and the replay-fidelity diagnostic
-only. The family-wise result stands as computed on this store and is not re-run on it.**
+RNG seeds under gate rules 2026-09-28.1; the eight-seed result under 2026-09-28.2
+(`gates_g8_2026-09-28.2_eightseed.json`, criterion committed 17:02 EDT, result 17:31 EDT) reads **FAIL** (worst bias
+47.96 SE vs 3; scale ratio 1.71, also failing the 2026-09-28.3 scale gate at 1.5). G1 and G8 are both red on this
+store; the instrument statement rests on G2 alone. The family-wise result stands as computed on this store and is
+not re-run on it.**
 
 **Result, numbers first: no feature survives the pre-registered family-wise null on the test half in any of the
 three contrasts. Primary (impossible_test full, gamed vs honest): max-|d| p = 0.31 on 9 vs 7 uids, of which only
@@ -33,7 +35,7 @@ metadata, every report and the analysis are here.
 | G2 SAE health on 48 real assistant spans | **PASS** | var. explained 0.683, L0 90.0 (published 76, reported not gated), every decoy hook rejected by ≥ 0.11 VE, JumpReLU integrity 0, scaled copies x0.8/x1.2 reported. Tensor-identity block not attached by the driver (path present; the gate warns, does not fail); T1's identity (cos 0.9999998, norm rel 5e-6) is data-independent for this pinned artifact and hook. |
 | G3 known code feature 8209 on real spans | **FAIL** | window-max AUROC 0.62 (threshold 0.80) between tool-block code positions and reasoning prose; only 9 of 48 sampled decision turns carried code in their tool block; the feature fires on 27 % of code windows and 2.5 % of prose windows. The test is thin and the feature does not discriminate JSON-embedded snippets the way it discriminates the calibration texts (T1 G3 passed). |
 | G5 oracle paired-only on real spans | **FAIL** | accuracy 0.42, paired discrimination 0.33, confabulation 1.0. The oracle gets no weight; labels below are Neuronpedia's. |
-| G8 null controls (within-cell, stratified d, all 60 selected concepts) | **not reproducible under 2026-09-28.1** | the single-seed pass (0.144 ≤ 0.157) depended on permutation order and used the pooled-groups bound; superseded by `gates_g8_2026-09-28.2_eightseed.json` (bias criterion, eight seeds; result stated in AUDIT_RESPONSE.md). Prefix token gap 0.0 within cells. |
+| G8 null controls (within-cell, stratified d, all 60 selected concepts) | **FAIL under 2026-09-28.2 and 2026-09-28.3** | the single-seed 2026-09-28.1 pass (0.144 ≤ 0.157) depended on permutation order and used the pooled-groups bound. Eight seeds, bias criterion (`gates_g8_2026-09-28.2_eightseed.json`): worst \|mean signed null d\|/SE 47.96 vs 3.0 (per seed 35.8–47.96), worst \|d\| scale ratio 1.71 (gated at 1.5 from 2026-09-28.3: FAIL). Prefix token gap 0.0 within cells. Diagnosis in AUDIT_RESPONSE.md: a two-valued null from features firing in one continuation of a mixed cell; the numerator is unbiased. |
 
 ## 2. Family-wise results on the test half (odd seeds), B = 1000, q = 0.05, K = 20 per contrast
 
@@ -85,8 +87,8 @@ Secondary contrast: no feature above \|d\| 0.47 on test; discover-side selection
 - **The instrument works where it was tested on this data, with two caveats.** Replay reproduces the generation
   computation on the rows that re-tokenize exactly (99.5 % within 0.05 nats; a diagnostic, since the gate fails on
   the mis-tokenized 8 %); the SAE reconstructs real decision-turn residuals at VE 0.68 with decoys rejected; the
-  within-cell design removes the prefix-length confound (gap 0 by construction). The G8 pass was not reproducible
-  and is replaced by the eight-seed bias check under rules 2026-09-28.2.
+  within-cell design removes the prefix-length confound (gap 0 by construction). The G8 pass was not reproducible;
+  the eight-seed check under rules 2026-09-28.2 reads FAIL (bias 47.96 SE, scale 1.71), so G8 is red on this store.
 - **Two calibration instruments do not transfer to real spans.** The known code feature discriminates JSON tool
   blocks poorly (AUROC 0.62), and the activation oracle confabulates on every null window; neither is used here.
 - **No decision-span feature predicts the eventual outcome beyond the within-cell null**, at this n, in any
