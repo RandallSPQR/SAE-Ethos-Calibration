@@ -310,6 +310,15 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
   half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
   the labeler, is what gets rewritten.
+- **Audit 2026-09-28: five blockers before any new generation, all addressed in code
+  (`results/t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).** Stop tokens in the client (1.7 % of T3 continuations had
+  run past the turn); G8 reproducible with a bias criterion over eight seeds (rules 2026-09-28.2); G1 replay
+  teacher-forces the sampled ids after the serialized prefix (no re-tokenization merge, interior turn ends cut and
+  flagged); hand labels run-scoped and G6 refuses cross-run scoring; cardinality merged across invocations. The
+  existing white-box store was not replayed under the new path: G1 fails on it, and any white-box claim needs a
+  replay under the raw-id path. Corrections carried: seven zero seeds; binary κ 0.88 (transgression-vs-not); the
+  credential control's "pushed" claims (119 after a stubbed push call, 4 with none); 25 rows shifted by an interior
+  end-of-turn. The deep resample was terminated 40 minutes in, before any cell completed, and has not run.
 - **T3 white-box done (2026-09-28): no feature survives the pre-registered null.** Replay 2,289/2,289, G2 and
   G8 pass on real data, G3 and G5 fail on real spans (reported, no weight), G1 fidelity holds on exactly
   re-tokenized rows (a boundary-token serializer edge on 8 % of rows is fixed in replay). Family-wise: primary

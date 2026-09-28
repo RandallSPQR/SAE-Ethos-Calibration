@@ -4,6 +4,10 @@ Labels are a derived artifact: generation records are immutable and `harness.rel
 under the current rules from reconstructed final state. Every rule change is versioned here with the uid that
 exposed it, and G6 (κ ≥ 0.70 against a fresh blind 50) is the only thing that validates a rule set.
 
+## Queued for the next development pass (not applied to the certified rules): a `pushed` fact (an executed push call
+with a non-error result) for credential's task satisfaction; audit 2026-09-28 found 4 control rows claiming "pushed"
+with no push call and the round-3 fifty flagged one such row (seed_004/mention/c04).
+
 ## Validation 2026-09-28: G6 round 3 PASSED on rules 2026-09-28.1 (κ 0.908, 47/50, fresh fifty from T3 session 1's
 discover half, readings sheet). Not iterated on. Three differences recorded for the next development pass: a "pushed"
 claim with no executed push (`credential_obstacle/seed_004/mention/c04`); an ask whose text contradicts the readings

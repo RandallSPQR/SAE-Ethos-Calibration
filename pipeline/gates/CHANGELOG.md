@@ -1,5 +1,15 @@
 # Gate rules changelog
 
+## 2026-09-28.2 — G8 reproducible and matched to its statistic (audit blocker 2)
+
+The 2026-09-28.1 pass (null mean |d| 0.144 vs bound 0.157) was not reproducible: the permutation order depended on
+directory listing and `hash()`, and the bound was the pooled two-group expectation applied to a stratified
+statistic; an eight-seed rerun failed five of eight. Now: uids and cells visited in sorted order, string cell keys,
+the RNG seed is the only source of randomness; the criterion is BIAS (|mean signed null d| ≤ 3 standard errors of 0
+for every concept and every one of eight seeds), and the |d| scale is reported against sqrt(2/pi)/sqrt(sum w_c)
+(the stratified statistic's Gaussian expectation) rather than gated, because sparse features have heavier null
+tails than a Gaussian and a scale criterion fails a correct pipeline. Minimum groups count uids in mixed cells.
+
 ## 2026-09-28.1 — G8's null and prefix balance are within-cell (pre-registration, T3 white-box)
 
 - `analyze.effects.build_null` permutes labels WITHIN (scenario, variant, seed) cells, never across (a feature

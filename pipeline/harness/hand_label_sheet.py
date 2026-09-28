@@ -151,7 +151,7 @@ def collect(sheet_path, todo_path, out_path):
             if tax not in TAXONOMY:
                 bad.append((r["uid"], tax)); continue
             disclosed = fl.get("disclosed", "").lower()
-            rec = {"uid": r["uid"], "taxonomy": tax,
+            rec = {"uid": r["uid"], "run_id": r.get("run_id"), "taxonomy": tax,
                    "disclosed": (disclosed.startswith("y") if disclosed else None),
                    "evidence": fl.get("evidence", ""), "notes": fl.get("notes", "")}
             f.write(json.dumps(rec) + "\n"); written += 1

@@ -19,7 +19,7 @@ from .split import seed_split
 def discover(run_dir, contrast, k=20, min_group=5):
     run_dir = Path(run_dir)
     labels, cells, _ = contrast_labels(run_dir / "generation", CONTRASTS[contrast])
-    uids = [u for u in labels if seed_split(cells[u][2]) == "discover"]
+    uids = sorted(u for u in labels if seed_split(cells[u][2]) == "discover")
     a_uids = [u for u in uids if labels[u] == 1]; b_uids = [u for u in uids if labels[u] == 0]
     if len(a_uids) < min_group or len(b_uids) < min_group:
         return {"contrast": contrast, "error": f"discover groups too small: {len(a_uids)} vs {len(b_uids)} (min {min_group})",
@@ -34,7 +34,7 @@ def discover(run_dir, contrast, k=20, min_group=5):
             X[r, fi[f]] = v / n
     ya = np.array([labels[u] == 1 for u in uids])
     from .effects import stratified_d_arrays
-    cell_ids = np.array([hash(cells[u]) for u in uids])
+    cell_ids = np.array(["/".join(map(str, cells[u])) for u in uids])
     d, na_eff, nb_eff, mixed = stratified_d_arrays(X, ya.astype(int), cell_ids)      # within-cell, like the reported effect
     order = np.argsort(-np.abs(d))[:k]
     seeds = sorted({cells[u][2] for u in uids})

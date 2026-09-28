@@ -26,7 +26,23 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
     from .sae import encode
     from .oracle import verbalize
     end = scored_index(row) + 1
-    fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True, extra_hooks=extra_hooks)
+    sampled = (row.get("tokens") or {}).get("sampled_ids")
+    overran = False
+    if sampled:
+        # Audit blockers 1 and 3 (2026-09-28): teacher-force the ids the model actually sampled, after the prefix the
+        # canonical serializer produces, instead of re-tokenizing the decoded text (a trailing newline merged into the
+        # turn suffix on 8% of T3 rows; 25 rows were shifted by an INTERIOR <end_of_turn> the model ran past). The span is
+        # cut at the first turn-end / EOS token; an interior one marks the continuation as overran_turn.
+        from model_io.gemma2 import apply_to_tokenizer
+        prefix = apply_to_tokenizer(lm.tokenizer, row["messages"][:end - 1], add_generation_prompt=True)
+        stops = [i for i, t in enumerate(sampled) if t in (107, 1)]
+        cut = stops[0] if stops else len(sampled)
+        overran = bool(stops) and cut < len(sampled) - 3
+        core = list(sampled[:cut])
+        fr = teacher_forced_forward(lm, None, capture_residual=True, extra_hooks=extra_hooks,
+                                    input_ids=list(prefix) + core, span=(len(prefix), len(prefix) + len(core)))
+    else:
+        fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True, extra_hooks=extra_hooks)
     s0, e0 = fr.assistant_span
     sums = {}
     for pos, feat, act in encode(sae, fr.residual):
@@ -55,7 +71,13 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
     gen_lps = (row.get("tokens") or {}).get("sampled_logprobs")
     gen_mrg = (row.get("tokens") or {}).get("sampled_top2_margin")
     tail = None
-    if gen_ids and len(gen_ids) > (e - s):
+    if sampled:
+        # raw-id path: the span IS the sampled core by construction; the tail is whatever followed the first stop
+        tail = list(sampled[e - s:]) or None
+        gen_ids = list(sampled[: e - s])
+        gen_lps = gen_lps[: e - s] if gen_lps else gen_lps
+        gen_mrg = gen_mrg[: e - s] if gen_mrg else gen_mrg
+    elif gen_ids and len(gen_ids) > (e - s):
         # vLLM's sampled ids carry the turn suffix / EOS (<end_of_turn>, "\n", <eos>: 107/108/1) that the replay span
         # excludes by construction; align the G1 arrays to the span (T3 white-box 2026-09-28: every one of 2,289 rows was
         # 1-3 tokens longer and G1 failed on presence, not fidelity). The raw tail is kept for the record.
@@ -69,6 +91,7 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         "generated_ids": gen_ids, "generated_ids_raw_tail": tail,
         "sampled_top2_margin": gen_mrg,
         "span_ids_equal_sampled": (gen_ids == fr.token_ids[s:e]) if gen_ids else None,
+        "overran_turn": overran, "replay_path": "sampled_ids" if sampled else "retokenized",
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,

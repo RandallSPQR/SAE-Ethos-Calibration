@@ -55,25 +55,40 @@ def null_bound(g, n1, n2):
     return max(g["g8_null_cohens_d_max"], g.get("g8_null_d_factor", 1.5) * exp), exp
 
 
-def evaluate(g, features, transcripts, concepts, replayed=None, split="test", trials=200):
+def evaluate(g, features, transcripts, concepts, replayed=None, split="test", trials=200, seeds=(0, 1, 2, 3, 4, 5, 6, 7)):
     """(status, detail). NOT_EVALUABLE when the reporting split has fewer than g8_min_group destructive or
-    benign uids: an empty split makes every permuted d = 0.0, and a null that passes vacuously is the
-    worst kind of green (rules 2026-09-24.1)."""
+    benign uids IN MIXED CELLS: an empty split makes every permuted d = 0.0, and a null that passes vacuously is the
+    worst kind of green (rules 2026-09-24.1).
+
+    Rules 2026-09-28.2 (audit: the 2026-09-28.1 pass was not reproducible across RNG seeds, and its |d| bound was the
+    pooled-groups expectation applied to a stratified statistic). The statistic is the stratified within-cell d, the
+    null permutes within cells in a deterministic order, and the criterion is BIAS: for every concept and every one of
+    `seeds` RNG seeds, |mean of the signed null d| must be within g8_null_bias_se (default 3) standard errors of 0. The
+    |d| scale is REPORTED against its Gaussian expectation sqrt(2/pi)/sqrt(sum w_c) (sparse features have heavier
+    null tails than a Gaussian; a scale criterion would fail a correct pipeline), not gated. All seeds must pass."""
     min_group = int(g.get("g8_min_group", 20))
-    worst_null, worst_bound, counts = 0.0, 0.0, {}
+    bias_se_max = float(g.get("g8_null_bias_se", 3.0))
+    counts, worst_bias_se, worst_scale_ratio, per_seed = {}, 0.0, 0.0, {}
     try:
         for name, rec in concepts.items():
             eff = effects.run_effect(features, transcripts, rec["feature"], split=split, replayed_dir=replayed)
             n1, n2 = eff["n_destructive"], eff["n_benign"]
-            counts[name] = {"n_destructive": n1, "n_benign": n2}
+            counts[name] = {"n_destructive": n1, "n_benign": n2, "mixed_cells": eff.get("mixed_cells")}
             if n1 < min_group or n2 < min_group:
-                return NOT_EVALUABLE, {"reason": f"reporting split '{split}' has {n1} destructive / {n2} benign uids "
-                                                 f"for {name}; need >= {min_group} each", "counts": counts,
+                return NOT_EVALUABLE, {"reason": f"reporting split '{split}' has {n1} destructive / {n2} benign uids in mixed "
+                                                 f"cells for {name}; need >= {min_group} each", "counts": counts,
                                        "rules": GATE_RULES_VERSION}
-            null = effects.build_null(features, transcripts, rec["feature"], split=split, trials=trials,
-                                      replayed_dir=replayed, strict=True)
-            bound, exp = null_bound(g, n1, n2)
-            worst_null = max(worst_null, st.mean(abs(x) for x in null)); worst_bound = max(worst_bound, bound)
+            exp_abs = math.sqrt(2 / math.pi) / math.sqrt(max(eff.get("w_sum") or 1e-9, 1e-9))
+            for sd in seeds:
+                null = effects.build_null(features, transcripts, rec["feature"], split=split, trials=trials,
+                                          replayed_dir=replayed, strict=True, seed=sd)
+                mean_signed = st.mean(null); se = (st.pstdev(null) / math.sqrt(len(null))) or 1e-9
+                bias_se = abs(mean_signed) / se
+                scale_ratio = st.mean(abs(x) for x in null) / exp_abs
+                per_seed.setdefault(str(sd), {"worst_bias_se": 0.0, "worst_scale_ratio": 0.0})
+                per_seed[str(sd)]["worst_bias_se"] = max(per_seed[str(sd)]["worst_bias_se"], round(bias_se, 2))
+                per_seed[str(sd)]["worst_scale_ratio"] = max(per_seed[str(sd)]["worst_scale_ratio"], round(scale_ratio, 2))
+                worst_bias_se = max(worst_bias_se, bias_se); worst_scale_ratio = max(worst_scale_ratio, scale_ratio)
     except effects.CardinalityError as e:
         return "fail", {"error": f"cardinality: {e}", "rules": GATE_RULES_VERSION}
     gap, missing = _prefix_balance_tokens(transcripts, replayed)
@@ -81,8 +96,10 @@ def evaluate(g, features, transcripts, concepts, replayed=None, split="test", tr
     if missing > 0 or gap is None:
         return "fail", {"error": f"token-level positions unavailable (missing={missing}); run replay so "
                                  "decision_token_position exists", "rules": GATE_RULES_VERSION}
-    ok = worst_null <= worst_bound and gap <= g.get("g8_prefix_token_gap_max", 40)
-    return ("pass" if ok else "fail"), {"null_mean_abs_d": round(worst_null, 3), "null_bound": round(worst_bound, 3),
+    ok = worst_bias_se <= bias_se_max and gap <= g.get("g8_prefix_token_gap_max", 40)
+    return ("pass" if ok else "fail"), {"null_bias_worst_se": round(worst_bias_se, 2), "null_bias_se_max": bias_se_max,
+                                        "null_abs_scale_worst_ratio": round(worst_scale_ratio, 2),
+                                        "seeds": list(seeds), "trials": trials, "per_seed": per_seed,
                                         "counts": counts, "split": split, "prefix_token_gap": round(gap, 1),
                                         "rules": GATE_RULES_VERSION}
 
@@ -135,7 +152,7 @@ def fixture():
         means, labels, _ = effects.mean_activation_per_uid(feats, trans, 7)
         zero_incl = len(means) == len(labels) and sum(1 for v in means.values() if v == 0) > 300
         # (b) the real path passes on a label-independent store, with the n-scaled bound
-        status_ok, det_ok = evaluate(g, feats, trans, concepts, trials=100)
+        status_ok, det_ok = evaluate(g, feats, trans, concepts, trials=100, seeds=(0, 1))
         # (c) a planted real effect stands out: perm p small through the same path
     with tempfile.TemporaryDirectory() as td:
         root = Path(td); _write_synthetic(root, planted=True)
@@ -146,12 +163,10 @@ def fixture():
     with tempfile.TemporaryDirectory() as td:
         # (d) an EMPTY reporting split (all even = discover seeds) is NOT_EVALUABLE, never a pass
         root = Path(td); _write_synthetic(root, seeds=[0, 2, 4, 6])
-        status_empty, det_empty = evaluate(g, str(root / "features"), str(root / "transcripts"), concepts, trials=10)
-    bound, exp = null_bound(g, 200, 200)
-    ok = (zero_incl and status_ok == "pass" and planted_p < 0.05 and status_empty == NOT_EVALUABLE
-          and bound >= g["g8_null_cohens_d_max"])
+        status_empty, det_empty = evaluate(g, str(root / "features"), str(root / "transcripts"), concepts, trials=10, seeds=(0,))
+    ok = (zero_incl and status_ok == "pass" and planted_p < 0.05 and status_empty == NOT_EVALUABLE)
     return GateResult(NAME + "[fixture]", ok,
-                      {"zero_uids_included": zero_incl, "null_path": status_ok, "null_mean_abs_d": det_ok.get("null_mean_abs_d"),
-                       "null_bound": det_ok.get("null_bound"), "planted_perm_p": round(planted_p, 3),
+                      {"zero_uids_included": zero_incl, "null_path": status_ok, "null_bias_worst_se": det_ok.get("null_bias_worst_se"),
+                       "null_abs_scale_worst_ratio": det_ok.get("null_abs_scale_worst_ratio"), "planted_perm_p": round(planted_p, 3),
                        "empty_split_is_not_evaluable": status_empty == NOT_EVALUABLE,
                        "prefix_token_gap": det_ok.get("prefix_token_gap"), "rules": GATE_RULES_VERSION})

@@ -149,10 +149,10 @@ def main():
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     with open(out / "hand_label_todo.jsonl", "w") as todo, open(out / "hand_label_key.jsonl", "w") as key:
         for r in chosen:
-            todo.write(json.dumps({"uid": r["uid"], "scenario": r["scenario"], "variant": r["variant"],
+            todo.write(json.dumps({"uid": r["uid"], "run_id": r.get("run_id"), "scenario": r["scenario"], "variant": r["variant"],
                                    "decision_point": r["decision_point"], "transcript": render_transcript(r),
                                    "readings": readings(r), "taxonomy": "", "label": "", "notes": ""}) + "\n")
-            key.write(json.dumps({"uid": r["uid"], "harness_label": r["judge"]["label"],
+            key.write(json.dumps({"uid": r["uid"], "run_id": r.get("run_id"), "harness_label": r["judge"]["label"],
                                   "harness_taxonomy": r["judge"]["taxonomy"], "evidence": r["judge"].get("evidence", []),
                                   "labeler_rules": (r.get("observed_facts") or {}).get("labeler_rules")}) + "\n")
     dist = collections.Counter((r["scenario"], r["variant"], r["judge"]["label"]) for r in chosen)

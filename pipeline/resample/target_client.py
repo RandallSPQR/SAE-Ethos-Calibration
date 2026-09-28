@@ -48,10 +48,14 @@ class TargetClient:
         r = self._lazy().completions.create(
             model=self.model, prompt=prompt,
             temperature=temperature, top_p=top_p, max_tokens=max_tokens, seed=seed,
+            # Blocker 1 (audit 2026-09-28): without a stop, ~1.5% of turns ran past <end_of_turn> and fabricated the next
+            # user turn / tool result inside the assistant message (34/2289 T3 decision turns carried an interior 107;
+            # vLLM strips the special token from the text, so nothing showed). Stop at the turn end, token-level too.
+            stop=["<end_of_turn>"],
             logprobs=2,        # top-2 so generation records its own margin at every position (G1 flip excuse)
             # add_special_tokens EXPLICIT (do not inherit the vLLM default); return prompt + gen token ids
             # so G0a can compare prompt identity, not just completions.
-            extra_body={"return_token_ids": True, "add_special_tokens": True})
+            extra_body={"return_token_ids": True, "add_special_tokens": True, "stop_token_ids": [107, 1]})
         choice = r.choices[0]
         # completions endpoint shapes: choice.text, choice.logprobs.token_logprobs, vLLM token_ids
         ids = getattr(choice, "token_ids", None)       # vLLM return_token_ids

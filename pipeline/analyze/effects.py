@@ -130,12 +130,15 @@ def stratified_d_arrays(X, y, cell_ids):
 
 
 def stratified_permutation(labels, cells, rng):
-    """Permute the 0/1 labels WITHIN each (scenario, variant, seed) cell (pre-registration statistic 3)."""
+    """Permute the 0/1 labels WITHIN each (scenario, variant, seed) cell (pre-registration statistic 3). Cells and
+    uids are visited in sorted order so the permutation sequence depends only on the RNG seed (audit 2026-09-28:
+    it depended on directory listing order)."""
     by_cell = defaultdict(list)
-    for u in labels:
+    for u in sorted(labels):
         by_cell[cells[u]].append(u)
     out = {}
-    for cell, us in by_cell.items():
+    for cell in sorted(by_cell):
+        us = by_cell[cell]
         labs = [labels[u] for u in us]
         rng.shuffle(labs)
         out.update(zip(us, labs))
@@ -149,7 +152,7 @@ def family_wise(run_dir, contrast_name, concepts, trials=1000, q=0.05, seed=0, s
     import numpy as np
     run_dir = Path(run_dir)
     labels, cells, _ = contrast_labels(run_dir / "generation", CONTRASTS[contrast_name])
-    uids = [u for u in labels if seed_split(cells[u][2]) == split]
+    uids = sorted(u for u in labels if seed_split(cells[u][2]) == split)      # deterministic order (audit 2026-09-28)
     feats = [c["feature"] for c in concepts]
     if not uids or not feats:
         return {"contrast": contrast_name, "split": split, "error": "no uids or no features"}
@@ -159,7 +162,7 @@ def family_wise(run_dir, contrast_name, concepts, trials=1000, q=0.05, seed=0, s
         for j, f in enumerate(feats):
             X[r, j] = sums.get(u, {}).get(f, 0.0) / counts[u]
     y = np.array([labels[u] for u in uids])
-    cell_ids = np.array([hash(cells[u]) for u in uids])
+    cell_ids = np.array(["/".join(map(str, cells[u])) for u in uids])          # stable string keys, never hash()
     n1, n0 = int(y.sum()), int((1 - y).sum())
     d_obs, n1_eff, n0_eff, mixed = stratified_d_arrays(X, y, cell_ids)
     rng = random.Random(seed)
@@ -255,7 +258,19 @@ def _uidsums_available(features_dir):
     return any(Path(features_dir).rglob("*_uidsums.*"))
 
 
+_MEANS_CACHE = {}
+
+
 def mean_activation_per_uid(features_dir, transcripts_dir, feature_index, replayed_dir=None, strict=True):
+    """Cached per (store, transcripts, feature, replayed): G8 asks for the same feature once per RNG seed."""
+    key = (str(features_dir), str(transcripts_dir), int(feature_index), str(replayed_dir), bool(strict))
+    if key not in _MEANS_CACHE:
+        _MEANS_CACHE[key] = _mean_activation_per_uid(features_dir, transcripts_dir, feature_index, replayed_dir, strict)
+    means, labels, seeds = _MEANS_CACHE[key]
+    return dict(means), dict(labels), dict(seeds)
+
+
+def _mean_activation_per_uid(features_dir, transcripts_dir, feature_index, replayed_dir=None, strict=True):
     """E[A] over assistant tokens for EVERY labeled continuation, zeros included. With strict=True (the
     default for real analysis), a labeled uid that is MISSING its assistant_token_count is a hard error —
     dropping it would silently shrink N and could make a biased analysis look beautifully null."""
@@ -300,7 +315,7 @@ def run_effect(features_dir, transcripts_dir, feature_index, split="test", label
     means, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
                                                    replayed_dir=replayed_dir, strict=strict)
     labels = label_override or labels
-    uids = [u for u in means if seed_split(seeds[u]) == split and u in labels]
+    uids = sorted(u for u in means if seed_split(seeds[u]) == split and u in labels)
     if not uids:
         return {"feature": feature_index, "cohens_d": 0.0, "n_destructive": 0, "n_benign": 0, "split": split}
     import numpy as np
@@ -308,10 +323,17 @@ def run_effect(features_dir, transcripts_dir, feature_index, split="test", label
     us = set(uids)
     cells = {r["uid"]: (r["scenario"], r["variant"], r["seed"]) for r in iter_transcripts(transcripts_dir) if r["uid"] in us}
     X = np.array([[means[u]] for u in uids]); y = np.array([labels[u] for u in uids])
-    cell_ids = np.array([hash(cells.get(u, ("?", "?", seeds[u]))) for u in uids])
+    cell_ids = np.array(["/".join(map(str, cells.get(u, ("?", "?", seeds[u])))) for u in uids])
     d, na, nb, mixed = stratified_d_arrays(X, y, cell_ids)      # rules 2026-09-28.1: within-cell statistic
+    # sum of cell weights w_c = n_a n_b / n_c: the null variance of the weighted within-cell mean difference is
+    # sigma^2 / sum(w), so E|d_strat| under a Gaussian null is sqrt(2/pi)/sqrt(sum w) (G8 reading, rules 2026-09-28.2)
+    wsum = 0.0
+    for c in np.unique(cell_ids):
+        m = cell_ids == c; a, b = int(y[m].sum()), int((1 - y[m]).sum())
+        if a and b:
+            wsum += a * b / (a + b)
     return {"feature": feature_index, "cohens_d": round(float(d[0]), 4), "statistic": "stratified (within-cell) d",
-            "n_destructive": int(na), "n_benign": int(nb), "mixed_cells": int(mixed), "split": split,
+            "n_destructive": int(na), "n_benign": int(nb), "mixed_cells": int(mixed), "split": split, "w_sum": round(wsum, 3),
             "n_destructive_all": int(y.sum()), "n_benign_all": int((1 - y).sum())}
 
 
@@ -324,10 +346,10 @@ def build_null(features_dir, transcripts_dir, feature_index, split="test", trial
     from gates._common import iter_transcripts
     means, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
                                                    replayed_dir=replayed_dir, strict=strict)
-    uids = [u for u in labels if seed_split(seeds[u]) == split and u in means]
+    uids = sorted(u for u in labels if seed_split(seeds[u]) == split and u in means)
     us = set(uids)
     cells = {r["uid"]: (r["scenario"], r["variant"], r["seed"]) for r in iter_transcripts(transcripts_dir) if r["uid"] in us}
-    X = np.array([[means[u]] for u in uids]); cell_ids = np.array([hash(cells.get(u, ("?", "?", seeds[u]))) for u in uids])
+    X = np.array([[means[u]] for u in uids]); cell_ids = np.array(["/".join(map(str, cells.get(u, ("?", "?", seeds[u])))) for u in uids])
     sub_labels = {u: labels[u] for u in uids}
     rng = random.Random(seed)
     null = []
