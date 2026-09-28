@@ -28,6 +28,20 @@ deviation is written as a deviation.
    null 95th percentile (q = 0.05), against the null distribution of that count** (the same B permutations
    applied to all K features at once); the family-wise p is P(null count ≥ observed count). Not 16k
    per-feature p-values.
+   **4b (amendment, 2026-09-28, written after the mock dry run and before the pod billed):** the count
+   statistic cannot see one strong feature (its null expectation is K·q = 1), so the max-|d| statistic over
+   the K selected features (Westfall–Young) is reported beside it with its own permutation p and the number
+   of features whose |d| exceeds the max-null (1−q) quantile. Both are pre-specified; neither is chosen after
+   the fact. The mock dry run (planted feature 7, d ≈ 11) produced count = 1, p_family = 0.68, which is the
+   weakness this amendment addresses.
+   **4c (amendment, 2026-09-28, before the pod):** a within-cell null needs a within-cell statistic. The
+   per-feature effect is the **stratified Cohen's d**: over (scenario, variant, seed) cells holding both groups,
+   the size-weighted mean of the within-cell mean differences divided by the pooled within-cell sd. The pooled
+   d is not exchangeable under within-cell permutation (on the T3 mock a purely label-planted feature kept
+   d ≈ 1.3 under the "null" because 83 of 114 test cells are label-homogeneous). Discovery, effects, and G8 all
+   use the stratified d; G8's minimum-group rule counts uids in mixed cells only. Cells with one label carry
+   no within-cell information and contribute nothing; the between-cell component of any effect is, by
+   design, not credited.
 
 5. **Power and the honest outcome.** Roughly 11 gamed episodes on discover seeds and 12 on test seeds in
    the primary contrast; G8's 20/20 minimum-group rule (2026-09-24.1) therefore makes the primary contrast's

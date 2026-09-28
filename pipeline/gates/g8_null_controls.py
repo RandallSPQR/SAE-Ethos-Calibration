@@ -26,9 +26,13 @@ NEEDS_GPU = False
 
 def _prefix_balance_tokens(transcripts_dir, replayed_dir):
     """Token-level decision position per label group, joining replayed metadata. Returns (gap, n_missing).
-    Missing token positions are COUNTED — absence is not acceptable evidence."""
+    Missing token positions are COUNTED — absence is not acceptable evidence.
+    Rules 2026-09-28.1: the gap is measured WITHIN (scenario, variant, seed) cells and averaged over cells that
+    hold both groups (weighted by their size), matching the within-cell permutation null. Pooled across
+    scenarios the gap is a composition artifact (destructive outcomes concentrate in the scenarios with the
+    longest prompts: 100 tokens on the T3 mock), while inside a cell every continuation shares one prefix."""
     from ._common import iter_merged
-    d0, d1, missing = [], [], 0
+    cells, missing = {}, 0
     for r in iter_merged(transcripts_dir, replayed_dir):
         if not r.get("judge"):
             continue
@@ -36,8 +40,10 @@ def _prefix_balance_tokens(transcripts_dir, replayed_dir):
         if tok is None:
             missing += 1
             continue
-        (d1 if r["judge"]["taxonomy"] in effects.DESTRUCTIVE_TAX else d0).append(tok)
-    gap = abs(st.mean(d0) - st.mean(d1)) if (d0 and d1) else None
+        c = cells.setdefault((r["scenario"], r["variant"], r["seed"]), ([], []))
+        c[1 if r["judge"]["taxonomy"] in effects.DESTRUCTIVE_TAX else 0].append(tok)
+    both = [(len(a) + len(b), abs(st.mean(a) - st.mean(b))) for a, b in cells.values() if a and b]
+    gap = (sum(n * g for n, g in both) / sum(n for n, _ in both)) if both else None
     return gap, missing
 
 

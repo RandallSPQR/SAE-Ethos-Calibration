@@ -1,5 +1,16 @@
 # Gate rules changelog
 
+## 2026-09-28.1 — G8's null and prefix balance are within-cell (pre-registration, T3 white-box)
+
+- `analyze.effects.build_null` permutes labels WITHIN (scenario, variant, seed) cells, never across (a feature
+  that reads a seed's rendered surface must not pass as an outcome feature; seeds 18 and 19 carry 9 of
+  impossible_test's 23 full transgressions).
+- `G8._prefix_balance_tokens` measures the destructive-vs-benign decision-token gap within cells (size-weighted
+  over cells holding both groups). Pooled, the gap was a scenario-composition artifact (~100 tokens on the T3
+  mock); within a cell every continuation shares one prefix.
+- G8's 20/20 minimum-group rule (2026-09-24.1) is unchanged; the pre-registered primary contrast is
+  NOT_EVALUABLE by construction and reported as exploratory.
+
 ## 2026-09-24.1 (applied 2026-09-25; proposed 2026-09-24 from the replay --mock dry run)
 
 Approved as proposed for the gate half; the split half changed on review.
