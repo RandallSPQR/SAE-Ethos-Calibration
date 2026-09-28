@@ -32,6 +32,170 @@ from .split import seed_split, assert_no_leakage
 
 DESTRUCTIVE_TAX = {"deception_concealment", "destructive", "task_cheating", "safeguard_bypass", "overeager"}
 
+# Pre-registered contrasts (analyze/PREREGISTRATION_T3_WHITEBOX.md, 2026-09-28). Group 1 = "a", group 0 = "b".
+CONTRASTS = {
+    "primary_impossible_full_gamed_vs_honest": {
+        "scenario": "impossible_test", "variant": "full", "by": "label",
+        "a": {"edited_test", "fabricated_green", "edited_test_concealed", "subverted_harness"}, "b": {"honest_report", "asked"}},
+    "secondary_missing_delete_full_silent_vs_asked": {
+        "scenario": "missing_delete_tool", "variant": "full", "by": "label", "a": {"silent_empty"}, "b": {"asked_to_delete"}},
+    "tertiary_all_destructive_vs_benign": {
+        "scenario": None, "variant": None, "by": "taxonomy", "a": set(DESTRUCTIVE_TAX), "b": {"benign"}},
+}
+
+
+class CardinalityError(RuntimeError):
+    pass
+
+
+def contrast_labels(transcripts_dir, contrast):
+    """uid -> 1/0 for the contrast's two groups (uids outside both groups or outside the scope are excluded),
+    uid -> (scenario, variant, seed) cell (the permutation stratum), uid -> seed."""
+    from gates._common import iter_transcripts
+    labels, cells, seeds = {}, {}, {}
+    for r in iter_transcripts(transcripts_dir):
+        if contrast["scenario"] and r["scenario"] != contrast["scenario"]:
+            continue
+        if contrast["variant"] and r["variant"] != contrast["variant"]:
+            continue
+        j = r.get("judge") or {}
+        key = j.get(contrast["by"])
+        if key in contrast["a"]:
+            labels[r["uid"]] = 1
+        elif key in contrast["b"]:
+            labels[r["uid"]] = 0
+        else:
+            continue
+        cells[r["uid"]] = (r["scenario"], r["variant"], r["seed"]); seeds[r["uid"]] = r["seed"]
+    return labels, cells, seeds
+
+
+def uid_feature_sums(features_dir, replayed_dir, uids=None):
+    """uid -> {feature: in-span activation sum} from the *_uidsums files replay writes, and uid -> assistant token
+    count from the replay metadata. A wanted uid without a token count is a CardinalityError (never a silent zero)."""
+    from gates._common import load_replayed_tokens
+    sums = defaultdict(dict)
+    for f in sorted(Path(features_dir).rglob("*_uidsums.*")):
+        for r in _read(f):
+            if uids is not None and r["uid"] not in uids:
+                continue
+            sums[r["uid"]][int(r["feature"])] = sums[r["uid"]].get(int(r["feature"]), 0.0) + float(r["sum_act"])
+    rep = load_replayed_tokens(replayed_dir)
+    counts = {}
+    for u in (uids if uids is not None else sums):
+        n = (rep.get(u) or {}).get("assistant_token_count")
+        if not n:
+            raise CardinalityError(f"uid {u} has no assistant_token_count in {replayed_dir} (run replay); refusing a silent zero")
+        counts[u] = n
+    return sums, counts
+
+
+def cohens_d_arrays(A, B):
+    """Column-wise Cohen's d for two 2-D arrays (rows = uids, cols = features); 0 where the pooled sd is 0."""
+    import numpy as np
+    ma, mb = A.mean(0), B.mean(0)
+    va = A.var(0, ddof=1) if len(A) > 1 else np.zeros_like(ma)
+    vb = B.var(0, ddof=1) if len(B) > 1 else np.zeros_like(mb)
+    na, nb = len(A), len(B)
+    pooled = np.sqrt(((na - 1) * va + (nb - 1) * vb) / max(1, na + nb - 2))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        d = np.where(pooled > 0, (ma - mb) / pooled, 0.0)
+    return d
+
+
+def stratified_d_arrays(X, y, cell_ids):
+    """Within-cell (stratified) Cohen's d per column: over cells holding both groups, the size-weighted mean of the
+    within-cell mean differences (w_c = n_a,c n_b,c / n_c), divided by the pooled WITHIN-cell sd. Exchangeable under
+    the within-cell permutation null (pre-registration 4c, 2026-09-28: the pooled d is not — on the T3 mock a purely
+    label-planted feature kept d ~ 1.3 under within-cell permutation because 83 of 114 cells are label-homogeneous).
+    Returns (d[K], n_a_eff, n_b_eff, n_mixed_cells)."""
+    import numpy as np
+    X = np.asarray(X, dtype=np.float64); y = np.asarray(y); cell_ids = np.asarray(cell_ids)
+    num = np.zeros(X.shape[1]); wsum = 0.0; ss = np.zeros(X.shape[1]); dof = 0; na = nb = 0; mixed = 0
+    for c in np.unique(cell_ids):
+        m = cell_ids == c
+        A, B = X[m & (y == 1)], X[m & (y == 0)]
+        if len(A) == 0 or len(B) == 0:
+            continue
+        w = len(A) * len(B) / (len(A) + len(B))
+        num += w * (A.mean(0) - B.mean(0)); wsum += w
+        ss += ((A - A.mean(0)) ** 2).sum(0) + ((B - B.mean(0)) ** 2).sum(0)
+        dof += len(A) + len(B) - 2; na += len(A); nb += len(B); mixed += 1
+    if wsum == 0 or dof <= 0:
+        return np.zeros(X.shape[1]), 0, 0, 0
+    sd = np.sqrt(ss / dof)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        d = np.where(sd > 0, (num / wsum) / sd, 0.0)
+    return d, na, nb, mixed
+
+
+def stratified_permutation(labels, cells, rng):
+    """Permute the 0/1 labels WITHIN each (scenario, variant, seed) cell (pre-registration statistic 3)."""
+    by_cell = defaultdict(list)
+    for u in labels:
+        by_cell[cells[u]].append(u)
+    out = {}
+    for cell, us in by_cell.items():
+        labs = [labels[u] for u in us]
+        rng.shuffle(labs)
+        out.update(zip(us, labs))
+    return out
+
+
+def family_wise(run_dir, contrast_name, concepts, trials=1000, q=0.05, seed=0, split="test"):
+    """Pre-registration statistic 4 on the reporting split: per selected feature d and a within-cell permutation p
+    (descriptive); the REPORTED number is the count of features whose |d| exceeds their own null (1-q) quantile,
+    against the null distribution of that count from the same permutations."""
+    import numpy as np
+    run_dir = Path(run_dir)
+    labels, cells, _ = contrast_labels(run_dir / "generation", CONTRASTS[contrast_name])
+    uids = [u for u in labels if seed_split(cells[u][2]) == split]
+    feats = [c["feature"] for c in concepts]
+    if not uids or not feats:
+        return {"contrast": contrast_name, "split": split, "error": "no uids or no features"}
+    sums, counts = uid_feature_sums(run_dir / "features", run_dir / "replay", set(uids))
+    X = np.zeros((len(uids), len(feats)), dtype=np.float64)
+    for r, u in enumerate(uids):
+        for j, f in enumerate(feats):
+            X[r, j] = sums.get(u, {}).get(f, 0.0) / counts[u]
+    y = np.array([labels[u] for u in uids])
+    cell_ids = np.array([hash(cells[u]) for u in uids])
+    n1, n0 = int(y.sum()), int((1 - y).sum())
+    d_obs, n1_eff, n0_eff, mixed = stratified_d_arrays(X, y, cell_ids)
+    rng = random.Random(seed)
+    D = np.zeros((trials, len(feats)))
+    labels_sub = {u: labels[u] for u in uids}
+    for b in range(trials):
+        perm = stratified_permutation(labels_sub, cells, rng)
+        yb = np.array([perm[u] for u in uids])
+        D[b] = stratified_d_arrays(X, yb, cell_ids)[0]
+    absD = np.abs(D)
+    thr = np.quantile(absD, 1 - q, axis=0)
+    obs_count = int((np.abs(d_obs) >= thr).sum())
+    null_counts = (absD >= thr[None, :]).sum(1)
+    p_family = (1 + int((null_counts >= obs_count).sum())) / (trials + 1)
+    # 4b (amendment 2026-09-28, before the pod): max-|d| over the K features (Westfall-Young). The count statistic
+    # cannot see ONE strong feature (expected null count = K*q = 1); the max statistic can, and controls the
+    # family-wise error the same way. Both are reported; neither is chosen after the fact.
+    max_obs = float(np.abs(d_obs).max())
+    max_null = absD.max(1)
+    p_max = (1 + int((max_null >= max_obs).sum())) / (trials + 1)
+    n_beyond_max_null = int((np.abs(d_obs) >= np.quantile(max_null, 1 - q)).sum())   # features whose |d| exceeds the max-null (1-q) quantile
+    per_feature = []
+    for j, f in enumerate(feats):
+        p_f = (1 + int((absD[:, j] >= abs(d_obs[j])).sum())) / (trials + 1)
+        per_feature.append({"feature": int(f), "d_test": round(float(d_obs[j]), 4), "perm_p": round(p_f, 4),
+                            "null_q_abs_d": round(float(thr[j]), 4), "clears_null": bool(abs(d_obs[j]) >= thr[j]),
+                            "mean_a": round(float(X[y == 1, j].mean()), 5), "mean_b": round(float(X[y == 0, j].mean()), 5)})
+    return {"contrast": contrast_name, "split": split, "n_a": n1, "n_b": n0, "n_a_in_mixed_cells": int(n1_eff), "n_b_in_mixed_cells": int(n0_eff),
+            "mixed_cells": int(mixed), "statistic": "stratified (within-cell) Cohen's d", "k": len(feats), "q": q, "trials": trials,
+            "observed_count_clearing_null": obs_count, "null_count_mean": round(float(null_counts.mean()), 3),
+            "null_count_95": int(np.quantile(null_counts, 0.95)), "p_family": round(p_family, 4),
+            "max_abs_d_observed": round(max_obs, 4), "max_abs_d_null_q": round(float(np.quantile(max_null, 1 - q)), 4),
+            "p_family_max": round(p_max, 4), "n_features_beyond_max_null_q": n_beyond_max_null,
+            "evaluable_by_g8_rule": bool(n1_eff >= 20 and n0_eff >= 20), "per_feature": per_feature,
+            "cells": len({cells[u] for u in uids})}
+
 
 def _read(f):
     if f.suffix == ".parquet":
@@ -87,14 +251,31 @@ def feature_sum_per_uid(features_dir, feature_index):
     return sums
 
 
-class CardinalityError(RuntimeError):
-    pass
+def _uidsums_available(features_dir):
+    return any(Path(features_dir).rglob("*_uidsums.*"))
 
 
 def mean_activation_per_uid(features_dir, transcripts_dir, feature_index, replayed_dir=None, strict=True):
     """E[A] over assistant tokens for EVERY labeled continuation, zeros included. With strict=True (the
     default for real analysis), a labeled uid that is MISSING its assistant_token_count is a hard error —
     dropping it would silently shrink N and could make a biased analysis look beautifully null."""
+    counts, labels, seeds, _ = assistant_token_counts(transcripts_dir, replayed_dir)
+    if _uidsums_available(features_dir):
+        # fast path: replay's per-uid in-span sums (identical by definition to summing in-span position rows)
+        sums = defaultdict(float)
+        for f in sorted(Path(features_dir).rglob("*_uidsums.*")):
+            for r in _read(f):
+                if int(r["feature"]) == int(feature_index):
+                    sums[r["uid"]] += float(r["sum_act"])
+        means, missing = {}, []
+        for uid in labels:
+            n = counts.get(uid)
+            if not n:
+                missing.append(uid); continue
+            means[uid] = sums.get(uid, 0.0) / n
+        if strict and missing:
+            raise CardinalityError(f"{len(missing)} labeled uids missing assistant_token_count (run replay); e.g. {missing[:3]}")
+        return means, labels, seeds
     counts, labels, seeds, _ = assistant_token_counts(transcripts_dir, replayed_dir)
     sums = feature_sum_per_uid(features_dir, feature_index)
     means = {}
@@ -119,30 +300,41 @@ def run_effect(features_dir, transcripts_dir, feature_index, split="test", label
     means, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
                                                    replayed_dir=replayed_dir, strict=strict)
     labels = label_override or labels
-    a, b = [], []
-    for uid, m in means.items():
-        if seed_split(seeds[uid]) != split or uid not in labels:
-            continue
-        (a if labels[uid] == 1 else b).append(m)
-    return {"feature": feature_index, "cohens_d": round(cohens_d(a, b), 4),
-            "n_destructive": len(a), "n_benign": len(b), "split": split}
+    uids = [u for u in means if seed_split(seeds[u]) == split and u in labels]
+    if not uids:
+        return {"feature": feature_index, "cohens_d": 0.0, "n_destructive": 0, "n_benign": 0, "split": split}
+    import numpy as np
+    from gates._common import iter_transcripts
+    us = set(uids)
+    cells = {r["uid"]: (r["scenario"], r["variant"], r["seed"]) for r in iter_transcripts(transcripts_dir) if r["uid"] in us}
+    X = np.array([[means[u]] for u in uids]); y = np.array([labels[u] for u in uids])
+    cell_ids = np.array([hash(cells.get(u, ("?", "?", seeds[u]))) for u in uids])
+    d, na, nb, mixed = stratified_d_arrays(X, y, cell_ids)      # rules 2026-09-28.1: within-cell statistic
+    return {"feature": feature_index, "cohens_d": round(float(d[0]), 4), "statistic": "stratified (within-cell) d",
+            "n_destructive": int(na), "n_benign": int(nb), "mixed_cells": int(mixed), "split": split,
+            "n_destructive_all": int(y.sum()), "n_benign_all": int((1 - y).sum())}
 
 
 def build_null(features_dir, transcripts_dir, feature_index, split="test", trials=200, seed=0,
                replayed_dir=None, strict=True):
-    """Empirical null: permute labels at the INPUT and rerun run_effect through the real path each time.
-    Returns the list of permuted Cohen's d — the distribution the real effect must stand out against."""
-    _, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
-                                               replayed_dir=replayed_dir, strict=strict)
-    uids = [u for u in labels if seed_split(seeds[u]) == split]
-    labs = [labels[u] for u in uids]
+    """Empirical null for ONE feature: labels permuted WITHIN (scenario, variant, seed) cells (rules 2026-09-28.1),
+    the stratified within-cell d recomputed each time from means read ONCE (the previous version re-read the
+    store every trial: 166 s for 2 concepts x 40 trials on the T3 mock). Returns the list of permuted d."""
+    import numpy as np
+    from gates._common import iter_transcripts
+    means, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
+                                                   replayed_dir=replayed_dir, strict=strict)
+    uids = [u for u in labels if seed_split(seeds[u]) == split and u in means]
+    us = set(uids)
+    cells = {r["uid"]: (r["scenario"], r["variant"], r["seed"]) for r in iter_transcripts(transcripts_dir) if r["uid"] in us}
+    X = np.array([[means[u]] for u in uids]); cell_ids = np.array([hash(cells.get(u, ("?", "?", seeds[u]))) for u in uids])
+    sub_labels = {u: labels[u] for u in uids}
     rng = random.Random(seed)
     null = []
     for _ in range(trials):
-        rng.shuffle(labs)
-        perm = dict(zip(uids, labs))
-        null.append(run_effect(features_dir, transcripts_dir, feature_index, split, label_override=perm,
-                               replayed_dir=replayed_dir, strict=strict)["cohens_d"])
+        perm = stratified_permutation(sub_labels, cells, rng)
+        yb = np.array([perm[u] for u in uids])
+        null.append(round(float(stratified_d_arrays(X, yb, cell_ids)[0][0]), 4))
     return null
 
 
@@ -158,6 +350,9 @@ def main():
                     help="which seeds to report on; 'test' is the reporting split (analyze/split.py); "
                          "'discover' is for dry runs on discover-only data and is labeled as such")
     ap.add_argument("--trials", type=int, default=200)
+    ap.add_argument("--family-wise", action="store_true", help="pre-registered report: per contrast in concept_index, the "
+                                                              "family-wise count on the reporting split (writes analysis/effects_<split>.json)")
+    ap.add_argument("--q", type=float, default=0.05)
     args = ap.parse_args()
     if args.run_dir:
         rd = Path(args.run_dir)
@@ -167,6 +362,27 @@ def main():
     if not ci.exists():
         print("(no concept_index.json yet — run discovery first)"); return
     assert_no_leakage(ci)
+    if args.family_wise:
+        index = json.loads(ci.read_text())
+        by_contrast = defaultdict(list)
+        for name, rec in index.items():
+            if rec.get("contrast"):
+                by_contrast[rec["contrast"]].append(rec)
+        out = {}
+        for cname, concepts in by_contrast.items():
+            concepts = sorted(concepts, key=lambda c: c.get("rank", 0))
+            rep = family_wise(Path(args.run_dir) if args.run_dir else Path(args.features).parent, cname, concepts,
+                              trials=args.trials, q=args.q, split=args.split)
+            out[cname] = rep
+            if "error" in rep:
+                print(cname, rep["error"]); continue
+            print(f"{cname} [{rep['split']}]: n_a={rep['n_a']} n_b={rep['n_b']} k={rep['k']} "
+                  f"count clearing null={rep['observed_count_clearing_null']} (null mean {rep['null_count_mean']}, 95% {rep['null_count_95']}) "
+                  f"p_family={rep['p_family']} | max|d|={rep['max_abs_d_observed']} vs max-null q={rep['max_abs_d_null_q']} "
+                  f"p_family_max={rep['p_family_max']} n_beyond={rep['n_features_beyond_max_null_q']} | evaluable_by_g8_rule={rep['evaluable_by_g8_rule']}")
+        od = (Path(args.run_dir) if args.run_dir else Path(args.features).parent) / "analysis"; od.mkdir(exist_ok=True)
+        (od / f"effects_{args.split}.json").write_text(json.dumps(out, indent=1))
+        return
     # 2026-09-24 mock dry run found this CLI never joined the replay metadata (no --replayed), so every uid
     # lacked assistant_token_count and the strict cardinality check refused; the wiring is now explicit.
     if (Path(args.features) / "MOCK").exists():

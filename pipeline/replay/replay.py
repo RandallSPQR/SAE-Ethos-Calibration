@@ -20,16 +20,29 @@ def scored_index(row):
     return row.get("scored_message_index", row["decision_point"])
 
 
-def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions):
+def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, uidsum_rows=None, sample=None,
+               extra_hooks=None):
     from .hooks import teacher_forced_forward
     from .sae import encode
     from .oracle import verbalize
     end = scored_index(row) + 1
-    fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True)
+    fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True, extra_hooks=extra_hooks)
+    s0, e0 = fr.assistant_span
+    sums = {}
     for pos, feat, act in encode(sae, fr.residual):
-        store_rows.append({"uid": row["uid"], "position": int(pos),
-                           "in_assistant_span": fr.assistant_span[0] <= pos < fr.assistant_span[1],
+        in_span = s0 <= pos < e0
+        store_rows.append({"uid": row["uid"], "position": int(pos), "in_assistant_span": in_span,
                            "feature": int(feat), "activation": float(act), "layer": lm.layer})
+        if in_span:
+            sums[feat] = sums.get(feat, 0.0) + float(act)
+    if uidsum_rows is not None:
+        # per-uid, in-span sums: E[A] numerators for every feature at once (analyze.discover reads these, not the
+        # position store; 2026-09-28 pre-registration statistic 4)
+        for feat, tot in sums.items():
+            uidsum_rows.append({"uid": row["uid"], "feature": int(feat), "sum_act": tot, "span_tokens": e0 - s0})
+    if sample is not None:
+        sample.append({"uid": row["uid"], "resid": fr.residual[s0:e0], "span_ids": fr.token_ids[s0:e0],
+                       "extra": {k: v[s0:e0] for k, v in (fr.extra or {}).items()}})
     if oracle is not None:
         exps = verbalize(oracle, fr.residual, score_positions(fr.assistant_span))
         (Path(oracle_dir) / f"{row['uid'].replace('/', '__')}.jsonl").write_text(
@@ -46,6 +59,7 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions):
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,
+        "replay_top2_ids": [fr.logits_top2[s - 1 + k] for k in range(e - s)] if fr.logits_top2 and s > 0 else None,
         "replay_logprob": fr.input_logprobs[s:e] if fr.input_logprobs else None,
         "generation_logprob": (row.get("tokens") or {}).get("sampled_logprobs"),
         # token-level counts for correct E[A] denominators and token-level prefix balancing
@@ -56,7 +70,7 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions):
     return row
 
 
-def mock_replay_one(row, store_rows, rng, n_features=200, l0=8, signal_feature=7, null_feature=3):
+def mock_replay_one(row, store_rows, rng, n_features=200, l0=8, signal_feature=7, null_feature=3, uidsum_rows=None):
     """--mock: synthetic token metadata and a synthetic sparse store in the CANONICAL row shape, so the
     white-box path (replay -> store -> analyze.effects -> G8) runs on behavioral transcripts before any real
     activation exists (2026-09-24). Token counts come from the transcript text (~4 chars/token); the store
@@ -85,6 +99,13 @@ def mock_replay_one(row, store_rows, rng, n_features=200, l0=8, signal_feature=7
                 base *= 2.0
             store_rows.append({"uid": row["uid"], "position": pos, "in_assistant_span": True,
                                "feature": int(f), "activation": float(base), "layer": 31})
+    if uidsum_rows is not None:
+        agg = {}
+        for r in store_rows:
+            if r["uid"] == row["uid"] and r["in_assistant_span"]:
+                agg[r["feature"]] = agg.get(r["feature"], 0.0) + r["activation"]
+        for f, tot in agg.items():
+            uidsum_rows.append({"uid": row["uid"], "feature": int(f), "sum_act": tot, "span_tokens": n_tok})
     gen_ids = (row.get("tokens") or {}).get("sampled_ids") or list(range(1000, 1000 + n_tok))
     row.setdefault("tokens", {})
     row["tokens"].update({"ids": list(range(e)), "assistant_span": [s, e], "generated_ids": gen_ids,
@@ -115,6 +136,14 @@ def main():
     ap.add_argument("--backend", default="karvonen")
     ap.add_argument("--go", action="store_true", help="load real model/SAE/oracle (needs GPU)")
     ap.add_argument("--mock", action="store_true", help="synthetic tokens + store in the canonical format (no GPU)")
+    ap.add_argument("--oracle", action="store_true", help="verbalize every assistant position (slow); default off: the oracle "
+                                                          "runs on survivors only (pre-registration 2026-09-28)")
+    ap.add_argument("--scenarios", default=None, help="comma-separated scenario ids to replay (default all)")
+    ap.add_argument("--limit", type=int, default=None, help="replay at most N continuations per file (smoke test)")
+    ap.add_argument("--instrument-sample", type=int, default=0,
+                    help="capture N assistant spans (round-robin over files) with decoy hooks and build the G2/G3/G5 "
+                         "reports on real spans under features/ (replay.instrument)")
+    ap.add_argument("--identity-from", default=None, help="T1 sae_health.json whose tensor-identity block is carried into G2")
     args = ap.parse_args()
 
     if args.run_dir:
@@ -137,28 +166,55 @@ def main():
         from .modelload import load_target
         from .sae import load_sae
         from .oracle import load_oracle
-        lm, sae, oracle = load_target("target"), load_sae(), load_oracle(args.backend)
+        lm, sae = load_target("target"), load_sae()
+        oracle = load_oracle(args.backend, lm=lm) if args.oracle else None
     Path(args.features, "oracle").mkdir(parents=True, exist_ok=True)
+    only = set(args.scenarios.split(",")) if args.scenarios else None
+    sample = [] if args.instrument_sample else None
+    per_file_sample = None
+    extra_hooks = None
+    if sample is not None and not args.mock:
+        from .modelload import hook_reader
+        from .sae import sae_cfg
+        s_cfg = sae_cfg()
+        extra_hooks = [hook_reader(h) for h in s_cfg.get("hook_candidates", [])]
     # Lineage: NEVER overwrite generation records. Generation transcripts are immutable inputs; replay
     # writes its derived token metadata to a SEPARATE dataset (transcripts/replayed/), joined by uid.
     replayed_dir = Path(args.replayed or (Path(args.transcripts).parent / "replayed"))
     n_in = n_out = 0
-    for tf in Path(args.transcripts).rglob("*.jsonl"):
+    import time as _time
+    t0 = _time.time()
+    files = sorted(Path(args.transcripts).rglob("*.jsonl"))
+    if sample is not None:
+        per_file_sample = max(1, -(-args.instrument_sample // max(1, len(files))))
+    for tf in files:
         rows = [json.loads(l) for l in open(tf) if l.strip()]
-        store = []
+        if not rows or (only is not None and rows[0]["scenario"] not in only):
+            continue
+        if args.limit:
+            rows = rows[: args.limit]
+        store, uidsums = [], []
         replay_meta = []
+        taken = 0
         for row in rows:
             n_in += 1
+            take = sample is not None and taken < per_file_sample and len(sample) < args.instrument_sample
             if args.mock:
-                mock_replay_one(row, store, random.Random(int(hashlib.sha256(row["uid"].encode()).hexdigest()[:8], 16)))
+                mock_replay_one(row, store, random.Random(int(hashlib.sha256(row["uid"].encode()).hexdigest()[:8], 16)),
+                                uidsum_rows=uidsums)
             else:
                 replay_one(lm, sae, oracle, row, store, Path(args.features) / "oracle",
-                           lambda span: list(range(span[0], span[1])))
+                           lambda span: list(range(span[0], span[1])), uidsum_rows=uidsums,
+                           sample=(sample if take else None), extra_hooks=(extra_hooks if take else None))
+            taken += take
             replay_meta.append({"uid": row["uid"], "tokens": row["tokens"]})   # derived, separate record
             n_out += 1
+            if n_out % 50 == 0:
+                print(f"  replayed {n_out} ({(_time.time() - t0) / n_out:.2f} s/continuation)", flush=True)
         out = Path(args.features) / rows[0]["scenario"] / rows[0]["variant"]
         out.mkdir(parents=True, exist_ok=True)
         write_parquet(store, out / (tf.stem + ".parquet"))
+        write_parquet(uidsums, out / (tf.stem + "_uidsums.parquet"))
         rd = replayed_dir / tf.relative_to(args.transcripts).parent
         rd.mkdir(parents=True, exist_ok=True)
         with open(rd / tf.name, "w") as fh:
@@ -171,6 +227,20 @@ def main():
             "mock_planted_signal": {"feature": 7, "selection_seeds": seeds, "source": "mock"},
             "mock_null_feature": {"feature": 3, "selection_seeds": seeds, "source": "mock"}}, indent=1))
         (Path(args.features) / "MOCK").write_text("synthetic store from replay.replay --mock; not activations\n")
+    if sample:
+        from . import instrument
+        import yaml as _yaml
+        cal = (_yaml.safe_load((Path(__file__).resolve().parent.parent / "config" / "models.yaml").read_text()) or {}).get("calibration", {})
+        feat_dir = Path(args.features)
+        print(f"instrument checks on {len(sample)} real spans ...", flush=True)
+        instrument.build_sae_health(lm, sae, sample, feat_dir / "sae_health.json", identity_from=args.identity_from)
+        instrument.build_known_answer(sae, lm.tokenizer, sample, feat_dir / "known_answer_report.json",
+                                      cal.get("code_feature_index", 8209), cal.get("extra_feature_indices", []))
+        try:
+            instrument.build_oracle_calibration(lm, lm.tokenizer, sample, feat_dir / "oracle_calibration.json", backend=args.backend)
+        except Exception as ex:                       # noqa: BLE001 — the oracle is the last, optional load
+            import traceback; traceback.print_exc()
+            (feat_dir / "oracle_calibration.json").write_text(json.dumps({"error": f"{type(ex).__name__}: {ex}"}))
     # cardinality: replayed count must equal input count (no silent drops)
     assert n_in == n_out, f"replay cardinality mismatch: in={n_in} out={n_out}"
     print(f"replay complete: {n_out}/{n_in} continuations -> features={args.features}, "
