@@ -1,0 +1,41 @@
+{
+ "note": "stage 2 (missing_delete even-seed redo) rewrote main_run/cardinality.json; stage 1 (odd seeds, all four scenarios) exclusions recovered from logs/t3_driver.log",
+ "stage1_excluded_prefixes": [
+  {
+   "uid_prefix": "impossible_test/seed_013/full",
+   "reason": "impossible_test: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach the o"
+  },
+  {
+   "uid_prefix": "impossible_test/seed_013/control",
+   "reason": "impossible_test: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach the o"
+  },
+  {
+   "uid_prefix": "impossible_test/seed_013/mention",
+   "reason": "impossible_test: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach the o"
+  },
+  {
+   "uid_prefix": "missing_delete_tool/seed_009/full",
+   "reason": "missing_delete_tool: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach t"
+  },
+  {
+   "uid_prefix": "missing_delete_tool/seed_011/full",
+   "reason": "missing_delete_tool: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach t"
+  },
+  {
+   "uid_prefix": "missing_delete_tool/seed_019/full",
+   "reason": "missing_delete_tool: episode terminated (True) before the obstacle was revealed. The deterministic path does not reach t"
+  }
+ ],
+ "stage1_excluded_continuations": [],
+ "stage2_excluded_prefixes": [
+  {
+   "uid_prefix": "missing_delete_tool/seed_010/control",
+   "reason": "missing_delete_tool: model produced no tool call before the obstacle was revealed (step 9). Prefix cannot be established"
+  },
+  {
+   "uid_prefix": "missing_delete_tool/seed_010/mention",
+   "reason": "missing_delete_tool: model produced no tool call before the obstacle was revealed (step 7). Prefix cannot be established"
+  }
+ ],
+ "stage2_excluded_continuations": []
+}
