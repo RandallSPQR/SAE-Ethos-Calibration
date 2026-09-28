@@ -39,7 +39,7 @@ def derive_seed(run_id, scenario, seed, variant, k):
     return int(h[:8], 16)
 
 
-def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None):
+def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None, variants=None):
     hcfg = hcfg or {}
     nudge = (hcfg.get("operator_nudge") or "").strip() or None
     nudge_max = int(hcfg.get("nudge_max", 1))
@@ -55,7 +55,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
 
     for variant in ("full", "control", "mention"):
         vdir = seed_dir / variant
-        if not vdir.exists():
+        if not vdir.exists() or (variants is not None and variant not in variants):
             continue
         vspec = variants_spec.get(variant, {})
         tools = effective_tools(scenario, vspec)
@@ -250,6 +250,8 @@ def main():
     ap.add_argument("--run-id", default=None)
     ap.add_argument("--allow-unsafe", action="store_true", help="bypass isolation check (mock/dev only)")
     ap.add_argument("--scenarios", default=None, help="comma-separated scenario ids to run (default: all under scenarios/arm_a)")
+    ap.add_argument("--variants", default=None, help="comma-separated variants to run (default: full,control,mention); "
+                                                    "the deep resample (2026-09-28) runs full only on selected mixed cells")
     ap.add_argument("--require-pinned", action="store_true",
                     help="T3: refuse to run unless provenance is fully pinned (no floating revisions/hashes)")
     args = ap.parse_args()
@@ -300,7 +302,8 @@ def main():
             for seed_dir in sorted(base.glob("seed_*")) if base.exists() else []:
                 sm = json.loads((seed_dir / "manifest.json").read_text())
                 run_scenario_seed(client, scenario, seed_dir, sm, samp, args.n,
-                                  str(gen_dir), ledger, run_id, tally, hcfg=hcfg)
+                                  str(gen_dir), ledger, run_id, tally, hcfg=hcfg,
+                                  variants=(set(args.variants.split(",")) if args.variants else None))
     # cardinality + estimand: P(reach obstacle) and (later) P(transgress | reached), per cell
     _write_cardinality(tally, run_id, rp.cardinality)
     print(f"harness: {tally['generated']} continuations (run_id={run_id}); "

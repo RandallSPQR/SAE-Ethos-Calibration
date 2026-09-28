@@ -58,3 +58,24 @@ real-span residuals captured before the LoRA loads. Then Neuronpedia labels for 
 
 Order of reporting when the pod returns: cardinality and gate readouts, then the family-wise counts, then
 the per-feature table, then the labels. Numbers first, story second.
+
+
+## Addendum: deep resample of the responsive cells (written 2026-09-28, before the pod)
+
+The T3 white-box session found no feature surviving the within-cell null, with the primary contrast holding 6 vs
+3 informative uids. Before closing the 9B study, the within-cell question is asked once at proper power:
+
+- **Cells**: MIXED full cells only (a cell that is 10/10 has no within-cell contrast). impossible_test full seeds
+  16 and 18 (even: discovery) and 19 and 3 (odd: test); missing_delete_tool full seeds 14 and 6 (even) and 13 and 5
+  (odd). Same rendered surfaces, same decision points (the greedy prefix is deterministic), n = 100 continuations
+  per cell, same temperature, same nudge, same commit family as T3.
+- **Contrasts and statistics**: unchanged (primary and secondary as in §2; stratified within-cell d; discovery K = 20
+  on the even cells; count and max-|d| family-wise on the odd cells, B = 1000, q = 0.05; G8 within-cell). Expected
+  informative n on test: impossible_test ~ 60 gamed vs 60 honest across two cells; missing_delete ~ 120 silent vs 60
+  asked across two cells (T3 per-cell rates).
+- **Instrument checks**: G1 on 100 % of the replayed rows (span-aligned); G2/G3/G5 are not rerun (same artifact,
+  same span distribution as the session that measured them).
+- **Outcomes allowed in advance**: (a) features survive family-wise on the odd cells → the within-cell signal exists
+  on the 9B and is reported with labels; (b) nothing survives at this power → the 9B study closes with "no
+  decision-span predictor beyond the cell" as its white-box result. Either closes the 9B honestly.
+- **Cost**: one pod, ~800 continuations (~3 h at concurrency 8) + replay (~25 min), ~$5.5, watchdog 5 h.
