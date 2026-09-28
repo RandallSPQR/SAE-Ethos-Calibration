@@ -1,5 +1,42 @@
 # Gate rules changelog
 
+## 2026-09-28.4 — G8 successor: numerator bias at a family-wise line, support floor at discovery and G8, scale gated (written 2026-09-28 19:17 EDT, before the deep resample pod exists)
+
+Why the 2026-09-28.2 criterion was wrong, in the reviewer's words: it asked a per-concept, per-seed z-statistic to
+behave normally on features that fire in one continuation, where the null takes two values and "SE" means nothing,
+and then took the worst of 480 such tests against a single-test line. That fails a correct pipeline three times in
+four. It isn't a gate; it's a coin weighted toward red. The 47.96 on the old store is that construction, not a leak.
+
+The successor, four conditions, all committed here before the pod is created:
+
+1. **Support floor, at discovery and at G8** (`g8_support_min` = 5, config/run.yaml). A concept firing in fewer
+   than 5 continuations across MIXED cells on a split is excluded from selection on that split
+   (`analyze.discover`: `n_features_below_support` reported; the top-K cannot be led by a one-shot feature whose null
+   cannot be evaluated, which retires the f3279-style reversal, the same pathology seen from the selection side) and
+   is reported UNTESTABLE by G8, neither passed nor failed (`untestable` in the detail).
+2. **Bias on the numerator, family-wise.** The statistic G8 reads for bias is the weighted within-cell mean
+   difference (`effects.stratified_parts`), mean-zero under within-cell permutation by symmetry; z = |mean|/SE over
+   200 permutations per testable concept and seed; the line is the two-sided normal quantile at
+   `g8_family_alpha` = 0.05 over N = testable concepts × 8 seeds (Bonferroni; 3.89 at N = 480).
+3. **Scale stays a gate at 1.5** (`g8_null_d_factor`, fixed 2026-09-24.1): null mean |d| over the stratified
+   statistic's expectation sqrt(2/pi)/sqrt(sum w_c), every testable concept and seed.
+4. **The successor catches a planted leak.** The fixture plants three defective null paths and requires FAIL on
+   each, and requires PASS for the same stores under the correct path: (i) labels that stick at their true values
+   in half the cells (a label leak into the null) with a label-planted feature → bias z 129 vs line 2.24;
+   (ii) a feature that reads prefix length (one value per cell), 80 % label-homogeneous cells, the pre-4c pooled
+   statistic → bias z 2668 (the pooled null is a constant nonzero); (iii) the 4c history itself, a label-planted
+   feature on the same homogeneous store with the pooled statistic → scale 14.95 vs 1.5 (the T3 mock's d ≈ 1.3
+   "null"). The unbiased sparse store passes at bias z 0.64, scale 1.04; a one-shot feature is UNTESTABLE; an
+   all-discover store is NOT_EVALUABLE. A criterion loosened until the real store passes is worthless; a criterion
+   that passes an unbiased pipeline and fails a planted one is a gate. That is what makes this a correction rather
+   than a relaxation.
+
+The old white-box store is graded RED under 2026-09-28.3 as committed and that does not change; the successor is
+REPORTED on it, without re-grading, in `results/t3_2026-09-28_whitebox/gates_g8_2026-09-28.4_eightseed_oldstore_report.json`,
+so a reader can see whether the earlier red was the criterion or the pipeline. `build_null` gains `return_parts`
+and the fixture-only hooks `perm_fn`/`stat_fn`; `run_effect` reports `support_uids`/`support_cells`.
+
+
 ## 2026-09-28.3 — G8's |d| scale is a gate, not a reading (written 2026-09-28 17:45 EDT, after the 2026-09-28.2 result was read)
 
 Ordering, for the record: rules 2026-09-28.2 were committed in 94ff82a at 2026-09-28 17:02:31 EDT; the eight-seed

@@ -43,6 +43,16 @@ deviation is written as a deviation.
    no within-cell information and contribute nothing; the between-cell component of any effect is, by
    design, not credited.
 
+   **4d (amendment, 2026-09-28 19:17 EDT, after the 2026-09-28.2 G8 result on the old store and before the deep
+   resample pod exists; gates/CHANGELOG.md 2026-09-28.4):** the G8 null check reads the NUMERATOR of the stratified
+   d (mean-zero under within-cell permutation by symmetry) at a family-wise Bonferroni line over concepts × seeds,
+   keeps the |d| scale gate at 1.5, and applies a support floor of 5 firing continuations across mixed cells per
+   split both at discovery (a feature below it cannot be selected) and at G8 (reported untestable). The
+   2026-09-28.2 criterion (per-test z on d, worst of 480 against a single-test line) fails a correct pipeline three
+   times in four on sparse features and is retired; its result on the old store stands as graded. The successor's
+   fixture plants three defective null paths and requires a FAIL on each. Nothing here changes what is measured
+   (statistics 1–4 unchanged); it changes which concepts can be evaluated and how the null's own health is read.
+
 5. **Power and the honest outcome.** Roughly 11 gamed episodes on discover seeds and 12 on test seeds in
    the primary contrast; G8's 20/20 minimum-group rule (2026-09-24.1) therefore makes the primary contrast's
    G8 **NOT_EVALUABLE by construction**, and it is reported as exploratory with that status. "No feature

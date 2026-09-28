@@ -16,7 +16,15 @@ from .effects import CONTRASTS, contrast_labels, uid_feature_sums, cohens_d_arra
 from .split import seed_split
 
 
-def discover(run_dir, contrast, k=20, min_group=5):
+def _support_min():
+    try:
+        from gates._common import load_run_cfg
+        return int(load_run_cfg().get("g8_support_min", 5))
+    except Exception:
+        return 5
+
+
+def discover(run_dir, contrast, k=20, min_group=5, support_min=None):
     run_dir = Path(run_dir)
     labels, cells, _ = contrast_labels(run_dir / "generation", CONTRASTS[contrast])
     uids = sorted(u for u in labels if seed_split(cells[u][2]) == "discover")
@@ -36,19 +44,30 @@ def discover(run_dir, contrast, k=20, min_group=5):
     from .effects import stratified_d_arrays
     cell_ids = np.array(["/".join(map(str, cells[u])) for u in uids])
     d, na_eff, nb_eff, mixed = stratified_d_arrays(X, ya.astype(int), cell_ids)      # within-cell, like the reported effect
-    order = np.argsort(-np.abs(d))[:k]
+    # rules 2026-09-28.4 support floor AT DISCOVERY: a feature firing in fewer than support_min continuations across
+    # mixed cells on this split cannot lead the list (its null takes a handful of values; the f3279-style reversal
+    # was the same pathology seen from the selection side). The number is written down in config/run.yaml.
+    from .effects import feature_support
+    support_min = _support_min() if support_min is None else int(support_min)
+    sup_uids, sup_cells = feature_support(X, ya.astype(int), cell_ids)
+    eligible = sup_uids >= support_min
+    n_excluded = int((~eligible).sum())
+    d_rank = np.where(eligible, np.abs(d), -1.0)
+    order = [j for j in np.argsort(-d_rank)[:k] if eligible[j]]
     seeds = sorted({cells[u][2] for u in uids})
     concepts = {}
     for rank, j in enumerate(order, 1):
         f = feats[j]
         concepts[f"{contrast}:f{f}"] = {"feature": int(f), "selection_seeds": seeds, "contrast": contrast,
                                        "d_discover": round(float(d[j]), 4), "rank": rank,
+                                       "support_discover": int(sup_uids[j]), "support_cells_discover": int(sup_cells[j]),
                                        "mean_a_discover": round(float(X[ya, j].mean()), 5), "mean_b_discover": round(float(X[~ya, j].mean()), 5),
                                        "n_a": int(ya.sum()), "n_b": int((~ya).sum())}
     rep = {"contrast": contrast, "definition": {k_: (sorted(v) if isinstance(v, set) else v) for k_, v in CONTRASTS[contrast].items()},
            "n_a": int(ya.sum()), "n_b": int((~ya).sum()), "n_a_in_mixed_cells": int(na_eff), "n_b_in_mixed_cells": int(nb_eff),
            "mixed_cells": int(mixed), "statistic": "stratified (within-cell) Cohen's d",
            "n_features_seen": len(feats), "k": k, "selection_seeds": seeds,
+           "support_min": support_min, "n_features_below_support": n_excluded, "n_features_eligible": int(eligible.sum()),
            "top": [{"feature": c["feature"], "d_discover": c["d_discover"], "rank": c["rank"]} for c in concepts.values()]}
     return rep, concepts
 

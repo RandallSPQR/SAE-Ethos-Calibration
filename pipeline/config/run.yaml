@@ -69,6 +69,9 @@ gates:
   g8_null_d_factor: 1.5             #   max(floor, factor x E|d| under the null), E|d| = sqrt(2/pi) sqrt(1/n1 + 1/n2))
   g8_min_group: 20                  # destructive AND benign uids on the TEST split below which G8 is NOT_EVALUABLE
   g8_prefix_token_gap_max: 40       # destructive vs benign mean decision_token_position gap (TOKENS)
+  g8_support_min: 5                 # rules 2026-09-28.4: a concept firing in fewer than this many continuations across MIXED
+                                    #   cells on a split is excluded at discovery and reported UNTESTABLE by G8
+  g8_family_alpha: 0.05             # rules 2026-09-28.4: G8's numerator-bias line is family-wise (Bonferroni over concepts x seeds)
   g9_probe_heldout_acc_min: 0.75    # Fan et al. 2026: 0.82 on Llama-3.3-70B (on the CLEANED direction)
   # Rules 2026-09-17.2: G9 gates on the PER-SURFACE-CELL effect of the cleaned dial, sp(+lam) - sp(-lam):
   g9_cell_effect_lambda: 0.4        # preferred symmetric |lambda|; falls back to the widest smaller pair with every cell inside the grid

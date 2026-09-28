@@ -129,6 +129,49 @@ def stratified_d_arrays(X, y, cell_ids):
     return d, na, nb, mixed
 
 
+def stratified_parts(X, y, cell_ids):
+    """The stratified d and its NUMERATOR (the size-weighted within-cell mean difference, num / sum w_c) per column.
+    Rules 2026-09-28.4: the numerator is mean-zero under within-cell permutation by symmetry and is what G8's bias
+    check reads; d is a ratio whose denominator moves with the sign of the numerator on features that fire in one
+    continuation of a cell (a two-valued null; the 2026-09-28.2 failure). Returns (d, numerator)."""
+    import numpy as np
+    X = np.asarray(X, dtype=np.float64); y = np.asarray(y); cell_ids = np.asarray(cell_ids)
+    num = np.zeros(X.shape[1]); wsum = 0.0; ss = np.zeros(X.shape[1]); dof = 0
+    for c in np.unique(cell_ids):
+        m = cell_ids == c
+        A, B = X[m & (y == 1)], X[m & (y == 0)]
+        if len(A) == 0 or len(B) == 0:
+            continue
+        w = len(A) * len(B) / (len(A) + len(B))
+        num += w * (A.mean(0) - B.mean(0)); wsum += w
+        ss += ((A - A.mean(0)) ** 2).sum(0) + ((B - B.mean(0)) ** 2).sum(0)
+        dof += len(A) + len(B) - 2
+    if wsum == 0 or dof <= 0:
+        return np.zeros(X.shape[1]), np.zeros(X.shape[1])
+    sd = np.sqrt(ss / dof); numer = num / wsum
+    with np.errstate(divide="ignore", invalid="ignore"):
+        d = np.where(sd > 0, numer / sd, 0.0)
+    return d, numer
+
+
+def feature_support(X, y, cell_ids):
+    """Rules 2026-09-28.4 support floor: per column, the number of uids with a nonzero mean activation that lie in
+    MIXED cells (both labels present), and the number of mixed cells holding one. A feature firing in fewer than
+    g8_support_min such uids on a split is excluded from discovery on that split and reported untestable by G8:
+    its permutation null takes a handful of values and neither a z nor a scale can be read from it."""
+    import numpy as np
+    X = np.asarray(X, dtype=np.float64); y = np.asarray(y); cell_ids = np.asarray(cell_ids)
+    mixed = np.zeros(len(y), dtype=bool)
+    for c in np.unique(cell_ids):
+        m = cell_ids == c
+        if (y[m] == 1).any() and (y[m] == 0).any():
+            mixed |= m
+    nz = (X != 0) & mixed[:, None]
+    n_uids = nz.sum(0)
+    n_cells = np.array([len(set(cell_ids[nz[:, j]])) for j in range(X.shape[1])])
+    return n_uids, n_cells
+
+
 def stratified_permutation(labels, cells, rng):
     """Permute the 0/1 labels WITHIN each (scenario, variant, seed) cell (pre-registration statistic 3). Cells and
     uids are visited in sorted order so the permutation sequence depends only on the RNG seed (audit 2026-09-28:
@@ -325,6 +368,7 @@ def run_effect(features_dir, transcripts_dir, feature_index, split="test", label
     X = np.array([[means[u]] for u in uids]); y = np.array([labels[u] for u in uids])
     cell_ids = np.array(["/".join(map(str, cells.get(u, ("?", "?", seeds[u])))) for u in uids])
     d, na, nb, mixed = stratified_d_arrays(X, y, cell_ids)      # rules 2026-09-28.1: within-cell statistic
+    sup_uids, sup_cells = feature_support(X, y, cell_ids)          # rules 2026-09-28.4: firing support in mixed cells
     # sum of cell weights w_c = n_a n_b / n_c: the null variance of the weighted within-cell mean difference is
     # sigma^2 / sum(w), so E|d_strat| under a Gaussian null is sqrt(2/pi)/sqrt(sum w) (G8 reading, rules 2026-09-28.2)
     wsum = 0.0
@@ -334,14 +378,18 @@ def run_effect(features_dir, transcripts_dir, feature_index, split="test", label
             wsum += a * b / (a + b)
     return {"feature": feature_index, "cohens_d": round(float(d[0]), 4), "statistic": "stratified (within-cell) d",
             "n_destructive": int(na), "n_benign": int(nb), "mixed_cells": int(mixed), "split": split, "w_sum": round(wsum, 3),
+            "support_uids": int(sup_uids[0]), "support_cells": int(sup_cells[0]),
             "n_destructive_all": int(y.sum()), "n_benign_all": int((1 - y).sum())}
 
 
 def build_null(features_dir, transcripts_dir, feature_index, split="test", trials=200, seed=0,
-               replayed_dir=None, strict=True):
+               replayed_dir=None, strict=True, perm_fn=None, stat_fn=None, return_parts=False):
     """Empirical null for ONE feature: labels permuted WITHIN (scenario, variant, seed) cells (rules 2026-09-28.1),
     the stratified within-cell d recomputed each time from means read ONCE (the previous version re-read the
-    store every trial: 166 s for 2 concepts x 40 trials on the T3 mock). Returns the list of permuted d."""
+    store every trial: 166 s for 2 concepts x 40 trials on the T3 mock). Returns the list of permuted d, or with
+    return_parts=True a dict {"d": [...], "num": [...]} (rules 2026-09-28.4: G8 reads the numerator's bias).
+    perm_fn / stat_fn exist for the G8 fixture ONLY: they plant a defective null path (labels that stick in some
+    cells; the pre-4c pooled statistic) that the gate must fail. Real analysis never passes them."""
     import numpy as np
     from gates._common import iter_transcripts
     means, labels, seeds = mean_activation_per_uid(features_dir, transcripts_dir, feature_index,
@@ -352,12 +400,17 @@ def build_null(features_dir, transcripts_dir, feature_index, split="test", trial
     X = np.array([[means[u]] for u in uids]); cell_ids = np.array(["/".join(map(str, cells.get(u, ("?", "?", seeds[u])))) for u in uids])
     sub_labels = {u: labels[u] for u in uids}
     rng = random.Random(seed)
-    null = []
+    perm_fn = perm_fn or stratified_permutation
+    null, nums = [], []
     for _ in range(trials):
-        perm = stratified_permutation(sub_labels, cells, rng)
+        perm = perm_fn(sub_labels, cells, rng)
         yb = np.array([perm[u] for u in uids])
-        null.append(round(float(stratified_d_arrays(X, yb, cell_ids)[0][0]), 4))
-    return null
+        if stat_fn is not None:
+            d = stat_fn(X, yb, cell_ids); numer = d
+        else:
+            d, numer = stratified_parts(X, yb, cell_ids)
+        null.append(round(float(d[0]), 4)); nums.append(float(numer[0]))
+    return {"d": null, "num": nums} if return_parts else null
 
 
 def main():
