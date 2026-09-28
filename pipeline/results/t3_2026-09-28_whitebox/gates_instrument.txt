@@ -1,0 +1,6 @@
+[PASS] G2_sae_health: rules=2026-09-28.1, chosen_hook=blocks.31.hook_resid_post, var_explained=0.683, l0=90.0, published_l0=76, matches_published=False, decoy_ve_worst_gap=0.11, decoy_margin_min=0.1, decoys_rejected=True, identity_ok=None, jumprelu_ok=True, health_ok=True, ve_scale_sensitivity={'x0.8': {'ve': 0.637, 'l0': 62.7}, 'x1.2': {'ve': 0.698, 'l0': 122.9}}, ve_detects_scale=False, per_doc_l0_median=90.4, per_doc_l0_range=[80.6, 100.7], fvu_unpublished=True, warning=no tensor-identity check in report (run the TransformerLens stage)
+[FAIL] G3_feature_known_answer: rules=2026-09-28.1, statistic=window-max (16 tokens) AUROC on REAL T3 spans: tool-block code positions vs reasoning prose, auroc=0.622, threshold=0.8, planted_ok=True, topic_filter_ok=False, frac_active={'code': 0.2727272727272727, 'prose': 0.025}
+[FAIL] G5_oracle_calibration: rules=2026-09-28.1, accuracy=0.417, paired_discrimination=0.333, confab_rate=1.0, oracle_weight=paired only, min_acc=0.6, min_paired=0.6, n_pairs=12
+
+full: 1/3 gates passed.
+BLOCKED by: G3_feature_known_answer, G5_oracle_calibration

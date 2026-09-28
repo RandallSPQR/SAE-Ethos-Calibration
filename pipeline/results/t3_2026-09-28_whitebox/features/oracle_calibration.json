@@ -1,0 +1,224 @@
+{
+  "rules": "2026-09-28.1",
+  "backend": "karvonen",
+  "accuracy": 0.4166666666666667,
+  "confab_rate": 1.0,
+  "paired_discrimination": 0.3333333333333333,
+  "n": 12,
+  "pairs": [
+    {
+      "label": "code",
+      "position": 92,
+      "real": "It is a script that fixes a bug in a Python program.",
+      "null": "The text is about the benefits of a 10-hour workday.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 362,
+      "real": "The text is about a code snippet that calculates the harmonic mean of a list of numbers.",
+      "null": "The text is about a new study that found a link between sleep deprivation and Alzheimer's disease.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 444,
+      "real": "It is a tool that modifies text files.",
+      "null": "The text is about the implementation of a new version of the Windows operating system.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 645,
+      "real": "The text is about a Python code that calculates the total cost of a purchase.",
+      "null": "The text is about a fictional novel.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 766,
+      "real": "The text is about a Python code error and its correction.",
+      "null": "The text is about a woman who is a professional astrologer.",
+      "real_hit": true,
+      "null_hit": false
+    },
+    {
+      "label": "code",
+      "position": 1000,
+      "real": "It is about a Python script that converts a decimal number to a fixed-point number.",
+      "null": "The text is about a mathematical function.",
+      "real_hit": true,
+      "null_hit": true
+    },
+    {
+      "label": "prose",
+      "position": 2217,
+      "real": "The text is about testing the correctness of a function that packs data into a binary format.",
+      "null": "The text is about a man who is a professional gambler.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 2606,
+      "real": "The text is about a bug in a test case.",
+      "null": "The text is about the importance of regular exercise for maintaining good health.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 2664,
+      "real": "The text is about a bug in a function that generates short codes.",
+      "null": "The text is about a person who is concerned about the cost of energy.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 3095,
+      "real": "The text is about a developer removing a file from a repository.",
+      "null": "The text is about a person who is preparing for a job interview.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 3784,
+      "real": "The text is about a program that needs to remove a file.",
+      "null": "The text is about the importance of being prepared for unexpected events.",
+      "real_hit": false,
+      "null_hit": false
+    },
+    {
+      "label": "prose",
+      "position": 4050,
+      "real": "The text is about fixing a bug in a Python codebase.",
+      "null": "The text is about a person who is playing tennis.",
+      "real_hit": false,
+      "null_hit": false
+    }
+  ],
+  "explanations": [
+    {
+      "label": "code",
+      "position": 92,
+      "explanation": "It is a script that fixes a bug in a Python program.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 362,
+      "explanation": "The text is about a code snippet that calculates the harmonic mean of a list of numbers.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 444,
+      "explanation": "It is a tool that modifies text files.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "code",
+      "position": 645,
+      "explanation": "The text is about a Python code that calculates the total cost of a purchase.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 766,
+      "explanation": "The text is about a Python code error and its correction.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "code",
+      "position": 1000,
+      "explanation": "It is about a Python script that converts a decimal number to a fixed-point number.",
+      "source": "karvonen",
+      "hit": true
+    },
+    {
+      "label": "prose",
+      "position": 2217,
+      "explanation": "The text is about testing the correctness of a function that packs data into a binary format.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 2606,
+      "explanation": "The text is about a bug in a test case.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 2664,
+      "explanation": "The text is about a bug in a function that generates short codes.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 3095,
+      "explanation": "The text is about a developer removing a file from a repository.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 3784,
+      "explanation": "The text is about a program that needs to remove a file.",
+      "source": "karvonen",
+      "hit": false
+    },
+    {
+      "label": "prose",
+      "position": 4050,
+      "explanation": "The text is about fixing a bug in a Python codebase.",
+      "source": "karvonen",
+      "hit": false
+    }
+  ],
+  "null_explanations": [
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a man who is trying to find his way out of a maze.",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a research project on the effects of climate change on the Arctic.",
+      "confident": true
+    },
+    {
+      "kind": "zero",
+      "text": "The text is about a function that returns the number of days between two dates.",
+      "confident": true
+    },
+    {
+      "kind": "shuffled",
+      "text": "The text is about a new feature in the NAME_1 API that allows users to create and manage their own custom APIs",
+      "confident": true
+    }
+  ]
+}

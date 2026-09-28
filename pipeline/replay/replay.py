@@ -52,16 +52,29 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
     # to reason about coordinate systems.
     s, e = fr.assistant_span
     gen_ids = (row.get("tokens") or {}).get("sampled_ids")
+    gen_lps = (row.get("tokens") or {}).get("sampled_logprobs")
+    gen_mrg = (row.get("tokens") or {}).get("sampled_top2_margin")
+    tail = None
+    if gen_ids and len(gen_ids) > (e - s):
+        # vLLM's sampled ids carry the turn suffix / EOS (<end_of_turn>, "\n", <eos>: 107/108/1) that the replay span
+        # excludes by construction; align the G1 arrays to the span (T3 white-box 2026-09-28: every one of 2,289 rows was
+        # 1-3 tokens longer and G1 failed on presence, not fidelity). The raw tail is kept for the record.
+        tail = gen_ids[e - s:]
+        gen_ids = gen_ids[: e - s]
+        gen_lps = gen_lps[: e - s] if gen_lps else gen_lps
+        gen_mrg = gen_mrg[: e - s] if gen_mrg else gen_mrg
     row.setdefault("tokens", {})
     row["tokens"].update({
         "ids": fr.token_ids, "assistant_span": list(fr.assistant_span),
-        "generated_ids": gen_ids,
+        "generated_ids": gen_ids, "generated_ids_raw_tail": tail,
+        "sampled_top2_margin": gen_mrg,
+        "span_ids_equal_sampled": (gen_ids == fr.token_ids[s:e]) if gen_ids else None,
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,
         "replay_top2_ids": [fr.logits_top2[s - 1 + k] for k in range(e - s)] if fr.logits_top2 and s > 0 else None,
         "replay_logprob": fr.input_logprobs[s:e] if fr.input_logprobs else None,
-        "generation_logprob": (row.get("tokens") or {}).get("sampled_logprobs"),
+        "generation_logprob": gen_lps,
         # token-level counts for correct E[A] denominators and token-level prefix balancing
         "prompt_token_count": s,
         "decision_token_position": s,

@@ -310,6 +310,12 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
   half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
   the labeler, is what gets rewritten.
+- **T3 white-box done (2026-09-28): no feature survives the pre-registered null.** Replay 2,289/2,289, G2 and
+  G8 pass on real data, G3 and G5 fail on real spans (reported, no weight), G1 fidelity holds on exactly
+  re-tokenized rows (a boundary-token serializer edge on 8 % of rows is fixed in replay). Family-wise: primary
+  p_max 0.31 (6 vs 3 informative uids), secondary 0.85, tertiary 0.15. `results/t3_2026-09-28_whitebox/README.md`.
+  Next candidates, none licensed by these numbers: transgression-span replay (a named separate experiment);
+  T4 on the 27B.
 - **T3 generated and certified (2026-09-28).** G6 round 3 passed (κ 0.908) on a blind fifty from the discover
   half with the readings sheet; the joined set (`results/t3_2026-09-28_joined/`, `harness.join_runs`) has 2,289
   continuations and `analyze.behavioral` reports the rates: impossible_test full 0.128 vs control 0.034 (G7 pass),

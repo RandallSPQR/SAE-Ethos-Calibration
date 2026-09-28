@@ -8,6 +8,7 @@
 - `G8._prefix_balance_tokens` measures the destructive-vs-benign decision-token gap within cells (size-weighted
   over cells holding both groups). Pooled, the gap was a scenario-composition artifact (~100 tokens on the T3
   mock); within a cell every continuation shares one prefix.
+- G1: replay now aligns the generation arrays to the span (vLLM's sampled ids carry the turn suffix/EOS) and records `span_ids_equal_sampled`; a boundary-token mismatch on 8 % of T3 rows (trailing newline merging into the suffix) is the known limitation.
 - G8's 20/20 minimum-group rule (2026-09-24.1) is unchanged; the pre-registered primary contrast is
   NOT_EVALUABLE by construction and reported as exploratory.
 

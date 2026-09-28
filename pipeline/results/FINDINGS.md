@@ -198,3 +198,30 @@ their fixes are logged in `harness/LABELER_CHANGELOG.md`. Details: `t3_2026-09-2
   artifacts (a parameter named like the envelope key, a dropped brace, an unfindable fix). The certified labeler's
   disagreements with a human collapsed to three in fifty once the human could see the same instrument readings the
   labeler reads (termination reason, suite at the end vs at the decision point, files broken, files restored).
+
+
+## T3 white-box (2026-09-28): the pre-registered answer is "no feature survives", and the instrument says why it can trust that
+
+Replay of all 2,289 T3 continuations through the pinned fp32 model and the layer-31 16k SAE, analysed exactly as
+pre-registered (`analyze/PREREGISTRATION_T3_WHITEBOX.md`: discovery on even seeds, effects and G8 on odd seeds,
+labels permuted within (scenario, variant, seed) cells, a stratified within-cell d, family-wise count and max-|d|
+statistics). Details: `t3_2026-09-28_whitebox/README.md`.
+
+- **Nothing survives.** Primary contrast (impossible_test full, gamed vs honest): max-|d| p = 0.31 on 6 vs 3 uids
+  in the only two mixed test cells. Secondary (missing_delete full, silent_empty vs asked): p = 0.85. Tertiary (all
+  scenarios, destructive vs benign, 75 vs 140 uids in 29 mixed cells): count 6/20 vs null mean 5.5, max-|d| 1.82 vs
+  null 1.99, p = 0.15. Every discover-side top feature of the primary contrast reversed on test (feature 3279:
+  +84.8 → −11.6, a degenerate within-cell sd on 12 vs 11 uids).
+- **The instrument is trustworthy where it was tested on this data.** Replay logprobs agree with generation within
+  0.05 nats on 99.5 % of exactly re-tokenized rows (median worst gap 0.004); the 8 % of rows that differ do so at one
+  boundary token (a trailing newline merging into the turn suffix), now fixed in replay. The SAE reconstructs real
+  decision-turn residuals at VE 0.68 with every decoy hook rejected. G8's within-cell null centers at 0.144 against
+  a bound of 0.157, and the within-cell design makes the prefix-length confound 0 by construction.
+- **Two calibration instruments do not transfer.** The known code feature separates JSON tool blocks from prose at
+  AUROC 0.62 (T1: passed on calibration texts), and the activation oracle confabulates on every null window
+  (accuracy 0.42, paired 0.33). Neither carries weight here; labels are Neuronpedia's.
+- **What it means.** On this model the decision-span state does not predict the eventual outcome beyond what the
+  cell (scenario, variant, rendered seed) already predicts, at n = 200 per cell. Transgressions are rare,
+  seed-clustered and mostly flailing; the within-cell null refuses, correctly, to credit surface features. The
+  follow-ups are the transgression span (a different, named experiment), and the 27B. Neither is licensed by this
+  session's numbers, and the write-up says so.

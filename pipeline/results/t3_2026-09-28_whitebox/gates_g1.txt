@@ -1,0 +1,4 @@
+[FAIL] G1_replay_fidelity: mode=logprob, error=logprob arrays missing on some rows
+
+full: 0/1 gates passed.
+BLOCKED by: G1_replay_fidelity

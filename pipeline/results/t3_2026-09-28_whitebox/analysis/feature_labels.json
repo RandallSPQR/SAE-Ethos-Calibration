@@ -1,0 +1,146 @@
+{
+  "39": {
+    "label": "references to movies and cinema",
+    "explanations": [
+      "references to movies and cinema",
+      "Precedes words like \"theater\", \"apartment\", \"bathroom\", or \"noodles\"",
+      "movie theater"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/39"
+  },
+  "1331": {
+    "label": " sentiments related to confidence and uncertainty",
+    "explanations": [
+      " sentiments related to confidence and uncertainty",
+      "Negation or absence",
+      "no thing whatsoever"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/1331"
+  },
+  "1793": {
+    "label": " recurring references to \"regular\" or consistent patterns and structures",
+    "explanations": [
+      " recurring references to \"regular\" or consistent patterns and structures",
+      "\"regular\"",
+      "regular"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/1793"
+  },
+  "2426": {
+    "label": "special characters and specific coding syntax elements",
+    "explanations": [
+      "special characters and specific coding syntax elements",
+      "Text following a code block or section number",
+      "data type declarations"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/2426"
+  },
+  "3067": {
+    "label": "terms related to migration and its various forms, including the process and context of migrating entities",
+    "explanations": [
+      "terms related to migration and its various forms, including the process and context of migrating entities",
+      "\"migration\"",
+      "migration and Migdal-Eliashberg"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/3067"
+  },
+  "3279": {
+    "label": "patterns related to interpersonal relationships and their complexities",
+    "explanations": [
+      "patterns related to interpersonal relationships and their complexities",
+      "Follows indefinite articles (\"a\" or \"an\")",
+      "qualities and inclinations"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/3279"
+  },
+  "3792": {
+    "label": "phrases related to legal proceedings and rulings",
+    "explanations": [
+      "phrases related to legal proceedings and rulings",
+      "followed by prepositions",
+      "regarding, concerning"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/3792"
+  },
+  "4201": {
+    "label": "negative sentiments or criticisms",
+    "explanations": [
+      "negative sentiments or criticisms",
+      "hyphens",
+      "pre- prefix, sub- prefix"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/4201"
+  },
+  "5702": {
+    "label": " punctuation marks and specific structural elements of sentences",
+    "explanations": [
+      " punctuation marks and specific structural elements of sentences",
+      "Sentences ending with a period",
+      "end of list items"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/5702"
+  },
+  "6172": {
+    "label": "references to the concept of \"demand.\"",
+    "explanations": [
+      "references to the concept of \"demand.\"",
+      "\"demand\"",
+      "demand for"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/6172"
+  },
+  "10045": {
+    "label": " instances of hope and affirmations",
+    "explanations": [
+      " instances of hope and affirmations",
+      "Follows \".\", \"Hope\", \"Very\", \"I\" or \"This\"",
+      "expressing hope or thanks for information"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/10045"
+  },
+  "10096": {
+    "label": "terms related to materials and costs involved in production",
+    "explanations": [
+      "terms related to materials and costs involved in production",
+      "\"materials\" or \"raw materials\"",
+      "materials and raw materials"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/10096"
+  },
+  "11886": {
+    "label": " present tense forms of 'to be' and related descriptors",
+    "explanations": [
+      " present tense forms of 'to be' and related descriptors",
+      "Follows \"this\", \"my\", \"every\", \"another\", \"same\", or \"own\"",
+      "this/my/own/first/same/another + noun"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/11886"
+  },
+  "12487": {
+    "label": "references to independent entities or organizations",
+    "explanations": [
+      "references to independent entities or organizations",
+      "\"independent\"",
+      "describing independent entities"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/12487"
+  },
+  "13236": {
+    "label": " references to statistics and numerical data",
+    "explanations": [
+      " references to statistics and numerical data",
+      "numerical data or statistics",
+      "numbers and statistics"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/13236"
+  },
+  "16108": {
+    "label": " code related to handling CSV file operations",
+    "explanations": [
+      " code related to handling CSV file operations",
+      "the \"csv\" file format",
+      "csv files and spreadsheets"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/16108"
+  }
+}

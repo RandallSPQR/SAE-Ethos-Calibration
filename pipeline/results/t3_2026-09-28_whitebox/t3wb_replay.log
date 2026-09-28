@@ -1,0 +1,48 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/464 [00:00<?, ?it/s]Loading weights:   0%|          | 1/464 [00:08<1:02:04,  8.04s/it]Loading weights:  10%|█         | 47/464 [00:09<00:58,  7.07it/s] Loading weights:  12%|█▏        | 55/464 [00:09<00:51,  8.02it/s]Loading weights:  12%|█▎        | 58/464 [00:09<00:51,  7.84it/s]Loading weights:  14%|█▍        | 66/464 [00:10<00:39, 10.01it/s]Loading weights:  15%|█▍        | 69/464 [00:10<00:47,  8.34it/s]Loading weights:  17%|█▋        | 77/464 [00:11<00:34, 11.06it/s]Loading weights:  17%|█▋        | 80/464 [00:11<00:37, 10.11it/s]Loading weights:  19%|█▉        | 87/464 [00:11<00:27, 13.78it/s]Loading weights:  19%|█▉        | 90/464 [00:11<00:28, 13.23it/s]Loading weights:  20%|██        | 93/464 [00:12<00:34, 10.70it/s]Loading weights:  21%|██▏       | 99/464 [00:13<00:34, 10.68it/s]Loading weights:  22%|██▏       | 102/464 [00:13<00:35, 10.24it/s]Loading weights:  22%|██▏       | 104/464 [00:13<00:33, 10.86it/s]Loading weights:  23%|██▎       | 109/464 [00:13<00:25, 14.10it/s]Loading weights:  24%|██▍       | 111/464 [00:14<00:40,  8.69it/s]Loading weights:  25%|██▍       | 114/464 [00:14<00:37,  9.37it/s]Loading weights:  26%|██▌       | 121/464 [00:14<00:26, 13.12it/s]Loading weights:  27%|██▋       | 123/464 [00:15<00:34,  9.81it/s]Loading weights:  27%|██▋       | 125/464 [00:15<00:35,  9.42it/s]Loading weights:  28%|██▊       | 132/464 [00:16<00:31, 10.71it/s]Loading weights:  29%|██▉       | 135/464 [00:16<00:35,  9.22it/s]Loading weights:  30%|██▉       | 137/464 [00:16<00:35,  9.22it/s]Loading weights:  31%|███       | 143/464 [00:17<00:28, 11.25it/s]Loading weights:  31%|███▏      | 146/464 [00:17<00:30, 10.37it/s]Loading weights:  32%|███▏      | 148/464 [00:17<00:28, 11.21it/s]Loading weights:  33%|███▎      | 154/464 [00:17<00:17, 17.31it/s]Loading weights:  34%|███▍      | 157/464 [00:18<00:32,  9.39it/s]Loading weights:  34%|███▍      | 159/464 [00:18<00:30,  9.85it/s]Loading weights:  35%|███▌      | 164/464 [00:18<00:22, 13.54it/s]Loading weights:  36%|███▌      | 167/464 [00:19<00:23, 12.66it/s]Loading weights:  36%|███▋      | 169/464 [00:19<00:26, 11.26it/s]Loading weights:  37%|███▋      | 171/464 [00:19<00:32,  9.08it/s]Loading weights:  38%|███▊      | 177/464 [00:20<00:23, 12.36it/s]Loading weights:  39%|███▊      | 179/464 [00:20<00:34,  8.19it/s]Loading weights:  40%|████      | 187/464 [00:20<00:19, 14.46it/s]Loading weights:  41%|████      | 190/464 [00:22<00:36,  7.45it/s]Loading weights:  43%|████▎     | 198/464 [00:22<00:26,  9.99it/s]Loading weights:  43%|████▎     | 201/464 [00:22<00:28,  9.37it/s]Loading weights:  45%|████▍     | 208/464 [00:23<00:21, 11.64it/s]Loading weights:  46%|████▌     | 212/464 [00:23<00:21, 11.47it/s]Loading weights:  46%|████▌     | 214/464 [00:24<00:25,  9.68it/s]Loading weights:  47%|████▋     | 220/464 [00:24<00:17, 14.25it/s]Loading weights:  48%|████▊     | 223/464 [00:24<00:26,  9.12it/s]Loading weights:  50%|████▉     | 231/464 [00:25<00:19, 12.02it/s]Loading weights:  50%|█████     | 234/464 [00:25<00:18, 12.24it/s]Loading weights:  51%|█████     | 236/464 [00:25<00:21, 10.50it/s]Loading weights:  53%|█████▎    | 245/464 [00:26<00:20, 10.66it/s]Loading weights:  54%|█████▍    | 252/464 [00:27<00:16, 12.94it/s]Loading weights:  55%|█████▍    | 254/464 [00:27<00:18, 11.45it/s]Loading weights:  55%|█████▌    | 256/464 [00:27<00:19, 10.64it/s]Loading weights:  56%|█████▌    | 258/464 [00:28<00:25,  8.00it/s]Loading weights:  57%|█████▋    | 265/464 [00:28<00:14, 13.68it/s]Loading weights:  58%|█████▊    | 268/464 [00:29<00:22,  8.58it/s]Loading weights:  59%|█████▉    | 275/464 [00:29<00:15, 12.16it/s]Loading weights:  60%|█████▉    | 278/464 [00:29<00:20,  8.96it/s]Loading weights:  61%|██████▏   | 285/464 [00:30<00:13, 13.51it/s]Loading weights:  62%|██████▏   | 288/464 [00:30<00:19,  9.15it/s]Loading weights:  62%|██████▎   | 290/464 [00:31<00:20,  8.33it/s]Loading weights:  64%|██████▍   | 297/464 [00:31<00:12, 13.40it/s]Loading weights:  65%|██████▍   | 300/464 [00:32<00:18,  8.63it/s]Loading weights:  65%|██████▌   | 303/464 [00:32<00:16,  9.83it/s]Loading weights:  67%|██████▋   | 309/464 [00:32<00:16,  9.42it/s]Loading weights:  67%|██████▋   | 311/464 [00:33<00:16,  9.36it/s]Loading weights:  69%|██████▉   | 319/464 [00:33<00:14, 10.07it/s]Loading weights:  69%|██████▉   | 322/464 [00:34<00:12, 11.22it/s]Loading weights:  70%|██████▉   | 324/464 [00:34<00:12, 11.06it/s]Loading weights:  71%|███████   | 330/464 [00:34<00:11, 11.36it/s]Loading weights:  72%|███████▏  | 332/464 [00:35<00:14,  8.84it/s]Loading weights:  72%|███████▏  | 334/464 [00:35<00:16,  8.10it/s]Loading weights:  73%|███████▎  | 341/464 [00:35<00:10, 11.84it/s]Loading weights:  74%|███████▍  | 343/464 [00:36<00:14,  8.46it/s]Loading weights:  74%|███████▍  | 345/464 [00:36<00:13,  8.90it/s]Loading weights:  75%|███████▍  | 347/464 [00:36<00:12,  9.23it/s]Loading weights:  76%|███████▌  | 352/464 [00:37<00:10, 11.17it/s]Loading weights:  77%|███████▋  | 355/464 [00:37<00:10, 10.36it/s]Loading weights:  77%|███████▋  | 357/464 [00:37<00:11,  9.12it/s]Loading weights:  78%|███████▊  | 364/464 [00:38<00:07, 13.26it/s]Loading weights:  79%|███████▉  | 366/464 [00:38<00:11,  8.30it/s]Loading weights:  80%|████████  | 373/464 [00:38<00:06, 13.56it/s]Loading weights:  81%|████████  | 376/464 [00:39<00:08, 10.54it/s]Loading weights:  81%|████████▏ | 378/464 [00:39<00:10,  8.13it/s]Loading weights:  82%|████████▏ | 380/464 [00:40<00:09,  8.70it/s]Loading weights:  83%|████████▎ | 385/464 [00:40<00:09,  7.95it/s]Loading weights:  84%|████████▎ | 388/464 [00:41<00:09,  7.96it/s]Loading weights:  84%|████████▍ | 390/464 [00:41<00:10,  7.16it/s]Loading weights:  85%|████████▌ | 396/464 [00:42<00:08,  8.45it/s]Loading weights:  86%|████████▌ | 399/464 [00:42<00:07,  8.51it/s]Loading weights:  86%|████████▋ | 401/464 [00:42<00:06,  9.03it/s]Loading weights:  88%|████████▊ | 406/464 [00:42<00:04, 11.93it/s]Loading weights:  88%|████████▊ | 410/464 [00:43<00:06,  8.50it/s]Loading weights:  89%|████████▉ | 412/464 [00:43<00:06,  8.33it/s]Loading weights:  90%|█████████ | 418/464 [00:44<00:04, 10.60it/s]Loading weights:  91%|█████████ | 421/464 [00:44<00:04, 10.01it/s]Loading weights:  91%|█████████ | 423/464 [00:44<00:04,  9.18it/s]Loading weights:  92%|█████████▏| 429/464 [00:45<00:02, 14.52it/s]Loading weights:  93%|█████████▎| 432/464 [00:45<00:03,  9.76it/s]Loading weights:  94%|█████████▎| 434/464 [00:45<00:02, 10.28it/s]Loading weights:  95%|█████████▍| 439/464 [00:46<00:01, 12.63it/s]Loading weights:  95%|█████████▌| 443/464 [00:46<00:01, 13.06it/s]Loading weights:  96%|█████████▌| 445/464 [00:46<00:02,  8.95it/s]Loading weights:  97%|█████████▋| 451/464 [00:47<00:01, 10.08it/s]Loading weights:  98%|█████████▊| 454/464 [00:47<00:01,  9.33it/s]Loading weights:  98%|█████████▊| 456/464 [00:47<00:00,  9.51it/s]Loading weights: 100%|██████████| 464/464 [00:48<00:00,  9.67it/s]
+  replayed 50 (1.04 s/continuation)
+  replayed 100 (1.09 s/continuation)
+  replayed 150 (1.08 s/continuation)
+  replayed 200 (1.09 s/continuation)
+  replayed 250 (1.11 s/continuation)
+  replayed 300 (1.12 s/continuation)
+  replayed 350 (1.16 s/continuation)
+  replayed 400 (1.19 s/continuation)
+  replayed 450 (1.21 s/continuation)
+  replayed 500 (1.23 s/continuation)
+  replayed 550 (1.25 s/continuation)
+  replayed 600 (1.26 s/continuation)
+  replayed 650 (1.26 s/continuation)
+  replayed 700 (1.26 s/continuation)
+  replayed 750 (1.28 s/continuation)
+  replayed 800 (1.31 s/continuation)
+  replayed 850 (1.33 s/continuation)
+  replayed 900 (1.33 s/continuation)
+  replayed 950 (1.34 s/continuation)
+  replayed 1000 (1.35 s/continuation)
+  replayed 1050 (1.35 s/continuation)
+  replayed 1100 (1.38 s/continuation)
+  replayed 1150 (1.39 s/continuation)
+  replayed 1200 (1.40 s/continuation)
+  replayed 1250 (1.41 s/continuation)
+  replayed 1300 (1.43 s/continuation)
+  replayed 1350 (1.42 s/continuation)
+  replayed 1400 (1.45 s/continuation)
+  replayed 1450 (1.43 s/continuation)
+  replayed 1500 (1.42 s/continuation)
+  replayed 1550 (1.41 s/continuation)
+  replayed 1600 (1.41 s/continuation)
+  replayed 1650 (1.40 s/continuation)
+  replayed 1700 (1.39 s/continuation)
+  replayed 1750 (1.39 s/continuation)
+  replayed 1800 (1.39 s/continuation)
+  replayed 1850 (1.39 s/continuation)
+  replayed 1900 (1.39 s/continuation)
+  replayed 1950 (1.39 s/continuation)
+  replayed 2000 (1.39 s/continuation)
+  replayed 2050 (1.40 s/continuation)
+  replayed 2100 (1.39 s/continuation)
+  replayed 2150 (1.39 s/continuation)
+  replayed 2200 (1.38 s/continuation)
+  replayed 2250 (1.37 s/continuation)
+replay complete: 2289/2289 continuations -> features=/workspace/t3_joined/features, replayed metadata -> /workspace/t3_joined/replay
