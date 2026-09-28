@@ -314,7 +314,9 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   (`results/t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).** Stop tokens in the client (1.7 % of T3 continuations had
   run past the turn); G8 reproducible with a bias criterion over eight seeds (rules 2026-09-28.2, committed before the
   result; it reads FAIL on the existing store, bias 47.96 SE and scale 1.71, and 2026-09-28.3 gates the scale at the
-  pre-existing 1.5); G1 replay
+  pre-existing 1.5; the successor 2026-09-28.4, numerator bias at a family-wise line with a support floor of 5 at
+  discovery and G8, was committed 19:18 EDT before the deep resample pod and, reported on the old store without
+  re-grading, passes bias at z 3.29 vs 3.83 and fails scale at 1.71 vs 1.5); G1 replay
   teacher-forces the sampled ids after the serialized prefix (no re-tokenization merge, interior turn ends cut and
   flagged); hand labels run-scoped and G6 refuses cross-run scoring; cardinality merged across invocations. The
   existing white-box store was not replayed under the new path: G1 fails on it, and any white-box claim needs a

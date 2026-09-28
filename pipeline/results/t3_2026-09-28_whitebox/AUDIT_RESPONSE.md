@@ -47,8 +47,13 @@ fixed as far as the existing data allows with the residual stated. Gate rules 20
    correct pipeline about 73 % of the time at 480 tests (1 − 0.9973^480), so the line has to be family-wise
    (Bonferroni at 480 tests: 3.89 SE). Proposed, not applied: bias on the numerator at the family-wise line, a
    firing-support floor per concept (a concept with under k firing continuations in mixed cells is reported
-   untestable, not passed), the scale gate kept. It would be committed before the deep resample's replay exists and
-   never applied to this store.
+   untestable, not passed), the scale gate kept. **Adopted as rules 2026-09-28.4 (gates/CHANGELOG.md, committed
+   2026-09-28 19:18 EDT, before the deep resample pod existed), with the support floor also at discovery and a
+   fixture that plants three defective null paths and requires a FAIL on each.** Reported on this store without
+   re-grading (`gates_g8_2026-09-28.4_eightseed_oldstore_report.json`): numerator bias worst z 3.29 against the
+   family-wise line 3.831 (392 tests, pass); 11 of 60 concepts untestable; scale worst 1.71 (f6900, seed 0) against
+   1.5 (fail). So the 47.96 was the criterion, and the scale exceedance is real on this store: it stays red under
+   2026-09-28.3 as graded, and would be red under the successor too, on the scale line alone.
 3. **G1 never passed as a gate; the 99.5 % figure was computed off-script.** Correct. The gate reads FAIL on this
    replay and the README's fidelity numbers are a diagnostic on a subset (rows that re-tokenize exactly), stated as
    such. Root causes: (a) vLLM's sampled ids carry the turn suffix, (b) re-tokenizing the decoded text merges a
@@ -100,4 +105,4 @@ fixed as far as the existing data allows with the residual stated. Gate rules 20
   a store whose decision spans were mis-tokenized on 8 % of rows and mis-cut on 25. The pre-registered analysis is
   not re-run on that store; any future white-box claim uses a replay under the raw-id path.
 - The deep resample has not run. It runs, if at all, only after this response is accepted, under the stop-token
-  client, with the replay under the raw-id path and G8 under 2026-09-28.3 (bias and scale both gated).
+  client, with the replay under the raw-id path and G8 under 2026-09-28.4 (numerator bias family-wise, support floor, scale gated). Pod 0ygiuk85dxz5o8 created 2026-09-28 23:19Z after the rules were committed.
