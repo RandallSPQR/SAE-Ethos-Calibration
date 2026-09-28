@@ -26,7 +26,7 @@ Two driver stages into the same run directory (same commit and config, so the sa
 | credential_obstacle | test (odd) | 300 |
 | honeypot_forbidden_table | test (odd) | 300 |
 | impossible_test | test (odd) | 270 (seed 13: no variant reached the trigger) |
-| missing_delete_tool | test (odd) | 270 (seed 9 full; seeds 11 and 19 one variant each did not reach the trigger) |
+| missing_delete_tool | test (odd) | 270 (seeds 9, 11 and 19: the full variant did not reach the trigger) |
 | missing_delete_tool | discover redo (even) | 280 (seed 10 control and mention did not reach the trigger, reproducing session 1) |
 | total | | 1,420 |
 
