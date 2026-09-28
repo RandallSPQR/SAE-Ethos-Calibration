@@ -1,8 +1,7 @@
 # T3 session 1 (discover half), 2026-09-27 — run_febbc90c06ea
 
-**Status: generated. All rates are EMBARGOED until G6 passes on the third fifty, which is drawn from this run
-(`hand_labels/`, blind, readings sheet). This README records provenance and cardinality only; no label counts,
-no rates, no gate readouts are written here or anywhere outside the run directory until the embargo lifts.**
+**Status: generated; G6 round 3 PASSED on the fifty drawn from this half (κ 0.908, 2026-09-28), so the embargo is
+lifted. Rates are reported on the joined set (`../t3_2026-09-28_joined/`), never on this half alone.**
 
 Identity: commit `2489bfe` (main after PR #12 plus the provenance fix; code_hash 4ab30b0a8504db57), pinned run
 (`--require-pinned` passed: model 11c9b309abf7 / 7055bc8c5f456ced, chat-template hash ecd6ae513fe103f0, SAE

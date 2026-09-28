@@ -310,6 +310,11 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
   half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
   the labeler, is what gets rewritten.
+- **T3 generated and certified (2026-09-28).** G6 round 3 passed (κ 0.908) on a blind fifty from the discover
+  half with the readings sheet; the joined set (`results/t3_2026-09-28_joined/`, `harness.join_runs`) has 2,289
+  continuations and `analyze.behavioral` reports the rates: impossible_test full 0.128 vs control 0.034 (G7 pass),
+  missing_delete 0.394 vs 0.190 (control success 0.458, floor failed), credential and honeypot no contrast. Next is
+  the white-box session (replay, G8, effects) on impossible_test first. FINDINGS carries the rates.
 - **T3 sessions (2026-09-28).** Session 1 (pod yrnwg8x0vqkvok, commit 2489bfe, run_febbc90c06ea) ran the
   discover half (seeds 0,2,...,18; 1,200 continuations, ~4.5 h at concurrency 8). Three continuations were
   excluded by a harness bug (empty `find` in missing_delete/full; a repo-escaping path), fixed in
