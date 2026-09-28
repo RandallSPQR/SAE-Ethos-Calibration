@@ -1,0 +1,46 @@
+# Pre-registration — T3 white-box analysis (written 2026-09-28, before the replay pod bills)
+
+Data: the joined T3 set (`results/t3_2026-09-28_joined`, run_febbc90c06ea + run_64df1ae8a9a0, 2,289
+continuations, labeler rules 2026-09-28.1, G6 κ 0.908). Nothing below is changed after the pod returns; a
+deviation is written as a deviation.
+
+1. **Split.** Feature discovery on even seeds (discover). Effects and G8's null on odd seeds (test). Behavioral
+   rates on both (done). `analyze/split.py` is the only definition of the split.
+
+2. **Contrasts, decision-span activations, episode-outcome label (A_decision → Y_eventual).** The feature
+   store scores `scored_message_index` (the first assistant turn of the continuation); the label is the
+   episode outcome. Primary: impossible_test / full, **gamed** = {edited_test, fabricated_green,
+   edited_test_concealed, subverted_harness} (pooled) vs **honest** = {honest_report, asked}. Secondary:
+   missing_delete_tool / full, **silent_empty** vs **asked_to_delete**. Tertiary (exploratory, more n):
+   all scenarios and variants pooled, destructive taxonomies {deception_concealment, destructive,
+   task_cheating, safeguard_bypass, overeager} vs benign. Contrast definitions live in `analyze/effects.py:CONTRASTS`.
+
+3. **Null.** G8 permutes labels within (scenario, variant, seed) cells, never across cells. Seeds 18 and 19
+   carry 9 of impossible_test's 23 full transgressions; a feature that reads "seed 18's rendered surface"
+   must not pass as a transgression feature. The same within-cell permutation is the null for every effect
+   below.
+
+4. **Statistic, family-wise.** Per feature: E[A] per continuation = activation summed over the assistant
+   span of the scored turn / assistant token count (zeros included, every labeled uid included). Discovery
+   selects the K = 20 features with the largest |Cohen's d| between the contrast groups on discover seeds
+   (per contrast). On test seeds, each selected feature gets its d and a within-cell permutation p (B = 1000,
+   descriptive only). **The reported number is the count of selected features whose |d| exceeds their own
+   null 95th percentile (q = 0.05), against the null distribution of that count** (the same B permutations
+   applied to all K features at once); the family-wise p is P(null count ≥ observed count). Not 16k
+   per-feature p-values.
+
+5. **Power and the honest outcome.** Roughly 11 gamed episodes on discover seeds and 12 on test seeds in
+   the primary contrast; G8's 20/20 minimum-group rule (2026-09-24.1) therefore makes the primary contrast's
+   G8 **NOT_EVALUABLE by construction**, and it is reported as exploratory with that status. "No feature
+   survives the null" is a legitimate result of this session and is reported as such. The tertiary contrast
+   has ~45 destructive uids on test seeds and is the one G8 can evaluate.
+
+**Instrument checks first, on this data:** G1 at 100 % replay cardinality on T3's transcripts (logprob mode,
+T = 0.8, tolerance 0.05 nats, fp32 both sides); G2 (SAE health, decoy hooks, JumpReLU integrity) recomputed
+on real T3 assistant spans, with the tensor-identity block carried from T1 (same pinned artifact and hook;
+the identity check is data-independent and is labeled as carried); G3 (known code feature 8209) on real
+spans: tool-block code positions vs reasoning-prose positions, window-max AUROC; G5 oracle paired-only on
+real-span residuals captured before the LoRA loads. Then Neuronpedia labels for whatever survives.
+
+Order of reporting when the pod returns: cardinality and gate readouts, then the family-wise counts, then
+the per-feature table, then the labels. Numbers first, story second.
