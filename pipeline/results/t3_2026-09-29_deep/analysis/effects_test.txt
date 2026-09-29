@@ -1,0 +1,2 @@
+primary_impossible_full_gamed_vs_honest [test]: n_a=17 n_b=20 k=20 count clearing null=2 (null mean 1.145, 95% 8) p_family=0.1508 | max|d|=0.7599 vs max-null q=1.0446 p_family_max=0.1988 n_beyond=0 | evaluable_by_g8_rule=False
+secondary_missing_delete_full_silent_vs_asked [test]: n_a=86 n_b=52 k=20 count clearing null=2 (null mean 1.95, 95% 5) p_family=0.5095 | max|d|=0.3925 vs max-null q=0.5348 p_family_max=0.3367 n_beyond=0 | evaluable_by_g8_rule=True

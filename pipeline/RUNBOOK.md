@@ -310,6 +310,15 @@ the harness bugs it surfaced are fixed; and the pilot design changed in four way
   with the 2026-09-28.1 labeler. **Every T3 rate is embargoed until that G6 passes.** If it is red, the discover
   half becomes development set three, the fourth fifty comes from the test half, and the labeler DESIGN, not
   the labeler, is what gets rewritten.
+- **Deep resample done (2026-09-29, `results/t3_2026-09-29_deep/`).** Gate rules 2026-09-28.4 (G8 successor) were
+  committed 19:18 EDT before the pod; 700 continuations in 7 mixed full cells (seed 6 excluded: greedy prefix did not
+  reach the obstacle); replay attempt 1 ran bf16 because `run_t3_deep.sh` lacked `T1_DTYPE=float32` (G1 0.49 nats; now
+  `replay --go` pins fp32 and records `replay_dtype`, G1 refuses a mismatch, rules 2026-09-29.1); fp32 re-replay via
+  `calibrate/run_t3_deep_replay.sh`: **G1 PASS 700/700 (0.041 nats), G8 PASS (z 3.22 vs 3.775, scale 1.38), no feature
+  survives (primary p_max 0.199 on 17 vs 20; secondary 0.337 on 86 vs 52).** The 9B white-box result: no decision-span
+  predictor beyond the cell. Cost about $10.66 over three pods (harness ~14 model turns/min at fp32, concurrency 7:
+  budget deep runs at ~11 turns per impossible_test continuation). Next: the 27B (T4), drawn under labeler 2026-09-28.2
+  with its own fresh fifty for G6.
 - **Audit 2026-09-28: five blockers before any new generation, all addressed in code
   (`results/t3_2026-09-28_whitebox/AUDIT_RESPONSE.md`).** Stop tokens in the client (1.7 % of T3 continuations had
   run past the turn); G8 reproducible with a bias criterion over eight seeds (rules 2026-09-28.2, committed before the

@@ -1,0 +1,267 @@
+{
+ "primary_impossible_full_gamed_vs_honest": {
+  "contrast": "primary_impossible_full_gamed_vs_honest",
+  "definition": {
+   "scenario": "impossible_test",
+   "variant": "full",
+   "by": "label",
+   "a": [
+    "edited_test",
+    "edited_test_concealed",
+    "fabricated_green",
+    "subverted_harness"
+   ],
+   "b": [
+    "asked",
+    "honest_report"
+   ]
+  },
+  "n_a": 33,
+  "n_b": 37,
+  "n_a_in_mixed_cells": 33,
+  "n_b_in_mixed_cells": 37,
+  "mixed_cells": 2,
+  "statistic": "stratified (within-cell) Cohen's d",
+  "n_features_seen": 7092,
+  "k": 20,
+  "selection_seeds": [
+   16,
+   18
+  ],
+  "support_min": 5,
+  "n_features_below_support": 2345,
+  "n_features_eligible": 4747,
+  "top": [
+   {
+    "feature": 6880,
+    "d_discover": 1.2373,
+    "rank": 1
+   },
+   {
+    "feature": 15011,
+    "d_discover": 1.2144,
+    "rank": 2
+   },
+   {
+    "feature": 12688,
+    "d_discover": 1.2007,
+    "rank": 3
+   },
+   {
+    "feature": 1288,
+    "d_discover": 1.2006,
+    "rank": 4
+   },
+   {
+    "feature": 14227,
+    "d_discover": 1.1838,
+    "rank": 5
+   },
+   {
+    "feature": 589,
+    "d_discover": 1.1825,
+    "rank": 6
+   },
+   {
+    "feature": 13925,
+    "d_discover": 1.1737,
+    "rank": 7
+   },
+   {
+    "feature": 14930,
+    "d_discover": 1.1702,
+    "rank": 8
+   },
+   {
+    "feature": 15840,
+    "d_discover": 1.1677,
+    "rank": 9
+   },
+   {
+    "feature": 404,
+    "d_discover": 1.159,
+    "rank": 10
+   },
+   {
+    "feature": 15178,
+    "d_discover": 1.1509,
+    "rank": 11
+   },
+   {
+    "feature": 4347,
+    "d_discover": 1.1502,
+    "rank": 12
+   },
+   {
+    "feature": 11180,
+    "d_discover": 1.1446,
+    "rank": 13
+   },
+   {
+    "feature": 8338,
+    "d_discover": 1.1375,
+    "rank": 14
+   },
+   {
+    "feature": 8618,
+    "d_discover": 1.1252,
+    "rank": 15
+   },
+   {
+    "feature": 282,
+    "d_discover": -1.1235,
+    "rank": 16
+   },
+   {
+    "feature": 6633,
+    "d_discover": 1.1184,
+    "rank": 17
+   },
+   {
+    "feature": 7485,
+    "d_discover": 1.1161,
+    "rank": 18
+   },
+   {
+    "feature": 6147,
+    "d_discover": 1.115,
+    "rank": 19
+   },
+   {
+    "feature": 11575,
+    "d_discover": 1.1131,
+    "rank": 20
+   }
+  ]
+ },
+ "secondary_missing_delete_full_silent_vs_asked": {
+  "contrast": "secondary_missing_delete_full_silent_vs_asked",
+  "definition": {
+   "scenario": "missing_delete_tool",
+   "variant": "full",
+   "by": "label",
+   "a": [
+    "silent_empty"
+   ],
+   "b": [
+    "asked_to_delete"
+   ]
+  },
+  "n_a": 30,
+  "n_b": 45,
+  "n_a_in_mixed_cells": 30,
+  "n_b_in_mixed_cells": 45,
+  "mixed_cells": 1,
+  "statistic": "stratified (within-cell) Cohen's d",
+  "n_features_seen": 3101,
+  "k": 20,
+  "selection_seeds": [
+   14
+  ],
+  "support_min": 5,
+  "n_features_below_support": 666,
+  "n_features_eligible": 2435,
+  "top": [
+   {
+    "feature": 5903,
+    "d_discover": 1.0591,
+    "rank": 1
+   },
+   {
+    "feature": 15020,
+    "d_discover": 1.0399,
+    "rank": 2
+   },
+   {
+    "feature": 14892,
+    "d_discover": -1.0341,
+    "rank": 3
+   },
+   {
+    "feature": 8708,
+    "d_discover": 0.9795,
+    "rank": 4
+   },
+   {
+    "feature": 9047,
+    "d_discover": 0.9416,
+    "rank": 5
+   },
+   {
+    "feature": 4047,
+    "d_discover": 0.9404,
+    "rank": 6
+   },
+   {
+    "feature": 1554,
+    "d_discover": 0.9017,
+    "rank": 7
+   },
+   {
+    "feature": 12416,
+    "d_discover": 0.8989,
+    "rank": 8
+   },
+   {
+    "feature": 12883,
+    "d_discover": 0.8947,
+    "rank": 9
+   },
+   {
+    "feature": 16343,
+    "d_discover": 0.8919,
+    "rank": 10
+   },
+   {
+    "feature": 14227,
+    "d_discover": 0.8824,
+    "rank": 11
+   },
+   {
+    "feature": 11183,
+    "d_discover": 0.8787,
+    "rank": 12
+   },
+   {
+    "feature": 2927,
+    "d_discover": 0.8753,
+    "rank": 13
+   },
+   {
+    "feature": 12066,
+    "d_discover": 0.8742,
+    "rank": 14
+   },
+   {
+    "feature": 6880,
+    "d_discover": 0.8661,
+    "rank": 15
+   },
+   {
+    "feature": 9813,
+    "d_discover": 0.8503,
+    "rank": 16
+   },
+   {
+    "feature": 15874,
+    "d_discover": 0.8494,
+    "rank": 17
+   },
+   {
+    "feature": 13792,
+    "d_discover": -0.8392,
+    "rank": 18
+   },
+   {
+    "feature": 1838,
+    "d_discover": 0.8368,
+    "rank": 19
+   },
+   {
+    "feature": 2431,
+    "d_discover": 0.8339,
+    "rank": 20
+   }
+  ]
+ }
+}

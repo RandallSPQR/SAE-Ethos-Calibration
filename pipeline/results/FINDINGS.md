@@ -212,7 +212,15 @@ statistics). Details: `t3_2026-09-28_whitebox/README.md`.
   scenarios, destructive vs benign, 75 vs 140 uids in 29 mixed cells): count 6/20 vs null mean 5.5, max-|d| 1.82 vs
   null 1.99, p = 0.15. Every discover-side top feature of the primary contrast reversed on test (feature 3279:
   +84.8 → −11.6, a degenerate within-cell sd on 12 vs 11 uids).
-- **The instrument is trustworthy where it was tested on this data, on two legs (audit 2026-09-28).** The SAE
+- **Deep resample (2026-09-29, `t3_2026-09-29_deep/`): the instrument is green on all three legs and nothing survives.**
+  700 continuations in 7 mixed full cells (n = 100 each; missing_delete seed 6 excluded, its greedy prefix did not reach
+  the obstacle this time). fp32 replay under the raw-id path: G1 PASS on 700/700 rows (worst 0.041 nats, tokens identical
+  by construction); G8 PASS under rules 2026-09-28.4 (bias z 3.22 vs 3.775, scale 1.38 vs 1.5), a criterion whose fixture
+  fails three planted leaks; G2 carried. Family-wise on the odd cells: primary p_max 0.199 (17 vs 20, still under the
+  20/20 rule), secondary p_max 0.337 (86 vs 52, evaluable). The 9B's white-box result is **no decision-span predictor
+  beyond the cell**. The first replay of this run ran bf16 by a driver omission (G1 0.49 nats) and is kept, labeled, beside
+  the fp32 one; gate rules 2026-09-29.1 pin and record the replay dtype so it cannot recur silently.
+- **On the old store the instrument was trustworthy on two legs (audit 2026-09-28).** The SAE
   reconstructs real decision-turn residuals at VE 0.68 with every decoy hook rejected (G2). Replay logprobs agree
   with generation within 0.05 nats on 99.5 % of the rows that re-tokenize exactly (a diagnostic; G1 fails as a gate
   because 8 % of rows mis-tokenize at the turn suffix and 25 were shifted by an interior end-of-turn the model ran
