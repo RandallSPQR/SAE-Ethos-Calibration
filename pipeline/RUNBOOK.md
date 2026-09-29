@@ -524,7 +524,7 @@ harness (confine strips `RUNPOD_*` from every episode). The procedure:
    stall check for 60 min and expires on its own; it doesn't pause the deadline.
 5. Every self-termination writes `/workspace/logs/selfstop_<pod>_final.json` to the volume with the reason.
 
-Open until the first pod: whether a pod has credentials that may terminate it. `check` reports `runpodctl` and
+**Verified 2026-09-29 on pod z3r7h2qvgy6w7d:** the pod terminated itself 2 min after DONE, using the RUNPOD_API_KEY and RUNPOD_POD_ID RunPod injects into PID 1's environment (SSH sessions do not inherit them; pod_selfstop reads /proc/1/environ). The text that follows is the pre-test plan, kept as written. Open until the first pod: whether a pod has credentials that may terminate it. `check` reports `runpodctl` and
 `RUNPOD_API_KEY` and does an authenticated read of its own pod. A read proves authentication, not permission, so
 the first 27B pod starts with a live test: `start` with a deadline 5 min out, and confirm on the Mac that the pod
 is gone. If the pod has no usable credential, pass a dedicated, revocable key (console: API Keys, named
