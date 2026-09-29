@@ -54,8 +54,23 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
 
+def _container_env(name: str) -> str:
+    """A variable from the process env, else from the container's init process: RunPod injects RUNPOD_POD_ID and a
+    RUNPOD_API_KEY into PID 1's environment, and SSH sessions do not inherit it (found on pod z3r7h2qvgy6w7d, 2026-09-29)."""
+    v = os.environ.get(name, "").strip()
+    if v:
+        return v
+    try:
+        for kv in Path("/proc/1/environ").read_bytes().split(b"\0"):
+            if kv.startswith(name.encode() + b"="):
+                return kv.split(b"=", 1)[1].decode().strip()
+    except OSError:
+        pass
+    return ""
+
+
 def _pod() -> str:
-    return os.environ.get("RUNPOD_POD_ID", "unknown-pod")
+    return _container_env("RUNPOD_POD_ID") or "unknown-pod"
 
 
 def _log(msg: str) -> None:
@@ -162,7 +177,7 @@ def terminate(why: str, dry_run: bool) -> bool:
         r = subprocess.run(["runpodctl", "remove", "pod", pod], capture_output=True, text=True, timeout=120)
         rec["attempts"].append({"runpodctl": r.returncode, "out": (r.stdout + r.stderr)[-300:]})
         ok = r.returncode == 0
-    key = os.environ.get("RUNPOD_API_KEY", "").strip()
+    key = _container_env("RUNPOD_API_KEY")
     for url in (f"https://api.runpod.io/v2/pods/{pod}", f"https://rest.runpod.io/v1/pods/{pod}"):
         if ok or not key or pod == "unknown-pod":
             break
@@ -269,7 +284,7 @@ def cmd_hold(a) -> None:
 
 
 def cmd_check(a) -> None:
-    pod, key = _pod(), os.environ.get("RUNPOD_API_KEY", "").strip()
+    pod, key = _pod(), _container_env("RUNPOD_API_KEY")
     rep = {"RUNPOD_POD_ID": pod if pod != "unknown-pod" else None, "runpodctl": shutil.which("runpodctl"),
            "RUNPOD_API_KEY_present": bool(key), "daemon_running": _running(), "config": _load() or None}
     if key and pod != "unknown-pod":
