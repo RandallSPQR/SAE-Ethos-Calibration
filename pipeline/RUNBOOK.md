@@ -474,14 +474,49 @@ Terminate. Do the analysis and the four card-figure reproductions offline from t
 
 ---
 
-## T4 — 27B, optional, only if the 9B run motivates it (~$60–120)
+## T4 — 27B (Gemma-3-27B-IT, Gemma Scope 2), after the 9B closed
 
-Same pipeline, one config edit (`models.yaml` → 27B target, base, SAE release+id, oracle adapter, and a
-new hook block with the 27B layer and its own `published` FVU/L0 — the hook is NOT the same layer).
-**Re-run the full G0–G5 ladder on 27B** before scaling: new model, new hook, new fidelity check, and a
-fresh provenance manifest. The 80GB A100 tier (~$1.19–1.39) is the only place you need it. Everything
-you learned at 9B transfers except the numbers you must re-verify. Re-run the probe track too — the probe
-layer is model-specific; re-sweep `layer_candidates`, do not carry 31 over.
+Not a config edit: `PRE_27B_AUDIT.md` section C is the parameterization list (hooks keyed on layer 31, EOS ids,
+the `gemma2` serializer import, the turn suffix, Neuronpedia defaults, the drivers' `--model/--max-model-len/--dtype`,
+`pod_bootstrap.sh` downloads, RLIMITs and tool timeouts). The full ladder re-runs from G0 with G2 identity required,
+then a fresh G6 fifty from the 27B's own transcripts; rates are embargoed until it passes.
+
+**Dtype (rules 2026-09-29.2).** Served bf16 on vLLM (about 55 GB, one A100 80 GB), replayed fp32 in HF (about 110 GB:
+2 x A100 80 GB or one H200 141 GB). Drivers export `TARGET_SERVED_DTYPE` and pass the same variable to
+`vllm serve --dtype`. G1's tolerance comes from a committed calibration run (>= 300 continuations, all scenarios x
+variants, not analysed) built with `gates/g1_calibrate.py` and pinned by sha256 in run.yaml before the pod for any
+judged run exists.
+
+**Pods (the watchdog rule, `~/.claude/CLAUDE.md`).** Two idle pods billed for nothing on the 9B (2026-09-18 ~3 h;
+2026-09-25 ~20 h, $32) because the session that made them stopped. At 27B the runs are longer and there are two pod
+types, so the procedure is written down:
+
+1. Before any create: `tools/runpod_watch/pod_watchdog.py status` shows the launchd job installed and a tick in the
+   last 10 minutes. If not, fix that first; the pod waits.
+2. State the price before creating: serving pod 1 x A100 SXM secure (~$1.59/h), replay pod 2 x A100 SXM (~$3.18/h)
+   or one H200 (read `get-gpu-type` at the time). Unarmed pods die at 3 h regardless.
+3. Arm in the same step as the create: `pod_watchdog.py arm <id> --hours H --note "<what, created HH:MMZ>"`,
+   H = 1.5 x the estimate. Estimates come from measured throughput, not guesses: the G1 calibration run (300
+   continuations) is the throughput measurement that sizes every later deadline. On the 9B, 700 continuations took
+   5.5 h and the deadline had to be re-armed from 5 h to 10 h mid-run; at roughly 2x per token, a T3-scale 27B run
+   (~2,400 continuations) is on the order of 35-40 h and is split.
+4. Bursts of at most about 8 h, each its own pod and deadline (by seed block, as T3 sessions 1 and 2 were).
+   Copy artifacts back, terminate, `disarm`, commit; the volume keeps weights, venvs and run directories.
+5. Blocked means terminate: waiting on SSH, a login, a card or a decision, the pod is terminated first and
+   re-created later.
+6. A pod left up at the end of a message is named with its deadline and the mechanism that will stop it.
+
+Known gaps in the stop, to close before the first long burst: the watchdog runs on the Mac and does not fire while
+the laptop sleeps (it fires on wake, so an overrun is bounded by the sleep, not by the deadline); a stalled run bills
+until its deadline. Proposed: a pod-side self-stop in the driver (terminate the pod when the deadline passes or when
+`generation/` has not grown in 30 minutes, using the pod's own RunPod credentials; verify they exist and stay outside
+the episode env on the first pod), and the RunPod account spending limit set to the 27B budget ($150).
+
+**Volume.** `u0isne6ams` is 150 GB and holds the 9B stack (~19 GB of weights plus venvs and runs). The 27B bf16
+weights (~55 GB) plus one Gemma Scope 2 SAE fit if the 9B oracle and old run directories are pruned; check free space
+before the first download and resize (a stated monthly cost) rather than fill it.
+
+Re-run the probe track too: the probe layer is model-specific; re-sweep `layer_candidates`, do not carry 31 over.
 
 ---
 

@@ -1,0 +1,49 @@
+{
+ "rules": "2026-09-29.2",
+ "replay": "results/t3_2026-09-29_deep/attempt1_bf16_replay/replay",
+ "crosscheck": "results/t3_2026-09-29_deep/replay",
+ "served_dtype_assumed": "float32",
+ "replay_dtype": null,
+ "calibration_rows_even_seeds": 300,
+ "judged_rows_odd_seeds": 400,
+ "thresholds": {
+  "tol_row": 0.57297,
+  "tol_bulk": 0.015419
+ },
+ "calibration_validity": {
+  "n_rows": 300,
+  "rows_ok": true,
+  "crosscheck_ratio": 1.0041,
+  "crosscheck_ok": true,
+  "clean_passes": true,
+  "planted": {
+   "off_by_one": "FAIL",
+   "boundary_shift": "FAIL",
+   "sparse_1pct": "FAIL",
+   "template_prefix": "absent"
+  },
+  "valid": false
+ },
+ "judged_clean": {
+  "ok": true,
+  "frac_rows_over_tol": 0.0,
+  "median_row_mean_gap": 0.011425
+ },
+ "judged_planted": {
+  "off_by_one": {
+   "ok": false,
+   "frac_rows_over_tol": 1.0,
+   "median_row_mean_gap": 0.383967
+  },
+  "boundary_shift": {
+   "ok": false,
+   "frac_rows_over_tol": 1.0,
+   "median_row_mean_gap": 0.042984
+  },
+  "sparse_1pct": {
+   "ok": false,
+   "frac_rows_over_tol": 0.01,
+   "median_row_mean_gap": 0.011425
+  }
+ }
+}

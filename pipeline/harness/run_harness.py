@@ -154,7 +154,10 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 # scored_message_index defaults to the decision turn; replay can score another span
                 "scored_message_index": dp, "spans": spans,
                 # the temperature the decision turn was generated at: G1 picks its criterion from THIS field
-                "sampling": {"temperature": samp["temperature"], "top_p": samp["top_p"]},
+                # rules 2026-09-29.2: the dtype vLLM served in selects G1's criterion. The driver exports the SAME variable it
+                # passes to `vllm serve --dtype`; unset (every 9B run) -> None -> G1's fixed-tolerance path.
+                "sampling": {"temperature": samp["temperature"], "top_p": samp["top_p"],
+                             "served_dtype": os.environ.get("TARGET_SERVED_DTYPE")},
                 "tokens": {"sampled_ids": (dtok or {}).get("sampled_ids"),
                            "sampled_logprobs": (dtok or {}).get("sampled_logprobs"),
                            "sampled_top2_margin": (dtok or {}).get("sampled_top2_margin")},

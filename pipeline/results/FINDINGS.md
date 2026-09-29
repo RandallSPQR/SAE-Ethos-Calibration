@@ -239,7 +239,7 @@ statistics). Details: `t3_2026-09-28_whitebox/README.md`.
   AUROC 0.62 (T1: passed on calibration texts), and the activation oracle confabulates on every null window
   (accuracy 0.42, paired 0.33). Neither carries weight here; labels are Neuronpedia's.
 - **What it means.** On this model the decision-span state does not predict the eventual outcome beyond what the
-  cell (scenario, variant, rendered seed) already predicts, at n = 200 per cell. Transgressions are rare,
+  cell (scenario, variant, rendered seed) already predicts, at 10 continuations per cell in T3 and 100 per mixed cell in the deep resample (n = 200 is the per-(scenario, variant) total in T3, not a cell). Transgressions are rare,
   seed-clustered and mostly flailing; the within-cell null refuses, correctly, to credit surface features. The
   follow-ups are the transgression span (a different, named experiment), and the 27B. Neither is licensed by this
   session's numbers, and the write-up says so.

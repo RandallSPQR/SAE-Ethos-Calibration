@@ -1,5 +1,70 @@
 # Gate rules changelog
 
+## 2026-09-29.2 — G1 across a dtype split: bf16 served, fp32 replayed, tolerance from a committed calibration (written 2026-09-29 15:25 EDT, before any 27B pod exists)
+
+Decision (Randall, 2026-09-29): Gemma-3-27B-IT is **served bf16** on vLLM and **replayed fp32** in HF. Why: fp32 27B
+is about 110 GB of weights and does not fit one 80 GB card for serving; bf16 (about 55 GB) does, with KV-cache
+headroom to be measured at G0 rather than assumed. Consequence named now: the fp32 replay is itself about 110 GB, so
+the replay pod is a different pod type (2 x A100 80 GB with the model split across both, or one H200 141 GB), and G2's
+TransformerLens fp32 identity check needs the same box. Behavioral rates are rates of the model as served in bf16 on the
+recorded vLLM build; the manifest says so.
+
+Why G1 changes: with both sides fp32 the logprob criterion was a numerical checksum (max gap <= 0.05 nats; the deep
+resample passed at 0.041). Across a dtype split the two sides compute different numbers by design: on the 9B the
+fp32-vs-bf16 pair ran a median per-row worst gap of 0.125 and a maximum of 0.49 nats on rows whose token ids are
+identical by construction. A fixed 0.05 would fail every clean row; raising it by hand would be tuning a threshold to
+pass. The tolerance is therefore measured, on a run that is not analysed, and the gate re-derives it from committed data.
+
+Selection (from the transcript, not from config): a store whose rows record `sampling.served_dtype` different from the
+replay dtype takes the mixed path; rows without the field take the fixed-tolerance path unchanged, so a bf16-served run
+that fails to record its dtype FAILS rather than passes. Mixed recording within a store is refused. The replay-dtype
+pin of 2026-09-29.1 stays (replay must be float32).
+
+Criterion (mixed path, `g1_replay_fidelity._mixed_logprob`; numbers in `gates.g1_mixed`):
+- precondition: `span_ids_equal_sampled` on every row (raw-id replay); the calibration file matches its pinned sha256,
+  its served/replay dtypes and model revision match the run, and its run_id is not the judged run's;
+- per row: w_i = worst |generation - replay| logprob gap over the span, m_i = mean gap;
+- tol_row = 1.5 x q0.99(w_cal), tol_bulk = 1.5 x median(m_cal), derived by `derive_mixed` from the calibration's
+  stored per-row statistics each time G1 runs (no tolerance is typed by hand);
+- FAIL if more than 0.5 % of judged rows have w_i > tol_row, or if median(m_i) > tol_bulk. Over-tolerance rows are
+  listed by uid, with how many have their worst token in the first 4 span tokens (a template defect clusters there).
+- Limit, stated: a defect touching fewer than 0.5 % of rows can pass this criterion; those rows are the listed uids
+  and are read before G1 is cited.
+
+Calibration validity (G1 FAILs with "calibration invalid" unless all hold; none may be relaxed to make one pass):
+- at least 300 rows, from a separate run (its own run_id) spanning all four scenarios and three variants;
+- crosscheck: the same rows replayed by HF in the served dtype; median m(served vs fp32) / median m(HF served-dtype vs
+  fp32) <= 2.0. Above that, the served path differs from fp32 by more than dtype noise (template, revision, kernels)
+  and the difference is diagnosed, not absorbed into a tolerance;
+- the clean calibration passes its own thresholds, and every required planted defect FAILs them: off_by_one (replay
+  shifted one position), boundary_shift (first 3 span tokens shifted), sparse_1pct (1 % of rows misaligned), and
+  template_prefix (a GPU replay of >= 50 rows with the turn prefix altered: the newline after `<start_of_turn>model`
+  dropped). The first three are computed by `gates/g1_calibrate.py` from the replay; the fourth needs the replay pod.
+
+Procedure, in order: calibration run on the serving pod; fp32, HF-served-dtype and template-defect replays on the
+replay pod; `python -m gates.g1_calibrate build ...`; commit the file and pin `calibration` + `calibration_sha256` in
+run.yaml; then, and not before, create the pod for the run G1 will judge. T=0 rows (greedy prefixes, G0, G4) keep the exact
+criterion with the 0.25-nat excuse unchanged; the calibration reports their unexcused flip rate, and if a clean
+calibration shows unexcused flips, that is a G1 construction failure answered by a new versioned rule, not a wider
+excuse. bf16 serving makes greedy prefixes more batch-shape sensitive (the 9B's missing_delete seed 6 already failed
+to reproduce across sessions): prefixes are generated once, stored with every excluded one, and reused by id; a
+regenerated prefix is not called "the same decision point".
+
+Dry run on real data (9B deep store, roles reversed: fp32 served, bf16 replay kept as attempt 1; dtype noise is
+symmetric in magnitude), calibrate on even seeds (300 rows), judge odd seeds (400):
+`results/t3_2026-09-29_deep/g1_mixed_dtype_dryrun.json`. tol_row 0.573, tol_bulk 0.0154; crosscheck ratio 1.004 (vLLM
+adds nothing measurable beyond dtype on the 9B); clean odd rows PASS (0 over tolerance, median mean gap 0.0114);
+off_by_one, boundary_shift and sparse_1pct all FAIL (1.0, 1.0, 0.01 of rows over tolerance). The dry-run calibration
+reads invalid, correctly, because template_prefix is absent (no GPU replay). Verdicts on existing stores are unchanged:
+the deep fp32 replay PASS (0.041), the bf16 attempt FAIL.
+
+Fixture: synthetic calibration and judged runs; clean passes; the three offline plants fail; a 100-row calibration,
+a crosscheck at 5x HF noise and a missing template plant are each refused; the sha pin refuses other bytes and an
+unset calibration; served-dtype selection reads the row. Mutation check: with row_exceed_max 1.0 and bulk_factor 100
+the fixture goes red. The harness writes `sampling.served_dtype` from `TARGET_SERVED_DTYPE`, which the 27B drivers
+must export from the same variable they pass to `vllm serve --dtype` (parameterization item, not yet done).
+
+
 ## 2026-09-29.1 — G1 checks the replay's dtype (written 2026-09-29 00:54 EDT, from the deep resample's first replay)
 
 The deep resample (pod 0ygiuk85dxz5o8, run_b918a1e43585, 700 continuations in 7 cells) replayed under the raw-id path

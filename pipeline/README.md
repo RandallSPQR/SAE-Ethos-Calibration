@@ -73,8 +73,8 @@ testable now. The T1 order and the "code feature discriminates code vs prose" fi
 
 ## Config
 
-- `config/models.yaml` — the three model roles and the vLLM endpoint. Nothing else references model
-  strings, so switching Gemma-2-9B → Gemma-3-27B is a one-file edit.
+- `config/models.yaml` — the three model roles and the vLLM endpoint. Moving to another model is not a
+  config edit: `PRE_27B_AUDIT.md` section C lists the code that assumes Gemma-2-9B.
 - `config/run.yaml` — sampling, layer fraction, gate thresholds, cost ceiling + kill switch.
 
 ## Layout
