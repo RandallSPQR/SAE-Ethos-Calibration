@@ -506,11 +506,33 @@ types, so the procedure is written down:
    re-created later.
 6. A pod left up at the end of a message is named with its deadline and the mechanism that will stop it.
 
-Known gaps in the stop, to close before the first long burst: the watchdog runs on the Mac and does not fire while
-the laptop sleeps (it fires on wake, so an overrun is bounded by the sleep, not by the deadline); a stalled run bills
-until its deadline. Proposed: a pod-side self-stop in the driver (terminate the pod when the deadline passes or when
-`generation/` has not grown in 30 minutes, using the pod's own RunPod credentials; verify they exist and stay outside
-the episode env on the first pod), and the RunPod account spending limit set to the 27B budget ($150).
+**Pod-side self-stop (`calibrate/pod_selfstop.py`, built 2026-09-29).** It covers the two gaps in the Mac watchdog:
+it doesn't fire while the laptop sleeps, and it can't see a stalled run. It runs on the pod as root, outside the
+harness (confine strips `RUNPOD_*` from every episode). The procedure:
+
+1. On the Mac: `python3 pipeline/calibrate/pod_selfstop.py plan --hours H --note "..."` prints one deadline in
+   two forms, the create-pod start command and the watchdog arm line. Create the pod with that start command; it
+   runs `start --deadline-utc <same deadline>` and then `exec /start.sh` (sshd). Arm the Mac watchdog with the
+   printed line in the same step.
+2. The pod then terminates itself at the deadline, or 45 min after boot if no driver has registered. That's the
+   2026-09-25 case: a pod up, nobody driving it.
+3. After shipping, the driver's first lines are `pod_selfstop.py check` (which terminate paths exist) and
+   `pod_selfstop.py watch --dir <run out> --done-file <run out>/DONE`. From then on, 30 min without a new file
+   under the run directory terminates the pod. A phase that writes rarely raises it with `watch --stall-min 90`.
+   The driver writes DONE at the end; the pod terminates 45 min later (copy-back window).
+4. Hands-on work before a driver exists (bootstrap, a login) runs under `pod_selfstop.py hold`. A hold pauses the
+   stall check for 60 min and expires on its own; it doesn't pause the deadline.
+5. Every self-termination writes `/workspace/logs/selfstop_<pod>_final.json` to the volume with the reason.
+
+Open until the first pod: whether a pod has credentials that may terminate it. `check` reports `runpodctl` and
+`RUNPOD_API_KEY` and does an authenticated read of its own pod. A read proves authentication, not permission, so
+the first 27B pod starts with a live test: `start` with a deadline 5 min out, and confirm on the Mac that the pod
+is gone. If the pod has no usable credential, pass a dedicated, revocable key (console: API Keys, named
+`sae-ethos-pod-selfstop`) as `RUNPOD_API_KEY` in the create-pod env. The confinement canaries already test that
+`RUNPOD_*` values do not reach an episode. The first pod after this commit carries an old pipeline on the volume:
+the start command then leaves `/tmp/selfstop_missing`, and `start` is run by hand right after the ship, before
+anything else. Tests: `python -m calibrate.test_pod_selfstop` (22 checks, including the forked daemon in dry-run
+with compressed time). Also set the RunPod account spending limit to the 27B budget.
 
 **Volume.** `u0isne6ams` is 150 GB and holds the 9B stack (~19 GB of weights plus venvs and runs). The 27B bf16
 weights (~55 GB) plus one Gemma Scope 2 SAE fit if the 9B oracle and old run directories are pruned; check free space
