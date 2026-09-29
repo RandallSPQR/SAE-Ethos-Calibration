@@ -1,7 +1,7 @@
 # Model profile: Gemma-3-27B-IT + Gemma Scope 2 (27B parameterization, 2026-09-29). Selected by MODEL_PROFILE=gemma-3-27b-it;
 # read through modelcfg.py, nowhere else. Every value below was read from its primary source on 2026-09-29 (HF API / repo files, the
 # gated repo's config verified byte-identical to an ungated mirror by git blob OID; SAELens pretrained_saes.yaml; Neuronpedia).
-# Fields left null are filled on the box by the preflight (weights hashed against LFS metadata) before --require-pinned passes.
+# Box-side identities (weight hashes, chat template hash) were pinned 2026-09-29 from the first 27B pod's preflight.
 
 family: gemma3
 
@@ -20,8 +20,10 @@ target_model:
   base_hf_id: "google/gemma-3-27b-pt"
   revision: "005ad3404e59d6023443cb575daa05336842228a"        # main 2025-03-21; 12 bf16 shards, 54.86 GB
   base_revision: "9fe3c4ebc93fbadb14913801536d022054ef11cc"
-  weight_hash: null                          # preflight_weights --hash on the volume
-  chat_template_hash: null                   # provenance reads it from the cache on the box
+  # PINNED 2026-09-29 by calibrate/preflight_weights.py --hash on the EUR-IS-1 volume (pod z3r7h2qvgy6w7d): 23/23 files
+  # sha256-verified against the revision's LFS metadata; chat template hash read from the verified snapshot
+  weight_hash: "34f745e7c6ef5b7b"
+  chat_template_hash: "7de1c58e208eda46"
   dtype: "bfloat16"                          # the SERVING dtype (rules 2026-09-29.2); replay dtype is replay.dtype
   # <end_of_turn> = 106, <eos> = 1 (generation_config eos_token_id [1, 106]); <bos> = 2, <pad> = 0, <start_of_turn> = 105.
   # NOT Gemma-2's 107: modelcfg.check_tokenizer refuses to load if the tokenizer disagrees.
@@ -61,7 +63,7 @@ sae:
   hf_folder: "resid_post/layer_40_width_16k_l0_medium"
   revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"          # main 2026-01-13
   params_sha256: "11f1469706357f234f02ca09f8ba11fbca12f5b8d151981b8c1e1a3dd5380389"   # LFS sha256 of params.safetensors (F32)
-  weights_hash: null                          # preflight identity over the verified folder
+  weights_hash: "bf36348749ff3ccb"            # PINNED 2026-09-29 (preflight, 3/3 files sha256-verified, pod z3r7h2qvgy6w7d)
   layer: 40
   saelens_hook_name: "blocks.40.hook_resid_post"   # SAELens derives it from the folder; HF point = model.layers.40.output
   hook_point: "blocks.40.hook_resid_post"
@@ -91,7 +93,7 @@ sae_secondary:
   hf_folder: "resid_post/layer_53_width_16k_l0_medium"
   revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"
   params_sha256: "a3492cd5ec2d00f3aa36e4fdb9d3e61d1137453c9228c5af964e5114f3c5e62b"
-  weights_hash: null
+  weights_hash: "fb0c3869a77afe92"            # PINNED 2026-09-29 (preflight, 3/3 files sha256-verified, pod z3r7h2qvgy6w7d)
   layer: 53
   saelens_hook_name: "blocks.53.hook_resid_post"
   hook_point: "blocks.53.hook_resid_post"
