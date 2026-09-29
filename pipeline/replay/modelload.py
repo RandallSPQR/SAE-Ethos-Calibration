@@ -28,7 +28,8 @@ def resolve_layer(n_layers, fraction):
 
 
 def models_cfg():
-    return yaml.safe_load((CFG / "models.yaml").read_text())
+    import modelcfg
+    return modelcfg.models()
 
 
 def load_target(which="target", device="cuda"):
@@ -39,21 +40,28 @@ def load_target(which="target", device="cuda"):
     tm = models["target_model"]
     hf_id = tm["hf_id" if which == "target" else "base_hf_id"]
     import os
-    dtype = getattr(torch, os.environ.get("T1_DTYPE") or tm.get("dtype", "bfloat16"))   # T1_DTYPE=float32 for the fp32 G1 check
+    import modelcfg
+    rc = modelcfg.replay_cfg()
+    # replay dtype: the profile's replay.dtype (float32), overridable by T1_DTYPE for a deliberate other-dtype replay
+    # (the G1 calibration's served-dtype crosscheck). models.yaml target_model.dtype is the SERVING dtype, not this.
+    dtype = getattr(torch, os.environ.get("T1_DTYPE") or rc["dtype"])
     if os.environ.get("T1_TF32") == "1":
         # fp32 storage with TF32 tensor-core matmuls (~8x faster on A100). Allowed only where a gate proves
         # the numbers still meet tolerance (probe.batch_gate re-run under T1_TF32=1 before P4 uses it).
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         print("TF32 matmuls ENABLED (T1_TF32=1)")
-    kw = dict(device_map=device, torch_dtype=dtype, attn_implementation="eager", dispatch=True)
+    # device_map: 'cuda' (one card) or 'auto' (the 27B fp32 replay split over two cards; layers run in sequence)
+    dev = os.environ.get("REPLAY_DEVICE_MAP") or (rc["device_map"] if device == "cuda" else device)
+    kw = dict(device_map=dev, torch_dtype=dtype, attn_implementation=rc["attn_implementation"], dispatch=True)
     if tm.get("revision"):
         kw["revision"] = tm["revision"]
     lm = LanguageModel(hf_id, **kw)
     cfg = lm.config
     layer = int(models["sae"]["layer"])          # LOCKED in models.yaml; never computed from a fraction
-    return LoadedModel(model=lm, tokenizer=lm.tokenizer, n_layers=cfg.num_hidden_layers,
-                       d_model=cfg.hidden_size, layer=layer)
+    modelcfg.check_tokenizer(lm.tokenizer)       # stop ids / turn suffix in the profile vs this tokenizer; raises
+    return LoadedModel(model=lm, tokenizer=lm.tokenizer, n_layers=modelcfg.text_config_value(cfg, "num_hidden_layers"),
+                       d_model=modelcfg.text_config_value(cfg, "hidden_size"), layer=layer)
 
 
 # Names in models.yaml (sae.hook_point / sae.hook_candidates) -> how to read that tensor off the HF
@@ -64,22 +72,25 @@ def load_target(which="target", device="cuda"):
 #   hidden_states_only   : post_feedforward_layernorm(mlp) -- the block's own increment WITHOUT the
 #                          residual, i.e. the vLLM-style "hidden_states" half of (hidden_states, residual)
 # The chosen hook is the block's full output = residual stream leaving the block (see hooks.resid_post).
-HOOK_READERS = {
-    "blocks.31.hook_resid_post": "block_output",
-    "layers.31.hidden_states_only": "post_ffn_norm",
-    "layers.31.mlp_output": "mlp",
-    "layers.31.attn_output": "attn",
-    "layers.31.input_resid": "block_input",
-}
+# Keyed on the profile's SAE layer (modelcfg.hook_names); was a literal table keyed on 31.
+def hook_readers():
+    import modelcfg
+    return modelcfg.hook_names()
+
+
+def decoder_layers(lm: LoadedModel):
+    """The decoder ModuleList (Gemma-2: model.layers; Gemma-3: model.language_model.layers), count-checked."""
+    import modelcfg
+    return modelcfg.decoder_layers(lm.model)
 
 
 def residual_module(lm: LoadedModel, hook_point=None):
-    """nnsight handle for the decoder block named by sae.hook_point (layer index locked in models.yaml)."""
-    return lm.model.model.layers[lm.layer]
+    """nnsight handle for the decoder block named by sae.hook_point (layer index locked in the profile)."""
+    return decoder_layers(lm)[lm.layer]
 
 
 def hook_reader(hook_name):
     try:
-        return HOOK_READERS[hook_name]
+        return hook_readers()[hook_name]
     except KeyError:
-        raise KeyError(f"no reader for hook {hook_name!r}; add it to modelload.HOOK_READERS")
+        raise KeyError(f"no reader for hook {hook_name!r} at the profile's SAE layer; see modelcfg.hook_names")

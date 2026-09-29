@@ -64,7 +64,18 @@ SECRET_KEYS = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN", "LOCAL
                "OPENAI_API_KEY", "AWS_SECRET_ACCESS_KEY")
 SECRET_PREFIXES = ("RUNPOD_", "HF_", "AWS_", "GITHUB_")
 DEFAULT_UID = int(os.environ.get("ARM_A_EPISODE_UID", "61000"))
-LIMITS = {"nproc": 64, "as_bytes": 4 * 1024 ** 3, "fsize_bytes": 64 * 1024 ** 2, "nofile": 256}
+def _harness_cfg(key, default):
+    try:
+        import yaml
+        return {**default, **(yaml.safe_load((Path(__file__).resolve().parent.parent / "config" / "run.yaml").read_text())
+                              .get("harness", {}).get(key) or {})}
+    except Exception:  # noqa: BLE001
+        return dict(default)
+
+
+# run.yaml harness.limits (audit C); the defaults are the 9B study's values
+LIMITS = _harness_cfg("limits", {"nproc": 64, "as_bytes": 4 * 1024 ** 3, "fsize_bytes": 64 * 1024 ** 2, "nofile": 256})
+TIMEOUTS = _harness_cfg("timeouts_s", {"default": 15, "bash": 10, "run_script": 30, "flake8": 30, "labeler": 60})
 CANARY_NAME = ".arm_a_canary_root_only"
 CANARY_TOKEN_NAME = ".arm_a_canary_token"     # synthetic secret planted in HF_HOME for the disk canary
 

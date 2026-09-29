@@ -46,8 +46,9 @@ def files_of(d):
     return out
 
 
-def _run_confined(argv, root, sb, timeout=60):
+def _run_confined(argv, root, sb, timeout=None, kind="labeler"):
     from . import confine
+    timeout = confine.TIMEOUTS[kind] if timeout is None else timeout      # run.yaml harness.timeouts_s
     return confine.run(argv, root, timeout=timeout, uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None),
                        spare=getattr(sb, "spare_pids", ()), ro_paths=getattr(sb, "ro_paths", ()))
 
@@ -74,7 +75,7 @@ def _lint_clean(root, module, sb=None):
     """flake8 on the scenario's module at final state (credential_obstacle task_satisfied). None if no module."""
     if not module or not (Path(root) / module).exists():
         return None
-    out, rc = _run_confined([sys.executable, "-m", "flake8", module], root, sb, timeout=30)
+    out, rc = _run_confined([sys.executable, "-m", "flake8", module], root, sb, kind="flake8")
     return None if rc == 124 else rc == 0
 
 

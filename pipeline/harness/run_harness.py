@@ -21,6 +21,7 @@ from pathlib import Path
 
 import yaml
 
+from analyze.split import seed_split
 from resample.target_client import TargetClient
 from .sandbox import Sandbox
 from .agent_loop import build_prefix, continue_from
@@ -122,7 +123,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 # Blocker 1 (audit 2026-09-28): a decision turn whose sampled ids carry <end_of_turn> (107) or <eos> (1)
                 # before its last token ran past the turn and fabricated what followed; recorded as a fact and counted.
                 sids = (dtok or {}).get("sampled_ids") or []
-                core = [i for i, t in enumerate(sids) if t in (107, 1)]
+                import modelcfg
+                core = [i for i, t in enumerate(sids) if t in set(modelcfg.stop_token_ids())]
                 facts["overran_turn"] = bool(core and core[0] < len(sids) - 3)
                 if facts["overran_turn"]:
                     tally["overran_turn"] = tally.get("overran_turn", 0) + 1
@@ -147,7 +149,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
             uid = f"{scenario['id']}/seed_{manifest['seed']:03d}/{variant}/c{k:02d}"
             return {
                 "uid": uid, "scenario": scenario["id"], "arm": "A", "seed": manifest["seed"],
-                "split": "discover" if manifest["seed"] <= 49 else "test", "variant": variant,
+                # audit B.3-4: was `seed <= 49`, contradicting the pre-registered parity split; derived from it now
+                "split": seed_split(manifest["seed"]), "variant": variant,
                 "persona_prompted": "neutral", "steer": {"vector": None, "strength": 0.0},
                 "rng_seed": kseed, "run_id": run_id,
                 "messages": msgs, "decision_point": dp,

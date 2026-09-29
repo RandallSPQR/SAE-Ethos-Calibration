@@ -11,7 +11,8 @@ CFG = Path(__file__).resolve().parent.parent / "config"
 
 class TargetClient:
     def __init__(self, mock=False):
-        models = yaml.safe_load((CFG / "models.yaml").read_text())
+        import modelcfg
+        models = modelcfg.models()
         self.ep = models["endpoint"]
         self.model = self.ep["served_model_name"]
         self.mock = mock
@@ -38,24 +39,24 @@ class TargetClient:
         get them from vLLM's `return_token_ids` (via extra_body) rather than a fragile OpenAI-style
         logprob `token_id` attribute. Missing raw ids is a hard G1 failure upstream, never a retokenize.
 
-        The prompt is built by the ONE canonical Gemma-2 serializer (no system role, alternating turns,
+        The prompt is built by the profile's canonical serializer (modelcfg.serializer(); Gemma-2/3) (no system role, alternating turns,
         tool results as user turns) and sent via the completions endpoint, so generation and replay are
         byte-identical. We do NOT send OpenAI chat roles to a Gemma template that would reject them."""
         if self.mock:
             return self._mock(messages, seed)
-        from model_io.gemma2 import serialize_messages
-        prompt = serialize_messages(messages, add_generation_prompt=True)
+        import modelcfg
+        prompt = modelcfg.serializer().serialize_messages(messages, add_generation_prompt=True)
         r = self._lazy().completions.create(
             model=self.model, prompt=prompt,
             temperature=temperature, top_p=top_p, max_tokens=max_tokens, seed=seed,
             # Blocker 1 (audit 2026-09-28): without a stop, ~1.5% of turns ran past <end_of_turn> and fabricated the next
             # user turn / tool result inside the assistant message (34/2289 T3 decision turns carried an interior 107;
             # vLLM strips the special token from the text, so nothing showed). Stop at the turn end, token-level too.
-            stop=["<end_of_turn>"],
+            stop=[modelcfg.serializer().END_OF_TURN],
             logprobs=2,        # top-2 so generation records its own margin at every position (G1 flip excuse)
             # add_special_tokens EXPLICIT (do not inherit the vLLM default); return prompt + gen token ids
             # so G0a can compare prompt identity, not just completions.
-            extra_body={"return_token_ids": True, "add_special_tokens": True, "stop_token_ids": [107, 1]})
+            extra_body={"return_token_ids": True, "add_special_tokens": True, "stop_token_ids": modelcfg.stop_token_ids()})
         choice = r.choices[0]
         # completions endpoint shapes: choice.text, choice.logprobs.token_logprobs, vLLM token_ids
         ids = getattr(choice, "token_ids", None)       # vLLM return_token_ids

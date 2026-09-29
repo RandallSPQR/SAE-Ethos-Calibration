@@ -20,6 +20,25 @@ def scored_index(row):
     return row.get("scored_message_index", row["decision_point"])
 
 
+# rules 2026-09-29.2: the G1 calibration needs one realistic defect that must FAIL G1: a replay whose prefix drops the
+# newline after <start_of_turn>model (a one-character template error). REPLAY_TEMPLATE_DEFECT=drop_model_newline selects
+# it; every other replay leaves it unset, and rows record which one ran.
+import os as _os
+TEMPLATE_DEFECT = _os.environ.get("REPLAY_TEMPLATE_DEFECT") or None
+
+
+def _prefix_ids(lm, messages):
+    import modelcfg
+    ser = modelcfg.serializer()
+    if TEMPLATE_DEFECT is None:
+        return ser.apply_to_tokenizer(lm.tokenizer, messages, add_generation_prompt=True)
+    if TEMPLATE_DEFECT != "drop_model_newline":
+        raise ValueError(f"unknown REPLAY_TEMPLATE_DEFECT {TEMPLATE_DEFECT!r}")
+    text = ser.serialize_messages(messages, add_generation_prompt=True)
+    assert text.endswith("<start_of_turn>model\n")
+    return lm.tokenizer(text[:-1], add_special_tokens=True)["input_ids"]
+
+
 def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, uidsum_rows=None, sample=None,
                extra_hooks=None):
     from .hooks import teacher_forced_forward
@@ -33,9 +52,9 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         # canonical serializer produces, instead of re-tokenizing the decoded text (a trailing newline merged into the
         # turn suffix on 8% of T3 rows; 25 rows were shifted by an INTERIOR <end_of_turn> the model ran past). The span is
         # cut at the first turn-end / EOS token; an interior one marks the continuation as overran_turn.
-        from model_io.gemma2 import apply_to_tokenizer
-        prefix = apply_to_tokenizer(lm.tokenizer, row["messages"][:end - 1], add_generation_prompt=True)
-        stops = [i for i, t in enumerate(sampled) if t in (107, 1)]
+        import modelcfg
+        prefix = _prefix_ids(lm, row["messages"][:end - 1])
+        stops = [i for i, t in enumerate(sampled) if t in set(modelcfg.stop_token_ids())]
         cut = stops[0] if stops else len(sampled)
         overran = bool(stops) and cut < len(sampled) - 3
         core = list(sampled[:cut])
@@ -78,7 +97,7 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         gen_lps = gen_lps[: e - s] if gen_lps else gen_lps
         gen_mrg = gen_mrg[: e - s] if gen_mrg else gen_mrg
     elif gen_ids and len(gen_ids) > (e - s):
-        # vLLM's sampled ids carry the turn suffix / EOS (<end_of_turn>, "\n", <eos>: 107/108/1) that the replay span
+        # vLLM's sampled ids carry the turn suffix / EOS (Gemma-2: <end_of_turn>, "\n", <eos> = 107/108/1) that the replay span
         # excludes by construction; align the G1 arrays to the span (T3 white-box 2026-09-28: every one of 2,289 rows was
         # 1-3 tokens longer and G1 failed on presence, not fidelity). The raw tail is kept for the record.
         tail = gen_ids[e - s:]
@@ -93,6 +112,8 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         "span_ids_equal_sampled": (gen_ids == fr.token_ids[s:e]) if gen_ids else None,
         "overran_turn": overran, "replay_path": "sampled_ids" if sampled else "retokenized",
         "replay_dtype": REPLAY_DTYPE,        # 2026-09-29: recorded so G1 can refuse a replay that ran in another dtype than generation
+        "replay_template_defect": TEMPLATE_DEFECT,
+        "replay_tf32": _os.environ.get("T1_TF32") == "1",   # rules 2026-09-29.3: TF32 matmuls are part of the replay's identity   # rules 2026-09-29.2: set ONLY on the G1 calibration's planted-defect replay
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,
@@ -207,7 +228,8 @@ def main():
         # the deep driver did not export it, and the replay ran bf16 against fp32 generation (per-row worst gap median 0.12
         # nats vs 0.004 on the fp32 white-box replay). Real replay is float32 unless T1_DTYPE says otherwise, and says so.
         import os
-        os.environ.setdefault("T1_DTYPE", "float32")
+        import modelcfg
+        os.environ.setdefault("T1_DTYPE", modelcfg.replay_cfg()["dtype"])
         global REPLAY_DTYPE
         REPLAY_DTYPE = os.environ["T1_DTYPE"]
         print(f"replay dtype: {REPLAY_DTYPE} (T1_DTYPE)")
@@ -277,13 +299,17 @@ def main():
         (Path(args.features) / "MOCK").write_text("synthetic store from replay.replay --mock; not activations\n")
     if sample:
         from . import instrument
-        import yaml as _yaml
-        cal = (_yaml.safe_load((Path(__file__).resolve().parent.parent / "config" / "models.yaml").read_text()) or {}).get("calibration", {})
+        import modelcfg
+        cal = modelcfg.models().get("calibration", {})
         feat_dir = Path(args.features)
         print(f"instrument checks on {len(sample)} real spans ...", flush=True)
         instrument.build_sae_health(lm, sae, sample, feat_dir / "sae_health.json", identity_from=args.identity_from)
-        instrument.build_known_answer(sae, lm.tokenizer, sample, feat_dir / "known_answer_report.json",
-                                      cal.get("code_feature_index", 8209), cal.get("extra_feature_indices", []))
+        if cal.get("code_feature_index") is None:     # per-SAE anchor not chosen yet: G3 reads "missing", not a 9B index
+            (feat_dir / "known_answer_report.json").write_text(json.dumps({"error": "no calibration.code_feature_index in the "
+                                                                          "model profile; G3 skipped and reported as missing"}))
+        else:
+            instrument.build_known_answer(sae, lm.tokenizer, sample, feat_dir / "known_answer_report.json",
+                                          cal["code_feature_index"], cal.get("extra_feature_indices", []))
         try:
             instrument.build_oracle_calibration(lm, lm.tokenizer, sample, feat_dir / "oracle_calibration.json", backend=args.backend)
         except Exception as ex:                       # noqa: BLE001 — the oracle is the last, optional load

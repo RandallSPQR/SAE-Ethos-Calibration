@@ -172,9 +172,12 @@ def _mixed_logprob(lp_rows, served, want, gc):
     if err:
         return False, {"mode": "mixed", "error": err}
     ident = {"served_dtype": (cal.get("served_dtype"), served), "replay_dtype": (cal.get("replay_dtype"), want)}
+    # rules 2026-09-29.3: TF32 matmuls change replay numerics; a calibration made with them judges only replays made with them
+    tf = {bool((r.get("tokens") or {}).get("replay_tf32")) for r in lp_rows}
+    ident["replay_tf32"] = (bool(cal.get("replay_tf32", False)), tf.pop() if len(tf) == 1 else sorted(tf))
     try:
-        import yaml
-        rev = yaml.safe_load((ROOT / "config" / "models.yaml").read_text())["target_model"].get("revision")
+        import modelcfg
+        rev = modelcfg.target().get("revision")
         ident["model_revision"] = ((cal.get("model") or {}).get("revision"), rev)
     except Exception:
         ident["model_revision"] = ("unreadable", "unreadable")

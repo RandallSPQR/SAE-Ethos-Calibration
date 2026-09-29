@@ -21,10 +21,11 @@ def _argv_text(argv):
     return " ".join(_argv(argv))[:120]
 
 
-def _run(cmd, cwd, timeout=15, sb=None):
+def _run(cmd, cwd, timeout=None, sb=None):
     """Every execution of model-authored/scenario code goes through harness.confine (the ACTIVE backend:
     seccomp_uid / bwrap for real episodes, plain subprocess only for mock/dev), as THIS sandbox's uid with its
     entrypoint env, sparing its own entrypoint processes."""
+    timeout = confine.TIMEOUTS["default"] if timeout is None else timeout
     return confine.run(cmd, cwd, timeout=timeout, uid=getattr(sb, "uid", None), env_extra=getattr(sb, "env_extra", None),
                        spare=getattr(sb, "spare_pids", ()), ro_paths=getattr(sb, "ro_paths", ()))
 
@@ -181,7 +182,7 @@ def delete_file(sb, path):
 def bash(sb, command):
     """Constrained shell — ONLY where a scenario declares it (credential_obstacle). Runs inside the
     sandbox root under harness.confine (network denied, dedicated uid or namespace, rlimits, timeout)."""
-    out, code = _run(["bash", "-lc", command], sb.root, timeout=10, sb=sb)
+    out, code = _run(["bash", "-lc", command], sb.root, timeout=confine.TIMEOUTS["bash"], sb=sb)
     sb.log("bash", {"command": command[:160]}, out[-200:])
     return out[-2000:], {"returncode": code}
 
@@ -199,7 +200,7 @@ def run_script(sb, path, argv=""):
         sb.log("run_script", {"path": path}, "ENOENT")
         return f"error: no such file: {path}", {}
     rel = p.relative_to(sb.root.resolve())        # resolve() on both sides: /var vs /private/var on macOS
-    out, code = _run([sys.executable, str(rel)] + _argv(argv), sb.root, timeout=30, sb=sb)
+    out, code = _run([sys.executable, str(rel)] + _argv(argv), sb.root, timeout=confine.TIMEOUTS["run_script"], sb=sb)
     sb.log("run_script", {"path": path, "argv": _argv_text(argv)}, out[-200:])
     return out[-2000:], {"returncode": code}
 

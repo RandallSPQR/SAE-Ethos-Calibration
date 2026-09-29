@@ -5,6 +5,25 @@ tools say back shape every rate. Changes here apply identically to all variants 
 provenance-tracked through the manifest's `git_commit` / `code_hash`. Labeler rules have their own log
 (`LABELER_CHANGELOG.md`); gate rules have `gates/CHANGELOG.md`.
 
+## 2026-09-29.1 — model-specific mechanics come from the model profile (27B parameterization)
+
+No change to what the 9B saw: with `MODEL_PROFILE` unset every value below resolves to the 9B study's (tests:
+`python -m test_modelcfg`, 20/20). What moved, and why it is treatment:
+- **Stop tokens and the turn end** come from the profile (`target_model.stop_token_ids`; Gemma-2 [107, 1], Gemma-3
+  [106, 1]) and are checked against the tokenizer on the box at every model load (`modelcfg.check_tokenizer`). A wrong
+  stop id is the B-1 overrun (1.7 % of 9B continuations ran past their turn).
+- **Serializer by family** (`model_io.get`, `model_io/gemma3.py`). Gemma-3's template trims every message's content;
+  the gemma3 serializer does too and reproduces the template verbatim on 10 cases (`python -m model_io.test_gemma3`).
+  Finding, recorded: Gemma-2's template also trims, and the 9B serializer did not, so a 9B prompt whose history carried
+  leading/trailing whitespace differed from the training format by that whitespace. Generation and replay used the same
+  serializer, so no 9B gate is affected; the 9B serializer is left as it ran.
+- **Episode resource limits and tool timeouts** are config (`run.yaml harness.limits`, `harness.timeouts_s`; values
+  unchanged: nproc 64, 4 GB address space, 64 MB files, 256 fds; bash 10 s, run_script 30 s, flake8 30 s, labeler 60 s,
+  default 15 s). A slower model that hits a cap reads as damaged/timeout, so any change is a versioned entry here.
+- **The row's `split` field** is derived from `analyze.split.seed_split` (audit B.3-4: it was `seed <= 49`).
+- **`sampling.served_dtype`** is written from `TARGET_SERVED_DTYPE` (exported by `calibrate/model_env.sh` from the same
+  variable passed to `vllm serve --dtype`); G1 selects its criterion from it (gate rules 2026-09-29.2).
+
 ## 2026-09-28.1 — a failed `query` is logged (exposed by the full relabel of the T3 joined set, 2026-09-28)
 
 `tools.query` returned "error: no database" (and any SQLite error) without `sb.log`, so the event never reached the

@@ -90,9 +90,11 @@ def _evaluate(report, g):
         detail["per_doc_l0_range"] = [round(pd[0], 1), round(pd[-1], 1)]
     if pub.get("fvu") is None:
         detail["fvu_unpublished"] = True
-    ok = bool(health_ok and decoys_reject and (ident_ok is not False) and (jr_ok is not False))
+    # rules 2026-09-29.3 (audit B.2-2): identity is REQUIRED. An absent identity block used to pass with a warning (the
+    # T3 white-box store's G2 did); a new model or hook is identified by tensor identity or not at all.
+    ok = bool(health_ok and decoys_reject and (ident_ok is True) and (jr_ok is not False))
     if ident is None:
-        detail["warning"] = "no tensor-identity check in report (run the TransformerLens stage)"
+        detail["error"] = "no tensor-identity check in report (run t1_ladder --stage identity, or replay --identity-from)"
     return ok, detail
 
 
@@ -126,12 +128,16 @@ def fixture():
     # identity failure blocks even with a comfortable VE margin
     bad_id = json.loads(json.dumps(report)); bad_id["identity"]["min_cos"] = 0.97      # resid_pre-like: same scale, wrong direction
     ok_id, _ = _evaluate(bad_id, g)
+    # identity ABSENT blocks (rules 2026-09-29.3)
+    no_id = json.loads(json.dumps(report)); no_id.pop("identity")
+    ok_noid, _ = _evaluate(no_id, g)
     # encode integrity failure blocks
     bad_jr = json.loads(json.dumps(report)); bad_jr["jumprelu_below_threshold_frac"] = 0.05
     ok_jr, _ = _evaluate(bad_jr, g)
     # L0 mismatch alone does NOT block (reported only)
-    return GateResult(NAME + "[fixture]", ok and not ok_amb and not ok_id and not ok_jr,
+    return GateResult(NAME + "[fixture]", ok and not ok_amb and not ok_id and not ok_noid and not ok_jr,
                       {"ve_margin_passes": ok, "ambiguous_ve_blocked": not ok_amb, "identity_blocks": not ok_id,
+                       "absent_identity_blocks": not ok_noid,
                        "jumprelu_blocks": not ok_jr, "l0_reported_not_gated": detail["matches_published"] is False,
                        "scaled_copies_not_decoys": detail.get("ve_detects_scale") is False and ok,
                        "rules": GATE_RULES_VERSION})

@@ -13,7 +13,8 @@ CFG = Path(__file__).resolve().parent.parent / "config"
 
 
 def sae_cfg():
-    return yaml.safe_load((CFG / "models.yaml").read_text())["sae"]
+    import modelcfg
+    return modelcfg.models()["sae"]
 
 
 def _hook_name(sae):
@@ -126,7 +127,8 @@ def sae_artifact_identity(sae):
     path = str(out["hf_path"] or "")
     out["path_names_l0"] = int(path.rsplit("average_l0_", 1)[1]) if "average_l0_" in path else None
     out["reference_matches_artifact"] = (out["path_names_l0"] == out["published_l0_reference"]) if out["path_names_l0"] else None
-    out["is_it_release"] = ("9b-it" in str(out["hf_repo_id"] or "")) or ("it-res" in s["release"])
+    # an IT-model SAE: the profile says so (sae.is_it_release), with the old 9B name test as the fallback
+    out["is_it_release"] = bool(s.get("is_it_release")) or ("9b-it" in str(out["hf_repo_id"] or "")) or ("it-res" in s["release"])
     return out
 
 
@@ -145,10 +147,13 @@ def hook_identification_report(lm, sae, residuals_by_hook, out_path, skip_bos=Tr
     return rep
 
 
-def fetch_neuronpedia_labels(feature_indices, out_path, model_id="gemma-2-9b-it",
-                             source="31-gemmascope-res-16k"):
-    """Pull labels for the given features into feature_labels.json (network step, not GPU)."""
+def fetch_neuronpedia_labels(feature_indices, out_path, model_id=None, source=None):
+    """Pull labels for the given features into feature_labels.json (network step, not GPU). model_id / source come
+    from the profile (modelcfg.neuronpedia); the 9B defaults fetched the wrong model's labels silently (audit C)."""
     import urllib.request
+    import modelcfg
+    np_cfg = modelcfg.neuronpedia()
+    model_id, source = model_id or np_cfg["model_id"], source or np_cfg["source"]
     out = {}
     for idx in feature_indices:
         url = f"https://www.neuronpedia.org/api/feature/{model_id}/{source}/{idx}"

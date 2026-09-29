@@ -22,7 +22,7 @@ from probe.tasks import TASKS, messages, conditions   # noqa: E402
 
 
 def run_gate(lm, vecs, task, tol, n_prompts=8, strength=0.2):
-    from model_io.gemma2 import apply_to_tokenizer
+    import modelcfg; apply_to_tokenizer = modelcfg.serializer().apply_to_tokenizer
     from replay.hooks import last_logits_batch
     from replay.modelload import residual_module
     from replay.hooks import resid_post, _set_block_output, _val
@@ -33,7 +33,7 @@ def run_gate(lm, vecs, task, tol, n_prompts=8, strength=0.2):
                                   add_generation_prompt=True) for i in range(n_prompts)]
     # reference: unbatched, one prompt at a time, same transform
     def single(ids, st):
-        block = lm.model.model.layers[layer]
+        block = __import__("modelcfg").decoder_layers(lm.model)[layer]
         with torch.no_grad(), lm.model.trace(torch.tensor([ids])):
             if st != 0.0:
                 stream = resid_post(block.output)

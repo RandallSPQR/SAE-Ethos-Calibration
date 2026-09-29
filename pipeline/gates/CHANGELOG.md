@@ -1,5 +1,33 @@
 # Gate rules changelog
 
+## 2026-09-29.3 — G0 under a dtype split, G2 identity required, TF32 in the replay's identity (written 2026-09-29 16:10 EDT, before any 27B pod exists)
+
+Part of the 27B parameterization (`modelcfg.py`, `config/models_gemma-3-27b-it.yaml`). Three criteria change:
+
+- **G0b under a dtype split.** With bf16 served and fp32 replayed, free greedy decoding diverges for good at the first
+  near-tie, so exact equality of 32 greedy tokens would fail a correct stack. When `model_checksum.json` records a served
+  dtype different from the replay dtype, G0b teacher-forces vLLM's greedy ids through the replay path and passes if and when
+  every argmax disagreement is excused by G1's exact-mode rule (vLLM's own top-2 margin < 0.25 nats AND vLLM's token in
+  the replay's top-2). The first free-greedy divergence is reported. Same-dtype stores keep exact equality (the 9B T1
+  store: PASS, unchanged). G0a (prompt identity) is unchanged. Fixture: an excused near-tie passes although free greedy
+  diverges; a wide-margin flip fails; missing arrays fail; same dtype stays exact.
+- **G2 identity is required** (audit B.2-2). An absent identity block used to pass with a warning; it now fails. On
+  existing stores: the T1 fp32 store (identity measured) PASS; the T3 white-box store FAIL by this rule (its identity was
+  carried from T1 in prose, not in the file). The 9B conclusions rest on the T1 identity of the same model, hook and SAE;
+  the white-box store's G2 reads FAIL under 2026-09-29.3 and is reported that way. For the 27B the reference is
+  transformers' `output_hidden_states` (`replay.identity_ref: hf_hidden_states`): TransformerLens is not usable
+  (HookedTransformer removed in TL 4.x; TL 3.9's gemma-3-27b config sets no attn_scale, defaulting to sqrt(128) where the
+  model uses query_pre_attn_scalar 168). This reference shares modeling code with the observation path, so it proves the
+  nnsight read and the tuple handling, not the modeling code; the manifest names which reference ran. Fixture: absent
+  identity blocks.
+- **TF32 is part of the replay's identity.** `run_replay.sh` replays fp32 with TF32 matmuls (about 8x faster on an A100;
+  without them the 27B T3 replay is ~6 h instead of ~1 h). Rows record `replay_tf32`; the G1 calibration records it; G1's
+  mixed path refuses a calibration whose TF32 setting differs from the judged replay's.
+
+Also: G1's T=0 fixture row records its served dtype; G3 reads "missing" when the profile names no anchor feature (the
+27B's matched anchors are chosen on Neuronpedia before G3 runs), instead of silently using the 9B's feature 8209.
+
+
 ## 2026-09-29.2 — G1 across a dtype split: bf16 served, fp32 replayed, tolerance from a committed calibration (written 2026-09-29 15:25 EDT, before any 27B pod exists)
 
 Decision (Randall, 2026-09-29): Gemma-3-27B-IT is **served bf16** on vLLM and **replayed fp32** in HF. Why: fp32 27B

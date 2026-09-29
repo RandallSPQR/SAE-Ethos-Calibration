@@ -1,7 +1,7 @@
 """Task definitions for the probe track. Prompt text follows Fan et al. (2026) Appendix A; the numbers, the
 unit word and the option order vary per trial so the probe has to find the DECISION VARIABLE (the gamble's
 attractiveness relative to the sure thing) rather than the literal number in the prompt. Single user turn,
-no system role (Gemma-2 template constraint); messages go through model_io.gemma2 like everything else.
+no system role (Gemma-2 template constraint); messages go through the profile serializer (modelcfg.serializer) like everything else.
 
 Rules 2026-09-16.3 (see gates/CHANGELOG.md): the lottery is two-dimensional (safe amount x risky reward);
 one whole safe level is held out for the honest held-out accuracy; surface variation (order, unit) is

@@ -20,16 +20,24 @@ class ForwardResult:
     logits_top2: list = None # [[id1, id2], ...] per position (G1 flip excuse: is the sampled token in replay's top-2?)
 
 
-TURN_SUFFIX = "<end_of_turn>\n"
+def _suffix():
+    import modelcfg
+    return modelcfg.turn_suffix()
+
+
+def _stops():
+    import modelcfg
+    return tuple(modelcfg.stop_token_ids())
 
 
 def build_input_ids(lm, messages, upto=None):
-    """Token ids via the ONE canonical serializer (model_io.gemma2.apply_to_tokenizer) — the SAME
+    """Token ids via the ONE canonical serializer (modelcfg.serializer().apply_to_tokenizer) — the SAME
     function generation uses. Returns (ids, assistant_span) where the span covers the final model turn's
     content tokens: prefix = everything before it serialized WITH the generation prompt, so
     span = [len(prefix_ids), len(full_ids) - len(suffix_ids)). Asserts the prefix tokenizes identically
     inside the full sequence (a boundary-merge would silently shift every activation)."""
-    from model_io.gemma2 import apply_to_tokenizer
+    import modelcfg
+    apply_to_tokenizer = modelcfg.serializer().apply_to_tokenizer
     msgs = list(messages if upto is None else messages[:upto])
     tok = lm.tokenizer
     full = apply_to_tokenizer(tok, msgs, add_generation_prompt=False)
@@ -38,8 +46,13 @@ def build_input_ids(lm, messages, upto=None):
     prefix = apply_to_tokenizer(tok, msgs[:-1], add_generation_prompt=True)
     if full[:len(prefix)] != prefix:
         raise RuntimeError("prefix ids are not a prefix of the full ids: tokenization boundary drift")
-    n_suffix = len(tok(TURN_SUFFIX, add_special_tokens=False)["input_ids"])
+    n_suffix = len(tok(_suffix(), add_special_tokens=False)["input_ids"])
     return full, (len(prefix), len(full) - n_suffix)
+
+
+def _layers(lm):
+    from .modelload import decoder_layers
+    return decoder_layers(lm)
 
 
 def _as_tuple(out):
@@ -145,7 +158,7 @@ def _read_hook(layer, reader):
     raise KeyError(reader)
 
 
-def greedy_generate(lm, prompt_ids, max_new_tokens=32, eos_ids=(1, 107)):
+def greedy_generate(lm, prompt_ids, max_new_tokens=32, eos_ids=None):
     """Greedy decoding THROUGH teacher_forced_forward (the observation path), so G0b compares vLLM
     against exactly the computation replay uses. Returns generated ids (EOS excluded)."""
     ids = list(prompt_ids)
@@ -153,7 +166,7 @@ def greedy_generate(lm, prompt_ids, max_new_tokens=32, eos_ids=(1, 107)):
     for _ in range(max_new_tokens):
         fr = teacher_forced_forward(lm, None, capture_residual=False, input_ids=ids)
         nxt = fr.logits_argmax[-1]
-        if nxt in eos_ids:
+        if nxt in (eos_ids or _stops()):
             break
         out.append(nxt)
         ids.append(nxt)
@@ -166,7 +179,7 @@ def sampled_ids_from_transcript(row):
     return (row.get("tokens") or {}).get("sampled_ids")
 
 
-def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos_ids=(1, 107)):
+def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos_ids=None):
     """Greedy decoding with activation addition at an ARBITRARY block index (the probe track's layer may
     differ from the SAE hook layer). Same transform as teacher_forced_forward(steer=...): h' = h +
     strength * mean_resid_norm * unit(vector), applied at every position of block `layer`. Additive helper;
@@ -174,7 +187,7 @@ def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos
     import torch
     vec, strength = steer
     v = torch.as_tensor(np.asarray(vec, dtype=np.float32))
-    block = lm.model.model.layers[int(layer)]
+    block = _layers(lm)[int(layer)]
     ids = list(prompt_ids)
     out = []
     for _ in range(max_new_tokens):
@@ -185,7 +198,7 @@ def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos
             _set_block_output(block, stream + float(strength) * mean_norm * unit)
             nxt = lm.model.output.logits[0, -1].argmax().save()
         t = int(_val(nxt))
-        if t in eos_ids:
+        if t in (eos_ids or _stops()):
             break
         out.append(t)
         ids.append(t)
@@ -193,7 +206,7 @@ def greedy_generate_at_layer(lm, prompt_ids, layer, steer, max_new_tokens=8, eos
 
 
 def sample_generate_at_layer(lm, prompt_ids, layer, steer, temperature=0.8, top_p=0.95, seed=0,
-                             max_new_tokens=6, eos_ids=(1, 107)):
+                             max_new_tokens=6, eos_ids=None):
     """Sampled decoding (temperature + nucleus, seeded) with activation addition at block `layer`, same
     transform as greedy_generate_at_layer. steer=None or strength 0 -> plain sampling. Used by the probe
     track's steered psychometric sweeps, where a graded curve needs T>0 across agents."""
@@ -201,7 +214,7 @@ def sample_generate_at_layer(lm, prompt_ids, layer, steer, temperature=0.8, top_
     gen = torch.Generator(device="cpu").manual_seed(int(seed))
     vec, strength = (steer if steer is not None else (None, 0.0))
     v = None if vec is None else torch.as_tensor(np.asarray(vec, dtype=np.float32))
-    block = lm.model.model.layers[int(layer)]
+    block = _layers(lm)[int(layer)]
     ids = list(prompt_ids)
     out = []
     for _ in range(max_new_tokens):
@@ -221,7 +234,7 @@ def sample_generate_at_layer(lm, prompt_ids, layer, steer, temperature=0.8, top_
             keep = (torch.cumsum(sp, 0) - sp) < top_p
             sp = sp * keep
             t = int(si[torch.multinomial(sp / sp.sum(), 1, generator=gen)])
-        if t in eos_ids:
+        if t in (eos_ids or _stops()):
             break
         out.append(t)
         ids.append(t)
@@ -248,7 +261,7 @@ def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None):
     batch gate (probe.batch_gate) proves equality to the G1 tolerance before this is trusted."""
     import torch
     ids, mask, pos = _left_pad(lm.tokenizer, prompt_ids_list)
-    block = lm.model.model.layers[int(layer)] if layer is not None else None
+    block = _layers(lm)[int(layer)] if layer is not None else None
     with torch.no_grad(), lm.model.trace({"input_ids": ids, "attention_mask": mask, "position_ids": pos}):
         if steer is not None and float(steer[1]) != 0.0 and block is not None:
             stream = resid_post(block.output)
@@ -280,7 +293,7 @@ def sample_from_logits(lg, temperature, top_p, seed):
 
 
 def sample_generate_batch_at_layer(lm, prompt_ids_list, layer, steer, temperature=0.8, top_p=0.95, seeds=None,
-                                   max_new_tokens=6, eos_ids=(1, 107)):
+                                   max_new_tokens=6, eos_ids=None):
     """Batched counterpart of sample_generate_at_layer: all rows advance one token per forward; a row stops
     at EOS. Per-row seeded sampling. Returns list of generated id lists."""
     seeds = seeds or list(range(len(prompt_ids_list)))
@@ -293,7 +306,7 @@ def sample_generate_batch_at_layer(lm, prompt_ids_list, layer, steer, temperatur
         lg = last_logits_batch(lm, [cur[i] for i in live], layer, steer)
         for j, i in enumerate(live):
             t = sample_from_logits(lg[j], temperature, top_p, seeds[i] * 104729 + step)
-            if t in eos_ids:
+            if t in (eos_ids or _stops()):
                 done[i] = True; continue
             outs[i].append(t); cur[i].append(t)
     return outs

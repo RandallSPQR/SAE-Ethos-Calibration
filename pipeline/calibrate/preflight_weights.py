@@ -34,8 +34,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def _models_yaml():
-    import yaml
-    return yaml.safe_load((ROOT / "config" / "models.yaml").read_text())
+    import modelcfg
+    return modelcfg.models()
 
 
 def default_repos(cfg):
@@ -54,8 +54,7 @@ def default_repos(cfg):
     return [
         (tm["hf_id"], tm.get("revision"), ["*.json", "*.safetensors", "tokenizer*"]),
         (sae_repo, sae.get("revision"), [sae_folder.rstrip("/") + "/*"]),
-        (orc["hf_id"], orc.get("revision"), None),
-    ]
+    ] + ([(orc["hf_id"], orc.get("revision"), None)] if (orc or {}).get("hf_id") else [])   # a dropped oracle is not fetched
 
 
 def _match(name, patterns):

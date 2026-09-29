@@ -23,7 +23,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 CFG = ROOT / "config"
-MODELS = yaml.safe_load((CFG / "models.yaml").read_text())
+import modelcfg  # noqa: E402  (after sys.path)
+MODELS = modelcfg.models()
 CAL = MODELS.get("calibration", {})
 
 # ---------------------------------------------------------------- calibration texts (fixed, hashed)
@@ -118,7 +119,8 @@ def _wait_server(base_url, timeout=900):
 
 
 def stage_vllm(out):
-    from model_io.gemma2 import serialize_messages, prompt_hash
+    ser = modelcfg.serializer()
+    serialize_messages, prompt_hash = ser.serialize_messages, ser.prompt_hash
     ep = MODELS["endpoint"]
     base, model = ep["base_url"], ep["served_model_name"]
     assert _wait_server(base), f"vLLM not reachable at {base}"
@@ -143,7 +145,7 @@ def stage_vllm(out):
 
 
 # ================================================================ stage 2: nnsight (observation path)
-EOS_IDS = (1, 107)   # <eos>, <end_of_turn>
+EOS_IDS = tuple(modelcfg.stop_token_ids())   # <end_of_turn>, <eos> from the profile (checked against the tokenizer at load)
 
 
 def _strip_eos(ids, lps):
@@ -160,7 +162,7 @@ def stage_nnsight(out, gates_only=None):
     import numpy as np
     import torch
     from gates._common import GATE_RULES_VERSION
-    from model_io.gemma2 import apply_to_tokenizer
+    apply_to_tokenizer = modelcfg.serializer().apply_to_tokenizer
     from replay.modelload import load_target, hook_reader
     from replay.hooks import teacher_forced_forward, greedy_generate, greedy_generate_at_layer
     from replay.sae import (load_sae, sae_health, hook_identification_report, encode_dense, fetch_neuronpedia_labels,
@@ -179,10 +181,21 @@ def stage_nnsight(out, gates_only=None):
     ser_ids = apply_to_tokenizer(tok, G0_MESSAGES, add_generation_prompt=True)
     nn_gen = greedy_generate(lm, ser_ids, max_new_tokens=CAL.get("g0_max_tokens", 32))
     vllm_gen, _ = _strip_eos(v["g0"]["token_ids"], None)
+    # rules 2026-09-29.3: under a dtype split (bf16 served, fp32 replayed) free greedy decoding diverges for good at the
+    # first near-tie, so G0b also teacher-forces vLLM's greedy ids through this path and records the argmax, top-2 and
+    # vLLM's own top-2 margin at every position; the gate excuses a flip only as G1's exact mode does.
+    tf = teacher_forced_forward(lm, None, capture_residual=False, input_ids=list(ser_ids) + list(vllm_gen),
+                                span=(len(ser_ids), len(ser_ids) + len(vllm_gen)))
+    n0 = len(ser_ids)
     _dump(feat / "model_checksum.json", {
         "rules": GATE_RULES_VERSION, "dtype": dtype,
+        "served_dtype": os.environ.get("TARGET_SERVED_DTYPE"), "replay_dtype": modelcfg.replay_cfg()["dtype"]
+        if not os.environ.get("T1_DTYPE") else os.environ["T1_DTYPE"],
         "serializer_prompt_ids": ser_ids, "vllm_prompt_ids": v["g0"]["prompt_token_ids"],
         "nnsight_prompt_ids": ser_ids, "vllm_gen_ids": vllm_gen, "nnsight_gen_ids": nn_gen,
+        "tf_replay_argmax": [tf.logits_argmax[n0 - 1 + k] for k in range(len(vllm_gen))],
+        "tf_replay_top2": [tf.logits_top2[n0 - 1 + k] for k in range(len(vllm_gen))],
+        "vllm_top2_margin": (v["g0"].get("top2_margin") or [None] * len(vllm_gen))[:len(vllm_gen)],
         "vllm_text": v["g0"]["text"], "nnsight_text": tok.decode(nn_gen)})
     print("G0 nnsight:", repr(tok.decode(nn_gen)[:80]))
 
@@ -195,7 +208,8 @@ def stage_nnsight(out, gates_only=None):
     gen_text = tok.decode(s_ids)
     msgs = row["messages"][:dp] + [{"role": "assistant", "content": gen_text}]
     row = dict(row, messages=msgs, scored_message_index=dp, uid=row["uid"] + "/t1greedy")
-    row["sampling"] = {"temperature": 0.0, "top_p": 1.0}          # G1 reads the criterion from HERE
+    row["sampling"] = {"temperature": 0.0, "top_p": 1.0,          # G1 reads the criterion from HERE
+                       "served_dtype": os.environ.get("TARGET_SERVED_DTYPE")}
     row["tokens"] = {"sampled_ids": s_ids, "sampled_logprobs": s_lps, "sampled_top2_margin": margins}
     fr = teacher_forced_forward(lm, msgs, capture_residual=True)
     s, e = fr.assistant_span
@@ -252,7 +266,7 @@ def stage_nnsight(out, gates_only=None):
         per_doc_l0.append(hd["l0"]); per_doc_ve.append(hd["var_explained"])
         if i == 0:
             np.savez(feat / "identity_input.npz", ids=np.array(ids), resid_post=f.residual.astype(np.float32),
-                     resid_pre=f.extra[readers["layers.31.input_resid"]].astype(np.float32))
+                     resid_pre=f.extra[readers[f"layers.{modelcfg.sae_layer()}.input_resid"]].astype(np.float32))
     res_by_hook = {h: np.concatenate(v, 0) for h, v in pooled.items()}
     chosen_name = MODELS["sae"]["hook_point"]
     for sc in (0.8, 1.2):
@@ -360,13 +374,36 @@ def stage_identity(out):
     out = Path(out); feat = out / "features"
     z = np.load(feat / "identity_input.npz")
     ids = torch.tensor([z["ids"].tolist()])
-    dtype = getattr(torch, os.environ.get("T1_DTYPE") or MODELS["target_model"].get("dtype", "bfloat16"))
-    model = HookedTransformer.from_pretrained_no_processing(MODELS["target_model"]["hf_id"], dtype=dtype, device="cuda")
-    L = int(MODELS["sae"]["layer"])
+    rc = modelcfg.replay_cfg()
+    dtype = getattr(torch, os.environ.get("T1_DTYPE") or rc["dtype"])      # the replay dtype (fp32), not the serving dtype
+    L = modelcfg.sae_layer()
     names = [f"blocks.{L}.hook_resid_post", f"blocks.{L}.hook_resid_pre"]
-    with torch.no_grad():
-        _, cache = model.run_with_cache(ids.to("cuda"), names_filter=lambda n: n in names)
-    rep = {"rules": GATE_RULES_VERSION, "ref": "transformerlens:from_pretrained_no_processing", "dtype": str(dtype), "n_tokens": int(ids.shape[1])}
+    ref = rc.get("identity_ref", "transformerlens")
+    if ref == "transformerlens":
+        # n_devices: the 27B fp32 reference (~110 GB) does not fit one 80 GB card
+        model = HookedTransformer.from_pretrained_no_processing(MODELS["target_model"]["hf_id"], dtype=dtype, device="cuda",
+                                                                n_devices=max(1, torch.cuda.device_count()))
+        with torch.no_grad():
+            _, cache = model.run_with_cache(ids.to("cuda"), names_filter=lambda n: n in names)
+        cache = {n: cache[n] for n in names}
+        ref_name = "transformerlens:from_pretrained_no_processing"
+    elif ref == "hf_hidden_states":
+        # Fallback where TransformerLens lacks the model: transformers' own output_hidden_states, read without nnsight.
+        # hidden_states[L] enters block L and hidden_states[L+1] leaves it (valid for L < n_layers-1: the last entry is
+        # post final-norm). Less independent than TL (same modeling code), so the manifest names which reference ran.
+        from transformers import AutoModelForCausalLM
+        hf = AutoModelForCausalLM.from_pretrained(MODELS["target_model"]["hf_id"], revision=MODELS["target_model"].get("revision"),
+                                                  torch_dtype=dtype, device_map=rc["device_map"], attn_implementation=rc["attn_implementation"])
+        n_layers = modelcfg.text_config_value(hf.config, "num_hidden_layers")
+        if L >= n_layers - 1:
+            raise RuntimeError("hf_hidden_states identity cannot read the last block's output (final norm applied)")
+        with torch.no_grad():
+            hs = hf(ids.to(hf.device), output_hidden_states=True).hidden_states
+        cache = {names[0]: hs[L + 1], names[1]: hs[L]}
+        ref_name = "hf:output_hidden_states"
+    else:
+        raise ValueError(f"replay.identity_ref {ref!r}")
+    rep = {"rules": GATE_RULES_VERSION, "ref": ref_name, "dtype": str(dtype), "n_tokens": int(ids.shape[1])}
     for key, name in (("resid_post", names[0]), ("resid_pre", names[1])):
         tl = cache[name][0].float().cpu().numpy()
         nn = z[key]
@@ -388,7 +425,7 @@ def stage_identity(out):
     _dump(feat / "identity_report.json", rep)
     h = json.loads((feat / "sae_health.json").read_text())
     h["identity"] = {"min_cos": rep["resid_post"]["min_cos"], "max_norm_rel": rep["resid_post"]["max_norm_rel"],
-                     "ref": f"transformerlens:{names[0]}", "dtype": str(dtype),
+                     "ref": f"{ref_name}:{names[0]}", "dtype": str(dtype),
                      "cross_nnpost_vs_tlpre_median_cos": rep["cross_nnpost_vs_tlpre"]["median_cos"]}
     _dump(feat / "sae_health.json", h)
     print("identity:", json.dumps(rep, indent=None))

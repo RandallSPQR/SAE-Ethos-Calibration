@@ -534,6 +534,22 @@ the start command then leaves `/tmp/selfstop_missing`, and `start` is run by han
 anything else. Tests: `python -m calibrate.test_pod_selfstop` (22 checks, including the forked daemon in dry-run
 with compressed time). Also set the RunPod account spending limit to the 27B budget.
 
+**Parameterization (done 2026-09-29).** One loader, `modelcfg.py`; `MODEL_PROFILE=gemma-3-27b-it` selects
+`config/models_gemma-3-27b-it.yaml` (every value read from its source on 2026-09-29; SAE layer 40 / 16k / L0 medium is
+PROPOSED, pending decision). Drivers: `calibrate/run_serve.sh` (serving pod: `ladder`, `calibration`, `t3`) and
+`calibrate/run_replay.sh` (replay pod: `ladder`, `calibration`, `replay`), both through `calibrate/model_env.sh`; the 9B
+drivers are left as they ran. Tests: `python -m test_modelcfg`, `python -m model_io.test_gemma3`,
+`python -m calibrate.test_pod_selfstop`, `python -m gates.run_gates --fixture`, `smoke/smoke_test.py` (both profiles).
+
+Sequence, each step its own armed pod, bursts <= 8 h:
+1. Serving pod (1 x A100): selfstop live test (5 min), `MODEL_PROFILE=gemma-3-27b-it bash calibrate/pod_bootstrap.sh`
+   under `hold` (downloads ~55 GB + 0.7 GB), then `run_serve.sh ladder`. The preflight prints the weight and SAE
+   identities: commit them into the profile (off the pod), re-ship. Pinned phases refuse until then.
+2. `run_serve.sh calibration` (300 continuations; its throughput sizes every later deadline and the budget).
+3. Replay pod (2 x A100): `run_replay.sh ladder <ladder out>` (G0 teacher-forced, G1 fixture, G2 with identity), then
+   `run_replay.sh calibration <cal run> <file>`; commit the calibration file and pin its sha256 in run.yaml.
+4. Then T3 bursts (`run_serve.sh t3 <out> <seed block>`), their replays, the fresh G6 fifty.
+
 **Volume.** `u0isne6ams` is 150 GB and holds the 9B stack (~19 GB of weights plus venvs and runs). The 27B bf16
 weights (~55 GB) plus one Gemma Scope 2 SAE fit if the 9B oracle and old run directories are pruned; check free space
 before the first download and resize (a stated monthly cost) rather than fill it.

@@ -1,0 +1,97 @@
+# Model profile: Gemma-3-27B-IT + Gemma Scope 2 (27B parameterization, 2026-09-29). Selected by MODEL_PROFILE=gemma-3-27b-it;
+# read through modelcfg.py, nowhere else. Every value below was read from its primary source on 2026-09-29 (HF API / repo files, the
+# gated repo's config verified byte-identical to an ungated mirror by git blob OID; SAELens pretrained_saes.yaml; Neuronpedia).
+# Fields left null are filled on the box by the preflight (weights hashed against LFS metadata) before --require-pinned passes.
+
+family: gemma3
+
+roles:
+  auditor: "anthropic/claude-sonnet-4-6"
+  judge:   "anthropic/claude-opus-4-6"
+  target:  "openai-api/local/gemma-3-27b-it"
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "gemma-3-27b-it"
+
+target_model:
+  hf_id: "google/gemma-3-27b-it"             # Gemma3ForConditionalGeneration (text + a 27-layer SigLIP tower); used for text
+  base_hf_id: "google/gemma-3-27b-pt"
+  revision: "005ad3404e59d6023443cb575daa05336842228a"        # main 2025-03-21; 12 bf16 shards, 54.86 GB
+  base_revision: "9fe3c4ebc93fbadb14913801536d022054ef11cc"
+  weight_hash: null                          # preflight_weights --hash on the volume
+  chat_template_hash: null                   # provenance reads it from the cache on the box
+  dtype: "bfloat16"                          # the SERVING dtype (rules 2026-09-29.2); replay dtype is replay.dtype
+  # <end_of_turn> = 106, <eos> = 1 (generation_config eos_token_id [1, 106]); <bos> = 2, <pad> = 0, <start_of_turn> = 105.
+  # NOT Gemma-2's 107: modelcfg.check_tokenizer refuses to load if the tokenizer disagrees.
+  stop_token_ids: [106, 1]
+
+serve:                                       # calibrate/model_env.sh -> vllm serve
+  dtype: "bfloat16"
+  max_model_len: 8192                        # same context as the 9B study (context_overflow is a treatment)
+  tensor_parallel_size: 1
+  extra_args: "--no-enable-prefix-caching"   # as the 9B drivers; KV headroom (~17 GB after 55 GB of weights) measured at G0
+  attention_backend: null                    # vLLM default for bf16 (the 9B's TRITON_ATTN was for fp32 serving)
+
+replay:
+  dtype: "float32"                           # rules 2026-09-29.1/.2
+  device_map: "auto"                         # ~110 GB fp32: split over 2 x A100 80 GB (layers run in sequence)
+  attn_implementation: "eager"
+  layers_path: "model.language_model.layers" # Gemma3ForConditionalGeneration nests the text decoder; count-checked (62)
+  # TransformerLens is not a usable reference here: HookedTransformer was removed in TL 4.x, and TL 3.9's gemma-3-27b cfg
+  # sets no attn_scale (defaults to sqrt(128) where HF uses query_pre_attn_scalar 168). transformers' own
+  # output_hidden_states, read without nnsight, is the identity reference; the manifest names it.
+  identity_ref: "hf_hidden_states"
+
+# Neuronpedia ids for the chosen SAE (labels are descriptive, not evidence)
+neuronpedia:
+  model_id: "gemma-3-27b-it"
+  source: "40-gemmascope-2-res-16k"
+
+sae:
+  # PROPOSED 2026-09-29, pending Randall's decision: layer 40 (0.645 depth), 16k, L0 "medium" (60), from the curated
+  # resid_post set, which has Neuronpedia dashboards. The 9B's depth (31/42 = 0.74) is layer 45/46, which exists in nothing but
+  # resid_post_all (L0 20 or 120, no medium, no dashboards). Gemma Scope 2 has no "canonical" set: the folder is named.
+  release: "gemma-scope-2-27b-it-res"
+  sae_id: "layer_40_width_16k_l0_medium"
+  is_it_release: true
+  hf_repo: "google/gemma-scope-2-27b-it"
+  hf_folder: "resid_post/layer_40_width_16k_l0_medium"
+  revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"          # main 2026-01-13
+  params_sha256: "11f1469706357f234f02ca09f8ba11fbca12f5b8d151981b8c1e1a3dd5380389"   # LFS sha256 of params.safetensors (F32)
+  weights_hash: null                          # preflight identity over the verified folder
+  layer: 40
+  saelens_hook_name: "blocks.40.hook_resid_post"   # SAELens derives it from the folder; HF point = model.layers.40.output
+  hook_point: "blocks.40.hook_resid_post"
+  hook_candidates:
+    - "layers.40.hidden_states_only"
+    - "layers.40.mlp_output"
+    - "layers.40.attn_output"
+    - "layers.40.input_resid"
+  published:
+    l0: 60                                    # the folder's config.json ("l0": 60); G2 reports L0, gates identity + decoys
+    fvu: null
+    tol: 0.15
+    # Google's training data for Gemma Scope 2 is UNVERIFIED (technical report not read); SAELens' loader carries the pile
+    # as a placeholder. G2's L0-vs-published comparison is reported, not gated, so this is a reading, not a criterion.
+    dataset: "monology/pile-uncopyrighted"
+    context_size: 1024
+
+oracle:
+  hf_id: null
+  dropped: "no activation oracle exists for Gemma-3-27B-IT; G5 is dropped (the 9B's oracle failed on real spans: paired 0.33)"
+
+calibration:
+  g0_max_tokens: 32
+  g1_max_tokens: 96
+  g2_max_tokens: 1024
+  # G3 needs a MATCHED anchor on this SAE (a JSON-structure feature for tool blocks; a code feature on read_file results),
+  # chosen on Neuronpedia before G3 runs. null -> G3 is skipped and reported as missing.
+  code_feature_index: null
+  code_feature_label: null
+  extra_feature_indices: []
+
+probe:
+  # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62. Re-swept, not carried.
+  layer_candidates: [30, 38, 46]

@@ -33,7 +33,8 @@ def mock_sp(task, level):
 
 
 def probe_cfg():
-    return yaml.safe_load((CFG / "run.yaml").read_text())["probe"]
+    import modelcfg
+    return modelcfg.probe_cfg()
 
 
 def mock_choice(task, param, seed, level=None):

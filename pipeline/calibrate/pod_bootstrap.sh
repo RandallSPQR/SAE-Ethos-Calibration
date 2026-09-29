@@ -6,7 +6,8 @@
 # mode 600, under a 0700 HF_HOME; the harness's disk-secret canary verifies an episode uid cannot read it.
 # First pod only: log in interactively (browser OAuth; pasting a token failed 3x on 2026-09-16):
 #     HF_HOME=/workspace/hf hf auth login      -> "Log in with your browser"
-# then re-run this script. SKIP_WEIGHTS=1 stops before the download/preflight.
+# then re-run this script. SKIP_WEIGHTS=1 stops before the download/preflight. MODEL_PROFILE selects the model
+# (e.g. MODEL_PROFILE=gemma-3-27b-it: ~55 GB of weights + a 0.7 GB SAE; check the volume's free space first).
 set -euo pipefail
 cd /workspace
 export PIP_DISABLE_PIP_VERSION_CHECK=1 HF_HOME=/workspace/hf
@@ -39,15 +40,20 @@ print("transformers", transformers.__version__, "| nnsight", nnsight.__version__
 PY
 # weights (gated: needs a HF login). SKIP_WEIGHTS=1 to stop before this step.
 if [ "${SKIP_WEIGHTS:-0}" = "1" ]; then echo "BOOTSTRAP_ENV_OK (weights skipped)"; exit 0; fi
-python - <<'PY'
-import os
+# What to download comes from the active model profile (MODEL_PROFILE; unset = the 9B models.yaml), through the SAME
+# repo list the preflight verifies (calibrate.preflight_weights.default_repos), at the pinned revisions. Audit C: this
+# block used to hard-code the 9B, its layer-31 SAE folder and its oracle, so a 27B preflight would have passed on 9B files.
+df -h /workspace | tail -1
+(cd /workspace/pipeline && python - <<'PY'
+import modelcfg
+from calibrate.preflight_weights import default_repos
 from huggingface_hub import snapshot_download, whoami
-print("HF user:", whoami()["name"])
-p = snapshot_download("google/gemma-2-9b-it", allow_patterns=["*.json", "*.safetensors", "tokenizer*"])
-print("gemma-2-9b-it ->", p)
-print("sae ->", snapshot_download("google/gemma-scope-9b-it-res", allow_patterns=["layer_31/width_16k/average_l0_76/*"]))
-print("oracle ->", snapshot_download("adamkarvonen/checkpoints_latentqa_cls_past_lens_addition_gemma-2-9b-it"))
+print("HF user:", whoami()["name"], "| profile:", modelcfg.models_path().name)
+for repo, rev, patterns in default_repos(modelcfg.models()):
+    print(repo, "@", rev, "->", snapshot_download(repo, revision=rev, allow_patterns=patterns))
 PY
+) || { echo "BOOTSTRAP STOP: download failed"; exit 6; }
+df -h /workspace | tail -1
 chmod 700 "$HF_HOME"; chmod 600 "$HF_HOME/token"
 # weight identity against the pinned revision's recorded hashes (cached weights are never trusted unchecked)
 (cd /workspace/pipeline && python -m calibrate.preflight_weights --hash) || { echo "BOOTSTRAP STOP: weight preflight failed"; exit 5; }

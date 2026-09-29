@@ -18,6 +18,10 @@ harness:
   # The N continuations from a decision point are independent: run them concurrently (vLLM batches), each in
   # its own sandbox under its own episode uid (ARM_A_EPISODE_UID + slot).
   concurrency: 8
+  # Audit C (27B parameterization): the episode's resource limits and tool timeouts are treatment (a slower model that
+  # hits the 10 s bash cap reads as damaged/timeout), so they live here and go into the manifest. Values = the 9B study's.
+  limits: {nproc: 64, as_bytes: 4294967296, fsize_bytes: 67108864, nofile: 256}
+  timeouts_s: {default: 15, bash: 10, run_script: 30, flake8: 30, labeler: 60}
 
 petri:
   max_turns: 16

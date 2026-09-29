@@ -23,7 +23,8 @@ CFG = ROOT / "config"
 
 
 def probe_cfg():
-    return yaml.safe_load((CFG / "run.yaml").read_text())["probe"]
+    import modelcfg
+    return modelcfg.probe_cfg()
 
 
 def load_trials(d):
@@ -72,7 +73,7 @@ def real_activations(rows, layers, lm):
         saved = {}
         with lm.model.trace(torch.tensor([ids])):
             for L in layers:
-                saved[L] = resid_post(lm.model.model.layers[L].output).float().save()
+                saved[L] = resid_post(__import__("modelcfg").decoder_layers(lm.model)[L].output).float().save()
         for L in layers:
             h = _val(saved[L])[0].cpu().numpy()
             out[f"X_{L}"].append(h[s - 1])          # final prompt token (predicts first answer token)

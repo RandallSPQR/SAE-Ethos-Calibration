@@ -22,13 +22,19 @@ HEDGES = ("unclear", "nothing", "cannot", "can't", "unknown", "empty", "no text"
           "unable", "placeholder", "missing", "blank", "not possible", "does not", "doesn't")
 
 
+def _stops():
+    import modelcfg
+    return modelcfg.stop_token_ids()
+
+
 class Oracle:
     def __init__(self, backend, lm, inject_layer=None, adapter=None, cfg=None):
         self.backend, self.lm, self.inject_layer, self.adapter, self.cfg = backend, lm, inject_layer, adapter, cfg or {}
 
 
 def load_oracle(backend="karvonen", lm=None):
-    models = yaml.safe_load((CFG / "models.yaml").read_text())
+    import modelcfg
+    models = modelcfg.models()
     if lm is None:
         from .modelload import load_target
         lm = load_target("target")
@@ -97,7 +103,8 @@ def _explain_karvonen(oracle, vecs, max_new_tokens=24, src_layer=None):
     v = torch.as_tensor(vecs)
     hf = oracle.adapter
     base = hf.get_base_model()
-    layer = base.model.layers[oracle.inject_layer]
+    import modelcfg
+    layer = modelcfg.decoder_layers(base)[oracle.inject_layer]
     injected = {"done": False}
 
     def hook(mod, args, out):
@@ -119,11 +126,11 @@ def _explain_karvonen(oracle, vecs, max_new_tokens=24, src_layer=None):
     try:
         with torch.no_grad():
             out = hf.generate(torch.tensor([ids]).to(base.device), max_new_tokens=max_new_tokens,
-                              do_sample=False, eos_token_id=[1, 107], pad_token_id=0)
+                              do_sample=False, eos_token_id=_stops(), pad_token_id=0)
     finally:
         hdl.remove()
     gen = out[0, len(ids):].tolist()
-    gen = [t for t in gen if t not in (0, 1, 107)]
+    gen = [t for t in gen if t not in {0, *_stops()}]
     return tok.decode(gen).strip()
 
 
@@ -141,7 +148,8 @@ def _explain_patchscopes(oracle, vec, max_new_tokens=16):
     lm, tok = oracle.lm, oracle.lm.tokenizer
     ids, pos = _patch_ids(tok)
     v = torch.as_tensor(np.asarray(vec, dtype=np.float32))
-    layer = lm.model.model.layers[oracle.inject_layer]
+    from .modelload import decoder_layers
+    layer = decoder_layers(lm)[oracle.inject_layer]
     out = []
     cur = list(ids)
     for _ in range(max_new_tokens):
@@ -151,7 +159,7 @@ def _explain_patchscopes(oracle, vec, max_new_tokens=16):
             _set_block_output(layer, stream)
             nxt = lm.model.output.logits[0, -1].argmax().save()
         t = int(_val(nxt))
-        if t in (1, 107):
+        if t in _stops():
             break
         out.append(t)
         cur.append(t)

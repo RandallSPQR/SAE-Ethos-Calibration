@@ -52,9 +52,10 @@ def _git_commit(path):
 
 
 def _code_hash(root):
-    """Content hash of the pipeline's own Python (independent of git): what actually ran."""
+    """Content hash of the pipeline's own Python AND shell drivers (independent of git): what actually ran. The .sh
+    drivers carry dtype, max-model-len and vLLM flags (audit B.5-5), so they are part of the instrument."""
     h = hashlib.sha256()
-    for f in sorted(Path(root).rglob("*.py")):
+    for f in sorted(list(Path(root).rglob("*.py")) + list(Path(root).rglob("*.sh"))):
         rel = f.relative_to(root)
         if any(part in ("results", "runs", "pipeline", "__pycache__") for part in rel.parts):
             continue
@@ -103,7 +104,9 @@ def _gate_rules_version():
 
 
 def build_manifest(run_id, scenarios_dir=None):
-    models = yaml.safe_load((CFG / "models.yaml").read_text())
+    import os
+    import modelcfg
+    models = modelcfg.models()
     run = yaml.safe_load((CFG / "run.yaml").read_text())
     tm, sae, oracle = models["target_model"], models["sae"], models["oracle"]
     manifest = {
@@ -114,21 +117,28 @@ def build_manifest(run_id, scenarios_dir=None):
         # hashes are read from config if present (a `resolve` step on the box fills them); None until then
         "model": {"hf_id": tm["hf_id"], "base_hf_id": tm.get("base_hf_id"),
                   "revision": tm.get("revision"), "weight_hash": tm.get("weight_hash"),
-                  "dtype": tm.get("dtype")},
+                  "dtype": tm.get("dtype"),
+                  # audit B.5-1: what vLLM served, as the driver passed it to `vllm serve --dtype` (model_env.sh exports
+                  # the one variable to both); None when the driver did not say, which is itself recorded
+                  "served_dtype": os.environ.get("TARGET_SERVED_DTYPE"),
+                  "family": modelcfg.family(), "stop_token_ids": modelcfg.stop_token_ids()},
+        "profile": {"name": modelcfg.profile() or "default", "file": modelcfg.models_path().name,
+                    "replay": modelcfg.replay_cfg()},
         "tokenizer": {"revision": tm.get("revision"),
                       "chat_template_hash": _chat_template_hash(tm["hf_id"], tm.get("revision"), tm.get("chat_template_hash")),
                       "chat_template_hash_pinned": tm.get("chat_template_hash")},
         "sae": {"release": sae["release"], "id": sae["sae_id"], "revision": sae.get("revision"),
                 "hook": sae["saelens_hook_name"], "layer": sae["layer"],
                 "weights_hash": sae.get("weights_hash"), "published": sae.get("published")},
-        "oracle": {"id": oracle["hf_id"], "kind": oracle.get("kind"), "revision": oracle.get("revision"),
-                   "weights_hash": oracle.get("weights_hash")},
+        "oracle": ({"id": oracle["hf_id"], "kind": oracle.get("kind"), "revision": oracle.get("revision"),
+                    "weights_hash": oracle.get("weights_hash")} if (oracle or {}).get("hf_id")
+                   else {"id": None, "dropped": (oracle or {}).get("dropped", "no oracle for this model; G5 dropped")}),
         "software": {"python": sys.version.split()[0],
                      "torch": _pkg_version("torch"), "vllm": _pkg_version("vllm"),
                      "nnsight": _pkg_version("nnsight"), "sae_lens": _pkg_version("sae-lens"),
                      "transformers": _pkg_version("transformers")},
         "config": {"run_yaml_hash": _sha_file(CFG / "run.yaml"),
-                   "models_yaml_hash": _sha_file(CFG / "models.yaml"),
+                   "models_yaml_hash": _sha_file(modelcfg.models_path()),
                    "sampling": run["sampling"]},
         "isolation_declared": run.get("isolation", {}),
         "gate_rules_version": _gate_rules_version(),
@@ -137,7 +147,7 @@ def build_manifest(run_id, scenarios_dir=None):
         "model.weight_hash": manifest["model"]["weight_hash"],
         "tokenizer.chat_template_hash": manifest["tokenizer"]["chat_template_hash"],
         "sae.weights_hash": manifest["sae"]["weights_hash"],
-        "oracle.weights_hash": manifest["oracle"]["weights_hash"],
+        "oracle.weights_hash": manifest["oracle"].get("weights_hash", "dropped") if manifest["oracle"]["id"] else "dropped",
         "sae.published.fvu": (manifest["sae"]["published"] or {}).get("fvu"),
     }.items() if v is None]
     return manifest
@@ -207,7 +217,10 @@ def assert_pinned(manifest):
     """Hard preflight for T3: every instrument-identity field must be a concrete value. A missing pin is
     a refusal, not a warning — an unpinned run cannot be trusted or reproduced later."""
     unpinned = []
+    dropped_oracle = not (manifest.get("oracle") or {}).get("id")
     for path in REQUIRED_PINS:
+        if dropped_oracle and path[0] == "oracle":
+            continue                                   # an explicitly dropped oracle has nothing to pin
         v = manifest
         for k in path:
             v = (v or {}).get(k) if isinstance(v, dict) else None

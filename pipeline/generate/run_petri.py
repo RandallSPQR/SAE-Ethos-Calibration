@@ -20,7 +20,10 @@ CFG = HERE.parent / "config"
 
 
 def load_cfg():
-    models = yaml.safe_load((CFG / "models.yaml").read_text())
+    import sys
+    sys.path.insert(0, str(CFG.parent))          # run as a script from generate/: modelcfg lives at the pipeline root
+    import modelcfg
+    models = modelcfg.models()
     run = yaml.safe_load((CFG / "run.yaml").read_text())
     return models, run
 

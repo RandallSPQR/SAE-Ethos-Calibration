@@ -30,7 +30,8 @@ MOCK_K = {"lottery": 220.0, "ultimatum": 50.0}                   # sp shift per 
 
 
 def _cfg():
-    return yaml.safe_load((CFG / "run.yaml").read_text())["probe"]
+    import modelcfg
+    return modelcfg.probe_cfg()
 
 
 # ---------------------------------------------------------------- one steered sweep
@@ -89,7 +90,7 @@ class SteeredSampler:
 
     def answers_batch(self, task, items, lam, max_new_tokens=6, vec_name=None):
         """items: [(n, seed, level, cond)] -> texts, through the batched path in chunks."""
-        from model_io.gemma2 import apply_to_tokenizer
+        import modelcfg; apply_to_tokenizer = modelcfg.serializer().apply_to_tokenizer
         from replay.hooks import sample_generate_batch_at_layer
         vn = vec_name or f"probe_{task}"
         vec = self.vecs[vn]; layer = int(self.vecs[f"{vn}__layer"])
@@ -105,7 +106,7 @@ class SteeredSampler:
         return texts
 
     def answer(self, task, n, lam, seed, level, cond, max_new_tokens=6, vec_name=None):
-        from model_io.gemma2 import apply_to_tokenizer
+        import modelcfg; apply_to_tokenizer = modelcfg.serializer().apply_to_tokenizer
         from replay.hooks import sample_generate_at_layer
         vn = vec_name or f"probe_{task}"
         vec = self.vecs[vn]; layer = int(self.vecs[f"{vn}__layer"])

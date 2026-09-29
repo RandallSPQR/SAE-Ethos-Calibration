@@ -16,6 +16,8 @@ the mapping is auditable. apply_to_tokenizer() wraps it with the model's special
 """
 
 GEMMA_TURN = "<start_of_turn>{role}\n{content}<end_of_turn>\n"
+END_OF_TURN = "<end_of_turn>"
+TURN_SUFFIX = END_OF_TURN + "\n"      # what closes a model turn in the serialized string (replay's span excludes it)
 
 
 def to_gemma_turns(messages):

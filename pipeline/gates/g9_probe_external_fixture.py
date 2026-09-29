@@ -27,7 +27,8 @@ CFG = Path(__file__).resolve().parent.parent / "config"
 
 
 def _tasks():
-    return yaml.safe_load((CFG / "run.yaml").read_text())["probe"]["tasks"]
+    import modelcfg
+    return modelcfg.probe_cfg()["tasks"]
 
 
 def _f(v, nd=1):
@@ -72,7 +73,8 @@ def _evaluate(task, base, probe, cal, g, targets):
 
 def run(cfg, paths):
     g = load_run_cfg()
-    pc = yaml.safe_load((CFG / "run.yaml").read_text())["probe"]
+    import modelcfg
+    pc = modelcfg.probe_cfg()
     root = Path(paths.get("probe") or (Path(paths["features"]).parent / "probe"))
     statuses, detail, n_eval = [], {"rules": GATE_RULES_VERSION}, 0
     for task in _tasks():

@@ -101,7 +101,8 @@ def main():
     ap.add_argument("--tasks", default=None)
     a = ap.parse_args()
     import yaml
-    pc = yaml.safe_load((ROOT / "config" / "run.yaml").read_text())["probe"]
+    import modelcfg
+    pc = modelcfg.probe_cfg()
     for t in (a.tasks.split(",") if a.tasks else pc["tasks"]):
         if (Path(a.run_dir) / "probe" / t / "trials.jsonl").exists():
             report_task(t, a.run_dir)

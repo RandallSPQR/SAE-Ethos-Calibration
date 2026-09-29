@@ -80,7 +80,8 @@ def _require_aligned(rows, name):
 
 
 def _model():
-    tm = yaml.safe_load((ROOT / "config" / "models.yaml").read_text())["target_model"]
+    import modelcfg
+    tm = modelcfg.target()
     return {"hf_id": tm.get("hf_id"), "revision": tm.get("revision")}
 
 
@@ -94,6 +95,9 @@ def build(a):
     served = {(gen[u].get("sampling") or {}).get("served_dtype") for u in uids}
     run_ids = {gen[u].get("run_id") for u in uids}
     rdt = {rep[u]["tokens"].get("replay_dtype") for u in uids}
+    tf32 = {bool(rep[u]["tokens"].get("replay_tf32")) for u in uids}
+    if len(tf32) != 1:
+        raise SystemExit(f"replay_tf32 not uniform across the calibration replay: {tf32}")
     if len(served) != 1 or None in served or len(run_ids) != 1 or len(rdt) != 1:
         raise SystemExit(f"calibration identity not uniform: served {served}, run_id {run_ids}, replay_dtype {rdt}")
     tmpl = None
@@ -103,7 +107,7 @@ def build(a):
     cal = calibration_record([_pair(rep[u]["tokens"]) for u in uids],
                              [(rep[u]["tokens"]["replay_logprob"], xc[u]["tokens"]["replay_logprob"]) for u in uids],
                              template_pairs=tmpl, uids=uids, run_id=run_ids.pop(), served_dtype=served.pop(),
-                             replay_dtype=rdt.pop(), model=_model())
+                             replay_dtype=rdt.pop(), replay_tf32=tf32.pop(), model=_model())
     thr, val = derive_mixed(cal, load_run_cfg()["g1_mixed"])
     cal["derived_at_build"] = {**thr, "validity": val}          # informational: G1 re-derives from the rows
     Path(a.out).write_text(json.dumps(cal, indent=1))
