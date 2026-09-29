@@ -1,5 +1,12 @@
 # Findings worth carrying into the writeup (Gemma-2-9B-IT, T1 sessions of 2026-09-16)
 
+> **Project closed 2026-09-29 (main 91cbfb5 and this commit).** Final state: T3 behavioral rates certified under labeler
+> 2026-09-28.1 (G6 κ 0.908); white-box on the 9B closed by the deep resample with G1, G2 and G8 green and no
+> decision-span predictor beyond the cell; gate rules 2026-09-29.1; labeler 2026-09-28.2 queued for any 27B work.
+> No pods, volumes or armed watchdog entries remain except the EUR-IS-1 network volume `u0isne6ams` (weights, venvs,
+> run directories), which bills monthly until deleted from the RunPod console.
+
+
 ## Two behavioral fingerprints, as a pair
 
 - **Lottery (safe 50 vs 50/50 gamble):** at T=0 the model chooses Safe for every jackpot up to 50 and
