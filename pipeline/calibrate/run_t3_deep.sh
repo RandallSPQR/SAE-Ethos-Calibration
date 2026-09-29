@@ -10,7 +10,7 @@
 set -uo pipefail
 cd /workspace/pipeline
 source /workspace/venv/bin/activate
-export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1
+export HF_HOME=/workspace/hf LOCAL_API_KEY=x TOKENIZERS_PARALLELISM=false PYTHONUNBUFFERED=1 T1_DTYPE=float32   # fp32 replay (attempt 1 ran bf16 without this)
 export VLLM_ATTENTION_BACKEND=TRITON_ATTN
 # vLLM is served from its own venv; hand its version to the harness interpreter for the pinned manifest (software.vllm)
 export VLLM_VERSION=$(/workspace/venv_vllm/bin/python -c 'import vllm; print(vllm.__version__)' 2>/dev/null)

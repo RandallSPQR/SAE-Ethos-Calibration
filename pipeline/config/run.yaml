@@ -51,6 +51,7 @@ isolation:
 gates:
   g1_exact_match_min: 0.999         # T=0 replay: generated_ids == replay_predicted_ids (real instrument checksum)
   g1_logprob_tol: 0.05              # T>0 replay: max |generation_logprob - replay_logprob| for the SAME token (numerical checksum, not a plausibility threshold)
+  g1_replay_dtype: float32          # rules 2026-09-29.1: the replay must run in this dtype (fp32 both sides); a replay row recording another dtype fails G1 as such
   g1_flip_margin_excuse: 0.25       # T=0: an argmax flip is excused only if generation's top-2 margin was below this (nats) AND the token is in replay's top-2
   g2_var_explained_min: 0.50        # on our IT-chat transcripts; expect below Gemma Scope's pretrain number
   g2_l0_max: 120

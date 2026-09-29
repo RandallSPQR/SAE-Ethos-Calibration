@@ -1,0 +1,4 @@
+[FAIL] G1_replay_fidelity: rules=2026-09-28.4, n_exact_rows=0, n_logprob_rows=700, worst_logprob_gap=0.4935, tol=0.05, logprob_ok=False
+
+full: 0/1 gates passed.
+BLOCKED by: G1_replay_fidelity

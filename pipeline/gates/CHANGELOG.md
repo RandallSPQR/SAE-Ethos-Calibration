@@ -1,5 +1,20 @@
 # Gate rules changelog
 
+## 2026-09-29.1 — G1 checks the replay's dtype (written 2026-09-29 00:54 EDT, from the deep resample's first replay)
+
+The deep resample (pod 0ygiuk85dxz5o8, run_b918a1e43585, 700 continuations in 7 cells) replayed under the raw-id path
+with every span's ids equal to the sampled ids, no overruns, no length mismatches: the alignment half of G1 is clean by
+construction. The logprob half read FAIL at a worst gap of 0.49 nats (median per-row worst 0.12; 6 of 700 rows within
+0.05) against the fp32 white-box replay's 0.004 median. Cause: `replay.modelload` took its dtype from `T1_DTYPE` and
+defaulted to models.yaml's bfloat16; `run_t3_whitebox.sh` exported `T1_DTYPE=float32`, `run_t3_deep.sh` did not. The
+replay ran bf16 against fp32 generation, the bf16 signature T1 measured (~0.17 nats). Now: `replay --go` pins float32
+unless `T1_DTYPE` says otherwise and records `replay_dtype` on every row; G1 refuses (FAIL with the reason) any store
+whose recorded replay dtype is not `g1_replay_dtype` (float32), instead of reporting the gap as if it were fidelity; old
+stores without the key are reported as unrecorded. Fixture: the dtype pin. The bf16 replay's analysis (G8 pass under
+2026-09-28.4, no feature surviving) is kept as `*_bf16_attempt1` and is not the protocol's result; the fp32 replay of
+the same generation is.
+
+
 ## 2026-09-28.4 — G8 successor: numerator bias at a family-wise line, support floor at discovery and G8, scale gated (written 2026-09-28 19:17 EDT, before the deep resample pod exists)
 
 Why the 2026-09-28.2 criterion was wrong, in the reviewer's words: it asked a per-concept, per-seed z-statistic to

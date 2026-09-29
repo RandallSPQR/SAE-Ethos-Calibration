@@ -92,6 +92,7 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         "sampled_top2_margin": gen_mrg,
         "span_ids_equal_sampled": (gen_ids == fr.token_ids[s:e]) if gen_ids else None,
         "overran_turn": overran, "replay_path": "sampled_ids" if sampled else "retokenized",
+        "replay_dtype": REPLAY_DTYPE,        # 2026-09-29: recorded so G1 can refuse a replay that ran in another dtype than generation
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,
@@ -163,6 +164,9 @@ def write_parquet(rows, out_path):
         Path(out_path).with_suffix(".jsonl").write_text("\n".join(json.dumps(r) for r in rows))
 
 
+REPLAY_DTYPE = None      # set in main() for --go; None for --mock (no model)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", default=None, help="runs/<run_id>/ — sets transcripts/replayed/features under it")
@@ -199,6 +203,14 @@ def main():
         import hashlib, random
         lm = sae = oracle = None
     else:
+        # 2026-09-29 (deep resample attempt 1): the replay dtype came from T1_DTYPE and defaulted to models.yaml's bfloat16;
+        # the deep driver did not export it, and the replay ran bf16 against fp32 generation (per-row worst gap median 0.12
+        # nats vs 0.004 on the fp32 white-box replay). Real replay is float32 unless T1_DTYPE says otherwise, and says so.
+        import os
+        os.environ.setdefault("T1_DTYPE", "float32")
+        global REPLAY_DTYPE
+        REPLAY_DTYPE = os.environ["T1_DTYPE"]
+        print(f"replay dtype: {REPLAY_DTYPE} (T1_DTYPE)")
         from .modelload import load_target
         from .sae import load_sae
         from .oracle import load_oracle

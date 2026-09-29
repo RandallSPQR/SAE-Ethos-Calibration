@@ -1,0 +1,47 @@
+{
+  "6880": {
+    "label": " programming-related keywords and entities",
+    "explanations": [
+      " programming-related keywords and entities",
+      "Code or data snippets",
+      "closing parentheses and curly braces"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/6880"
+  },
+  "12066": {
+    "label": " events and actions related to crime and violence",
+    "explanations": [
+      " events and actions related to crime and violence",
+      "preceding \"of\", \"on\", \"for\", or \"down\"",
+      "actions of searching and movement"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/12066"
+  },
+  "12688": {
+    "label": " method invocations and class initialization patterns in code",
+    "explanations": [
+      " method invocations and class initialization patterns in code",
+      "Code snippets with \"<\" or \"command\"",
+      "code implementation details"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/12688"
+  },
+  "15020": {
+    "label": " mentions of \"Washington\" or its variations",
+    "explanations": [
+      " mentions of \"Washington\" or its variations",
+      "Washington, D.C",
+      "Washington, D.C"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/15020"
+  },
+  "15178": {
+    "label": "terms related to searching processes and search engines",
+    "explanations": [
+      "terms related to searching processes and search engines",
+      "\"Search\" or similar variations",
+      "search operations"
+    ],
+    "url": "https://www.neuronpedia.org/api/feature/gemma-2-9b-it/31-gemmascope-res-16k/15178"
+  }
+}

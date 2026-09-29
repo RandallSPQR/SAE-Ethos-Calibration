@@ -87,13 +87,23 @@ def run(cfg, paths):
     if n_replayed != n_gen:
         return GateResult(NAME, False, {"error": f"replay cardinality {n_replayed}/{n_gen}; every "
                                                  "continuation must be replayed before G1 runs"})
+    # rules 2026-09-29.1: the replay's dtype is part of the checksum. A row that records replay_dtype must record the pinned
+    # one (g1_replay_dtype, float32: fp32 both sides is the protocol); a replay in another dtype is a different instrument
+    # and the gate says so instead of reporting a numerical gap as if it were fidelity. Old stores without the key are noted.
+    want = str(gc.get("g1_replay_dtype", "float32"))
+    seen = {str((r.get("tokens") or {}).get("replay_dtype")) for r in rows}
+    seen.discard("None")
+    if seen and seen != {want}:
+        return GateResult(NAME, False, {"error": f"replay dtype {sorted(seen)} is not the pinned {want}; re-run the replay "
+                                                 f"with T1_DTYPE={want}", "replay_dtype": sorted(seen), "rules": GATE_RULES_VERSION})
     modes = [row_mode(r) for r in rows]
     if any(m is None for m in modes):
         return GateResult(NAME, False, {"error": "transcript lacks sampling.temperature; the gate refuses to "
                                                  "pick a criterion from config", "rules": GATE_RULES_VERSION})
     exact_rows = [r for r, m in zip(rows, modes) if m == "exact"]
     lp_rows = [r for r, m in zip(rows, modes) if m == "logprob"]
-    detail, ok = {"rules": GATE_RULES_VERSION, "n_exact_rows": len(exact_rows), "n_logprob_rows": len(lp_rows)}, True
+    detail, ok = {"rules": GATE_RULES_VERSION, "n_exact_rows": len(exact_rows), "n_logprob_rows": len(lp_rows),
+                  "replay_dtype": (sorted(seen)[0] if seen else "unrecorded (pre-2026-09-29 store)")}, True
     if exact_rows:
         thr = gc.get("g1_exact_match_min", 0.999)
         excuse = gc.get("g1_flip_margin_excuse", 0.25)
@@ -147,6 +157,10 @@ def fixture():
     # mode comes from the transcript, never from config
     mode_ok = row_mode({"sampling": {"temperature": 0.0}}) == "exact" and \
         row_mode({"sampling": {"temperature": 0.8}}) == "logprob" and row_mode({}) is None
-    return GateResult(NAME + "[fixture]", exact_ok and lp_ok and cond_ok and mode_ok,
+    # rules 2026-09-29.1: a replay in the wrong dtype is refused as such (the deep resample's bf16 replay)
+    want = str(gc.get("g1_replay_dtype", "float32"))
+    dtype_ok = ({str((r.get("tokens") or {}).get("replay_dtype")) for r in [{"tokens": {"replay_dtype": "bfloat16"}}]} != {want}) and \
+               ({str((r.get("tokens") or {}).get("replay_dtype")) for r in [{"tokens": {"replay_dtype": want}}]} == {want})
+    return GateResult(NAME + "[fixture]", exact_ok and lp_ok and cond_ok and mode_ok and dtype_ok,
                       {"exact_logic_ok": exact_ok, "logprob_logic_ok": lp_ok, "conditional_excuse_ok": cond_ok,
-                       "mode_from_transcript_ok": mode_ok, "rules": GATE_RULES_VERSION})
+                       "mode_from_transcript_ok": mode_ok, "dtype_pin_ok": dtype_ok, "rules": GATE_RULES_VERSION})
