@@ -81,6 +81,19 @@ def main():
     g2 = SimpleNamespace(config=SimpleNamespace(num_hidden_layers=42), model=SimpleNamespace(layers=layers(42)))
     res["flat_layers_found"] = len(m.decoder_layers(g2, "model.layers")) == 42
 
+    # SAE_ROLE=secondary: every consumer sees the layer-53 block as `sae`; the primary view names it as the secondary
+    res["27b_secondary_named"] = (m.secondary_sae() or {}).get("layer") == 53
+    os.environ["SAE_ROLE"] = "secondary"
+    importlib.reload(m)
+    res["27b_role_secondary_layer53"] = m.sae_layer() == 53 and "blocks.53.hook_resid_post" in m.hook_names() \
+        and m.neuronpedia()["source"] == "53-gemmascope-2-res-16k" and m.secondary_sae() is None
+    os.environ.pop("SAE_ROLE")
+    importlib.reload(m)
+    res["27b_role_back_to_primary"] = m.sae_layer() == 40
+    import calibrate.preflight_weights as pw
+    res["27b_preflight_fetches_both_saes"] = [r[2][0] for r in pw.default_repos(m.models())[1:]] == [
+        "resid_post/layer_40_width_16k_l0_medium/*", "resid_post/layer_53_width_16k_l0_medium/*"]
+
     # shell env from calibrate/model_env.sh, both profiles (python on PATH = this interpreter)
     shim = HERE / ".test_bin"
     shim.mkdir(exist_ok=True)

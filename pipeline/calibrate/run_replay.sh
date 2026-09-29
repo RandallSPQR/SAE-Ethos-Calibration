@@ -28,17 +28,34 @@ case "$PHASE" in
     python -m calibrate.t1_ladder --stage identity --out "$D/t1" 2>&1 | tee "${LOG}_identity.log"
     python -m gates.run_gates --transcripts "$D/t1/transcripts" --replayed "$D/t1/replayed" --features "$D/t1/features" \
       --gates G0,G1,G2,G3 2>&1 | tee "$D/t1/gates_ladder.txt"
+    if python -c 'import modelcfg,sys; sys.exit(0 if modelcfg.secondary_sae() else 1)'; then
+      echo "== the pre-registered secondary SAE: its own G2 (decoys + identity at its layer)"
+      S=$D/t1_secondary; mkdir -p "$S/features"; cp "$D/t1/features/t1_vllm.json" "$S/features/"
+      SAE_ROLE=secondary python -m calibrate.t1_ladder --stage nnsight --out "$S" --gates G2 2>&1 | tee "${LOG}_nnsight_secondary.log"
+      SAE_ROLE=secondary python -m calibrate.t1_ladder --stage identity --out "$S" 2>&1 | tee "${LOG}_identity_secondary.log"
+      SAE_ROLE=secondary python -m gates.run_gates --transcripts "$S/transcripts" --replayed "$S/replayed" --features "$S/features" \
+        --gates G2 2>&1 | tee "$S/gates_ladder.txt"
+    fi
     ;;
   calibration)
     RUN=$D; CAL=${3:?calibration output file (e.g. results/<dir>/g1_calibration.json)}
     python -m replay.replay --go --run-dir "$RUN" 2>&1 | tee "${LOG}_fp32.log"
     [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: fp32 replay failed"; exit 6; }
+    if python -c 'import modelcfg,sys; sys.exit(0 if modelcfg.secondary_sae() else 1)'; then
+      echo "== same-pass secondary capture vs a dedicated secondary replay (1 row per file)"
+      L2=$(python -c 'import modelcfg; print(modelcfg.secondary_sae()["layer"])')
+      SAE_ROLE=secondary python -m replay.replay --go --transcripts "$RUN/generation" --limit 1 \
+        --replayed "$RUN/replay_secondary_check" --features "$RUN/features_secondary_check" 2>&1 | tail -2
+      python -m replay.check_secondary --same "$RUN/features_L${L2}" --dedicated "$RUN/features_secondary_check" \
+        | tee "$RUN/secondary_same_pass_check.json"
+      [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: same-pass secondary capture disagrees with a dedicated pass"; exit 10; }
+    fi
     echo "== crosscheck: the same rows replayed by HF in the SERVED dtype ($TARGET_SERVED_DTYPE)"
-    T1_DTYPE="$TARGET_SERVED_DTYPE" T1_TF32=0 python -m replay.replay --go --transcripts "$RUN/generation" \
+    T1_DTYPE="$TARGET_SERVED_DTYPE" T1_TF32=0 REPLAY_SECONDARY=0 python -m replay.replay --go --transcripts "$RUN/generation" \
       --replayed "$RUN/replay_hf_${TARGET_SERVED_DTYPE}" --features "$RUN/features_hf_${TARGET_SERVED_DTYPE}" 2>&1 | tee "${LOG}_crosscheck.log"
     [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: crosscheck replay failed"; exit 6; }
     echo "== planted template defect (drop the newline after <start_of_turn>model), 3 rows per file"
-    REPLAY_TEMPLATE_DEFECT=drop_model_newline python -m replay.replay --go --transcripts "$RUN/generation" --limit 3 \
+    REPLAY_TEMPLATE_DEFECT=drop_model_newline REPLAY_SECONDARY=0 python -m replay.replay --go --transcripts "$RUN/generation" --limit 3 \
       --replayed "$RUN/replay_template_defect" --features "$RUN/features_template_defect" 2>&1 | tee "${LOG}_template.log"
     [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: template-defect replay failed"; exit 6; }
     python -m gates.g1_calibrate build --transcripts "$RUN/generation" --replay "$RUN/replay" \

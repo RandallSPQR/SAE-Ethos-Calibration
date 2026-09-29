@@ -39,7 +39,7 @@ def _prefix_ids(lm, messages):
     return lm.tokenizer(text[:-1], add_special_tokens=True)["input_ids"]
 
 
-def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, uidsum_rows=None, sample=None,
+def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, uidsum_rows=None, sample=None, secondary=None,
                extra_hooks=None):
     from .hooks import teacher_forced_forward
     from .sae import encode
@@ -59,9 +59,11 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         overran = bool(stops) and cut < len(sampled) - 3
         core = list(sampled[:cut])
         fr = teacher_forced_forward(lm, None, capture_residual=True, extra_hooks=extra_hooks,
-                                    input_ids=list(prefix) + core, span=(len(prefix), len(prefix) + len(core)))
+                                    input_ids=list(prefix) + core, span=(len(prefix), len(prefix) + len(core)),
+                                    extra_layers=([secondary["layer"]] if secondary else ()))
     else:
-        fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True, extra_hooks=extra_hooks)
+        fr = teacher_forced_forward(lm, row["messages"][:end], capture_residual=True, extra_hooks=extra_hooks,
+                                    extra_layers=([secondary["layer"]] if secondary else ()))
     s0, e0 = fr.assistant_span
     sums = {}
     for pos, feat, act in encode(sae, fr.residual):
@@ -70,6 +72,18 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
                            "feature": int(feat), "activation": float(act), "layer": lm.layer})
         if in_span:
             sums[feat] = sums.get(feat, 0.0) + float(act)
+    if secondary is not None:
+        # the pre-registered secondary SAE (profile sae_secondary), read from the SAME forward pass at its own layer and
+        # stored apart (features_L<layer>/): never pooled with the primary, analysed as its own named layer
+        L2, sums2 = secondary["layer"], {}
+        for pos, feat, act in encode(secondary["sae"], fr.extra[f"resid_L{L2}"]):
+            in_span = s0 <= pos < e0
+            secondary["store"].append({"uid": row["uid"], "position": int(pos), "in_assistant_span": in_span,
+                                       "feature": int(feat), "activation": float(act), "layer": L2})
+            if in_span:
+                sums2[feat] = sums2.get(feat, 0.0) + float(act)
+        for feat, tot in sums2.items():
+            secondary["uidsums"].append({"uid": row["uid"], "feature": int(feat), "sum_act": tot, "span_tokens": e0 - s0})
     if uidsum_rows is not None:
         # per-uid, in-span sums: E[A] numerators for every feature at once (analyze.discover reads these, not the
         # position store; 2026-09-28 pre-registration statistic 4)
@@ -220,6 +234,7 @@ def main():
               sum(1 for _ in Path(args.transcripts).rglob("*.jsonl")), "transcript files.")
         return
 
+    secondary = None
     if args.mock:
         import hashlib, random
         lm = sae = oracle = None
@@ -238,6 +253,11 @@ def main():
         from .oracle import load_oracle
         lm, sae = load_target("target"), load_sae()
         oracle = load_oracle(args.backend, lm=lm) if args.oracle else None
+        # REPLAY_SECONDARY=0 skips the secondary layer (the G1 calibration's crosscheck and template-defect replays need none)
+        sec_block = modelcfg.secondary_sae() if os.environ.get("REPLAY_SECONDARY", "1") != "0" else None
+        if sec_block:
+            secondary = {"layer": int(sec_block["layer"]), "sae": load_sae(block=sec_block), "block": sec_block}
+            print(f"secondary SAE: layer {secondary['layer']} {sec_block['release']}/{sec_block['sae_id']} (same pass)")
     Path(args.features, "oracle").mkdir(parents=True, exist_ok=True)
     only = set(args.scenarios.split(",")) if args.scenarios else None
     sample = [] if args.instrument_sample else None
@@ -264,6 +284,7 @@ def main():
         if args.limit:
             rows = rows[: args.limit]
         store, uidsums = [], []
+        store2, uidsums2 = [], []
         replay_meta = []
         taken = 0
         for row in rows:
@@ -275,7 +296,8 @@ def main():
             else:
                 replay_one(lm, sae, oracle, row, store, Path(args.features) / "oracle",
                            lambda span: list(range(span[0], span[1])), uidsum_rows=uidsums,
-                           sample=(sample if take else None), extra_hooks=(extra_hooks if take else None))
+                           sample=(sample if take else None), extra_hooks=(extra_hooks if take else None),
+                           secondary=(dict(secondary, store=store2, uidsums=uidsums2) if secondary else None))
             taken += take
             replay_meta.append({"uid": row["uid"], "tokens": row["tokens"]})   # derived, separate record
             n_out += 1
@@ -285,6 +307,14 @@ def main():
         out.mkdir(parents=True, exist_ok=True)
         write_parquet(store, out / (tf.stem + ".parquet"))
         write_parquet(uidsums, out / (tf.stem + "_uidsums.parquet"))
+        if secondary:
+            out2 = Path(f"{Path(args.features)}_L{secondary['layer']}") / rows[0]["scenario"] / rows[0]["variant"]
+            out2.mkdir(parents=True, exist_ok=True)
+            write_parquet(store2, out2 / (tf.stem + ".parquet"))
+            write_parquet(uidsums2, out2 / (tf.stem + "_uidsums.parquet"))
+            (out2.parents[1] / "SECONDARY.json").write_text(json.dumps(
+                {"role": "secondary (pre-registered)", "layer": secondary["layer"], **{k: secondary["block"].get(k) for k in
+                 ("release", "sae_id", "hf_folder", "revision", "params_sha256")}}, indent=1))
         rd = replayed_dir / tf.relative_to(args.transcripts).parent
         rd.mkdir(parents=True, exist_ok=True)
         with open(rd / tf.name, "w") as fh:

@@ -23,12 +23,12 @@ def _hook_name(sae):
     return getattr(meta, "hook_name", None) or getattr(cfg, "hook_name", None)
 
 
-def load_sae(device="cuda"):
+def load_sae(device="cuda", block=None):
     """SAE.from_pretrained on the EXACT canonical artifact from models.yaml (release + sae_id).
     Asserts the loaded cfg's hook_name equals models.yaml sae.saelens_hook_name — that string is the
     contract between the SAE and the residual capture."""
     from sae_lens import SAE
-    s = sae_cfg()
+    s = block or sae_cfg()          # block: the profile's sae_secondary, loaded beside the primary in replay
     out = SAE.from_pretrained(s["release"], s["sae_id"], device=device)
     sae = out[0] if isinstance(out, tuple) else out
     hn = _hook_name(sae)

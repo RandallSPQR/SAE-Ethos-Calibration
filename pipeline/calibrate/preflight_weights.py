@@ -54,7 +54,10 @@ def default_repos(cfg):
     return [
         (tm["hf_id"], tm.get("revision"), ["*.json", "*.safetensors", "tokenizer*"]),
         (sae_repo, sae.get("revision"), [sae_folder.rstrip("/") + "/*"]),
-    ] + ([(orc["hf_id"], orc.get("revision"), None)] if (orc or {}).get("hf_id") else [])   # a dropped oracle is not fetched
+    ] + ([(orc["hf_id"], orc.get("revision"), None)] if (orc or {}).get("hf_id") else []) \
+      + ([(cfg["sae_secondary"]["hf_repo"], cfg["sae_secondary"].get("revision"),
+           [cfg["sae_secondary"]["hf_folder"].rstrip("/") + "/*"])] if cfg.get("sae_secondary") else [])
+    # a dropped oracle is not fetched; the pre-registered secondary SAE is fetched and verified like the primary
 
 
 def _match(name, patterns):

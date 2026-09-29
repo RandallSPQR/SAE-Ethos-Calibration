@@ -50,6 +50,10 @@ def build_input_ids(lm, messages, upto=None):
     return full, (len(prefix), len(full) - n_suffix)
 
 
+def decoder_layers_of(lm):
+    return _layers(lm)
+
+
 def _layers(lm):
     from .modelload import decoder_layers
     return decoder_layers(lm)
@@ -90,12 +94,13 @@ def _val(x):
 
 
 def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, input_ids=None,
-                           extra_hooks=None, span=None):
+                           extra_hooks=None, span=None, extra_layers=()):
     """One forward over the teacher-forced sequence. Captures the residual via resid_post() at the
     verified hook. If steer=(vector[d_model], strength), adds strength * mean_residual_norm * unit(vector)
     at every position before it flows onward. Also returns per-position logprobs of the input ids.
     input_ids overrides serialization (used for raw-id diagnostics). extra_hooks: list of reader names
-    from modelload.HOOK_READERS to capture alongside (G2 decoys)."""
+    from modelload.hook_readers to capture alongside (G2 decoys). extra_layers: other block indices whose resid_post is
+    captured in the SAME pass (the profile's secondary SAE layer), returned as extra[f"resid_L{L}"]."""
     import torch
     from .modelload import residual_module
     if input_ids is None:
@@ -110,7 +115,12 @@ def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, inpu
     # post-ffn norm) must be read before the block's own output.
     order = {"block_input": 0, "attn": 1, "mlp": 2, "post_ffn_norm": 3, "block_output": 4}
     extras = sorted([h for h in (extra_hooks or []) if h != "block_output"], key=lambda h: order.get(h, 9))
+    all_layers = decoder_layers_of(lm)
+    early = sorted(L for L in extra_layers if L < lm.layer)
+    late = sorted(L for L in extra_layers if L > lm.layer)
     with torch.no_grad(), model.trace(ids_t):
+        for L in early:                                 # execution order: earlier blocks are touched first
+            saved[f"resid_L{L}"] = resid_post(all_layers[L].output).float().save()
         for name in extras:
             saved[name] = _read_hook(layer, name).float().save()
         stream = resid_post(layer.output)
@@ -123,6 +133,8 @@ def teacher_forced_forward(lm, messages, capture_residual=True, steer=None, inpu
             _set_block_output(layer, stream)
         if capture_residual:
             saved["resid"] = stream.float().save()
+        for L in late:
+            saved[f"resid_L{L}"] = resid_post(all_layers[L].output).float().save()
         saved["logits"] = model.output.logits.float().save()
     logits = _val(saved["logits"])[0]                                      # [seq, vocab]
     lp = torch.log_softmax(logits, dim=-1)

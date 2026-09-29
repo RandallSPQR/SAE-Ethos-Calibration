@@ -50,9 +50,10 @@ neuronpedia:
   source: "40-gemmascope-2-res-16k"
 
 sae:
-  # PROPOSED 2026-09-29, pending Randall's decision: layer 40 (0.645 depth), 16k, L0 "medium" (60), from the curated
-  # resid_post set, which has Neuronpedia dashboards. The 9B's depth (31/42 = 0.74) is layer 45/46, which exists in nothing but
-  # resid_post_all (L0 20 or 120, no medium, no dashboards). Gemma Scope 2 has no "canonical" set: the folder is named.
+  # DECIDED 2026-09-29 (Randall): PRIMARY layer 40 (0.645 depth), 16k, L0 "medium" (60), from the curated resid_post set
+  # (Neuronpedia dashboards). Closest curated depth to Fan et al.'s probe layer (48/80 = 0.60), so the probe track and the
+  # SAE can be read at one layer. The 9B's depth (0.74) is layer 45/46, in resid_post_all (L0 20/120, no medium, no
+  # dashboards). Gemma Scope 2 has no "canonical" set: the folder is named. Secondary: sae_secondary below.
   release: "gemma-scope-2-27b-it-res"
   sae_id: "layer_40_width_16k_l0_medium"
   is_it_release: true
@@ -78,6 +79,31 @@ sae:
     dataset: "monology/pile-uncopyrighted"
     context_size: 1024
 
+# DECIDED 2026-09-29 (Randall): a PRE-REGISTERED SECONDARY layer, 53 (0.855 depth), same width/L0 family. Captured in the
+# primary replay's forward pass into features_L53/ (not pooled with layer 40), G2-checked on its own (SAE_ROLE=secondary),
+# and reported whatever layer 40 shows: a layer-robustness reading and a lexical-leak check (late layers carry more
+# next-token content), not a rescue for a null at 40.
+sae_secondary:
+  release: "gemma-scope-2-27b-it-res"
+  sae_id: "layer_53_width_16k_l0_medium"
+  is_it_release: true
+  hf_repo: "google/gemma-scope-2-27b-it"
+  hf_folder: "resid_post/layer_53_width_16k_l0_medium"
+  revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"
+  params_sha256: "a3492cd5ec2d00f3aa36e4fdb9d3e61d1137453c9228c5af964e5114f3c5e62b"
+  weights_hash: null
+  layer: 53
+  saelens_hook_name: "blocks.53.hook_resid_post"
+  hook_point: "blocks.53.hook_resid_post"
+  hook_candidates:
+    - "layers.53.hidden_states_only"
+    - "layers.53.mlp_output"
+    - "layers.53.attn_output"
+    - "layers.53.input_resid"
+  published: {l0: 60, fvu: null, tol: 0.15, dataset: "monology/pile-uncopyrighted", context_size: 1024}
+  neuronpedia: {model_id: "gemma-3-27b-it", source: "53-gemmascope-2-res-16k"}
+  calibration: {code_feature_index: null, code_feature_label: null, extra_feature_indices: []}
+
 oracle:
   hf_id: null
   dropped: "no activation oracle exists for Gemma-3-27B-IT; G5 is dropped (the 9B's oracle failed on real spans: paired 0.33)"
@@ -93,5 +119,6 @@ calibration:
   extra_feature_indices: []
 
 probe:
-  # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62. Re-swept, not carried.
-  layer_candidates: [30, 38, 46]
+  # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62, plus 40 (the SAE layer, so the
+  # Fan-style direction and SAE features can be compared at one layer). Re-swept, not carried.
+  layer_candidates: [30, 38, 40, 46]

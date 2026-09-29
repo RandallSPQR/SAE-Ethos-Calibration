@@ -36,11 +36,39 @@ def _load(path: str) -> dict:
     return yaml.safe_load(Path(path).read_text())
 
 
+def sae_role() -> str:
+    """SAE_ROLE=secondary makes every consumer see the profile's `sae_secondary` block as `sae` (its layer, hooks, decoys,
+    Neuronpedia ids, calibration anchors), so the single-SAE ladder (G2 decoys, identity, instrument checks, analysis) runs
+    unchanged for the pre-registered secondary layer. Unset = primary. The bulk feature store for the secondary is
+    captured in the primary replay's own forward pass (replay.replay), not by a second replay."""
+    r = os.environ.get("SAE_ROLE") or "primary"
+    if r not in ("primary", "secondary"):
+        raise ValueError(f"SAE_ROLE {r!r}")
+    return r
+
+
+@lru_cache(maxsize=None)
+def _resolved(path: str, role: str) -> dict:
+    base = _load(path)
+    if role == "primary":
+        return base
+    sec = base.get("sae_secondary")
+    if not sec:
+        raise RuntimeError(f"SAE_ROLE=secondary but {Path(path).name} has no sae_secondary block")
+    return {**base, "sae": sec, "neuronpedia": sec.get("neuronpedia", base.get("neuronpedia")),
+            "calibration": {**(base.get("calibration") or {}), **(sec.get("calibration") or {})}, "sae_role": "secondary"}
+
+
 def models() -> dict:
     f = models_path()
     if not f.exists():
         raise FileNotFoundError(f"MODEL_PROFILE={profile()!r} names {f.name}, which does not exist")
-    return _load(str(f))
+    return _resolved(str(f), sae_role())
+
+
+def secondary_sae() -> dict | None:
+    """The pre-registered secondary SAE block (captured alongside the primary), or None."""
+    return None if sae_role() == "secondary" else _load(str(models_path())).get("sae_secondary")
 
 
 def models_hash() -> str:
