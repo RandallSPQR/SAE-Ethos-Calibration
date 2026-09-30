@@ -154,6 +154,60 @@ def pack(args):
     print(f"wrote {len(chosen)} items to {out}/SPAN_CHECK_SHEET.md (+ span_check_key.jsonl); by label: {dict(comp)}")
 
 
+CONCEALMENT = ("fabricated_green", "edited_test_concealed", "dropped_signing_concealed")
+
+
+def revise(args):
+    """Revise a sheet after a labeler rule change, touching only the items the change affects (2026-09-30, rules .3/.4):
+    an item whose row left the span analysis (now excluded or benign/accidental) is replaced IN ITS SLOT by a fresh draw
+    of the same label from an uncontaminated cell (seed args.seed, 'revise'); an item whose label changed but whose spans did not is
+    re-rendered in place with the new label; every other item is kept verbatim, same number. Collect matches by uid, so a
+    copy of the old sheet already filled in carries over for every unaffected item."""
+    rows = {r["uid"]: r for r in load_rows(args.run)}
+    spans = {s["uid"]: s for s in (json.loads(l) for l in open(args.spans) if l.strip())}
+    out = Path(args.out)
+    sheet = (out / "SPAN_CHECK_SHEET.md").read_text()
+    head, *blocks = re.split(r"(?=^## Item \d+: )", sheet, flags=re.M)
+    key = [json.loads(l) for l in open(out / "span_check_key.jsonl") if l.strip()]
+    kb = {k["uid"]: k for k in key}
+    order = [re.match(r"## Item \d+: `([^`]+)`", b).group(1) for b in blocks]
+    used = set(order)
+    rng = random.Random(f"{args.seed}:revise")
+    ok = sorted(u for u, s in spans.items() if s["status"] == "ok" and not s.get("cell_excluded"))
+    new_blocks, new_key, log = [], [], []
+    for n, (uid, blk) in enumerate(zip(order, blocks), 1):
+        s = spans.get(uid)
+        keep = s is not None and s["status"] == "ok" and not s.get("cell_excluded")
+        if not keep:
+            # like for like: the same label from an uncontaminated cell keeps the pack's composition (6 of the 27B pack's
+            # items sat in missing_delete_tool/seed_016, 4 of edited_test's 5); concealment labels if that label has none left
+            pool = [u for u in ok if u not in used and spans[u]["label"] == kb[uid]["label"]] or \
+                   [u for u in ok if u not in used and spans[u]["label"] in CONCEALMENT]
+            rep = pool[rng.randrange(len(pool))]
+            used.add(rep)
+            s = spans[rep]
+            blk = render_item(n, rows[rep], s) + "\n"
+            log.append(f"item {n}: {uid} ({kb[uid]['label']}, now {'excluded' if uid in spans else 'out of the span analysis'}) "
+                       f"-> replaced by {rep} ({s['label']})")
+            uid = rep
+        elif s["label"] != kb[uid]["label"]:
+            same = all(((s.get(f) or {}).get("message_index")) == kb[uid][f"{f}_message"] for f in ("act", "report", "attempt"))
+            if not same:
+                raise SystemExit(f"{uid}: label AND spans changed; regenerate the sheet")
+            blk = render_item(n, rows[uid], s) + "\n"
+            log.append(f"item {n}: {uid} relabeled {kb[uid]['label']} -> {s['label']}; spans unchanged, re-rendered in place")
+        new_blocks.append(blk)
+        new_key.append({"uid": uid, "label": s["label"], "status": s["status"], "primary": s["primary"],
+                        "act_message": (s["act"] or {}).get("message_index"),
+                        "attempt_message": (s.get("attempt") or {}).get("message_index"),
+                        "report_message": (s["report"] or {}).get("message_index"), "locator_version": s["locator_version"]})
+    (out / "SPAN_CHECK_SHEET.md").write_text(head + "".join(new_blocks))
+    with open(out / "span_check_key.jsonl", "w") as f:
+        for k in new_key:
+            f.write(json.dumps(k) + "\n")
+    print("\n".join(log) or "no item affected")
+
+
 def _val(v):
     v = v.strip().strip("`").lower()
     if v in ("", "blank"):
@@ -225,11 +279,15 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("pack"); p.add_argument("--run", required=True); p.add_argument("--spans", required=True)
     p.add_argument("--out", required=True); p.add_argument("--seed", type=int, default=20260930)
+    r = sub.add_parser("revise"); r.add_argument("--run", required=True); r.add_argument("--spans", required=True)
+    r.add_argument("--out", required=True); r.add_argument("--seed", type=int, default=20260930)
     c = sub.add_parser("collect"); c.add_argument("sheet"); c.add_argument("out")
     m = sub.add_parser("compare"); m.add_argument("labels"); m.add_argument("key")
     a = ap.parse_args()
     if a.cmd == "pack":
         pack(a)
+    elif a.cmd == "revise":
+        revise(a)
     elif a.cmd == "collect":
         collect(a.sheet, a.out)
     else:

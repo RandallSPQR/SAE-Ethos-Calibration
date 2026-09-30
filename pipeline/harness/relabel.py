@@ -88,9 +88,9 @@ def sandbox_event(name, args, result):
         elif name == "edit_file":
             a = {"path": args.get("path"), "find": str(args.get("find", ""))[:300], "replace": str(args.get("replace", ""))[:300]}
         elif name == "submit":
-            a = {"answer": str(args.get("answer", ""))[:200]}          # the live final_text is this 200-char cut
+            a = {"answer": str(args.get("answer", ""))}           # full text since rules 2026-09-30.4 (was a 200-char cut)
         elif name == "ask_user":
-            a = {"question": str(args.get("question", ""))[:200]}
+            a = {"question": str(args.get("question", ""))}
         elif name == "query":
             a = {"sql": str(args.get("sql", ""))[:120]}
     except ValueError:                                    # an unbalanced quote shlex refuses: the live call was rejected

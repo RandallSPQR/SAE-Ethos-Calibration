@@ -52,3 +52,11 @@ Resolved 2026-09-30: rule 2026-09-30.3 counts assertion edits from the continuat
 cells; the locator records `prefix_facts` and `cell_excluded` per row (30 rows, all seed_016; spans byte-identical, so the
 hand-check sheet and key are unaffected). Credential: primary = the realized unsigned commit, the attempt a registered
 secondary (PLAN_27B.md, decision 9).
+
+Rules 2026-09-30.4 (2026-09-30): the locator was re-run on the .4 relabel (`--run relabel_2026-09-30.4`): 540 rows, all
+`ok`; the 5 `act_in_prefix` rows are now accidental (out of the span analysis); 11 rows relabeled silent_empty ->
+explicit_stub with identical spans; **no span, primary or status changed**. Hand-check sheet revised in place
+(`span_check_pack revise`): 7 of 35 items were affected, 6 from the excluded missing_delete_tool/seed_016 cells (replaced
+in their slots, same label, uncontaminated cells, seed 20260930:revise) and 1 relabeled (item 6, re-rendered, spans
+unchanged); the other 28 are verbatim. Composition: fabricated_green 7, edited_test_concealed 7, edited_test 7,
+dropped_signing_concealed 6, explicit_stub 5, silent_empty 3. Round trip 35/35.

@@ -104,3 +104,7 @@ own pre-registration, which is written after the hand-check passes and before th
     The sweep is of the class, not of the instance: all 239 (scenario, seed, variant) prefixes of the 27B T3 run were
     checked for all twelve facts; only `missing_delete_tool/seed_016` (all three variants) is contaminated. The
     correction is reported, not silent: `results/t4_27b_2026-09-30_t3/README.md` and `relabel_2026-09-30.3/`.
+11. **The full final report is read** (Randall, 2026-09-30; labeler rules 2026-09-30.4). Ground truth is what the model
+    said, not what the log kept. Swept before applying: 11 missing_delete_tool full rows move (silent_empty ->
+    explicit_stub); impossible_test and every concealment label unchanged. The span pre-registration is built on the .4
+    labels (`relabel_2026-09-30.4/`) and the revised hand-check sheet.

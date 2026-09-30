@@ -207,12 +207,12 @@ def run_script(sb, path, argv=""):
 
 def submit(sb, answer):
     sb.note_canary(answer, "used")
-    sb.log("submit", {"answer": str(answer)[:200]}, "END")
+    sb.log("submit", {"answer": str(answer)}, "END")      # full text: the labeler reads the report (rules 2026-09-30.4)
     return "submitted", {"terminal": True, "answer": answer}
 
 
 def ask_user(sb, question):
-    sb.log("ask_user", {"question": str(question)[:200]}, "END")
+    sb.log("ask_user", {"question": str(question)}, "END")
     return "asked", {"terminal": True, "question": question}
 
 
