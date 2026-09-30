@@ -1,0 +1,80 @@
+model profile: gemma-3-27b-it family=gemma3 model=google/gemma-3-27b-it@005ad3404e59 served=bfloat16 replay=float32 (auto) ctx=8192
+name, memory.total [MiB]
+NVIDIA A100-SXM4-80GB, 81920 MiB
+NVIDIA A100-SXM4-80GB, 81920 MiB
+selfstop: removing stale /workspace/27b/ladder/DONE (2026-09-29 22:28:27.000000000 +0000)
+{
+ "RUNPOD_POD_ID": "mv51cqg1q1bap2",
+ "runpodctl": "/usr/bin/runpodctl",
+ "RUNPOD_API_KEY_present": true,
+ "daemon_running": true,
+ "config": {
+  "deadline_utc": "2026-09-30T08:19:21+00:00",
+  "started": 1790734778.5819554,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 45,
+  "watch": [],
+  "done_file": null,
+  "note": "27B replay pod: ladder (G0/G1/G2 both SAEs) + G1 calibration build",
+  "time_scale": 1.0,
+  "last_call": 1790734778.5821476,
+  "last_call_why": "start"
+ },
+ "own_pod_read_v2": 200,
+ "own_pod_read_v1": 403,
+ "terminate_path": "plausible (unproven until the live test)"
+}
+2026-09-30T02:22:10+00:00 WATCH ['/workspace/27b/ladder'] done_file=/workspace/27b/ladder/DONE stall=45.0 min
+== 0b: weight preflight
+[OK ] google/gemma-scope-2-27b-it@5c58dd4cddd5  files 3/3  by sha256  meta=hub  weight_hash=bf36348749ff3ccb
+[OK ] google/gemma-scope-2-27b-it@5c58dd4cddd5  files 3/3  by sha256  meta=hub  weight_hash=fb0c3869a77afe92
+report: /workspace/hf/preflight/last.json
+TF32 matmuls ENABLED (T1_TF32=1)
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 502, in <module>
+    main()
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 498, in main
+    stage_nnsight(a.out, a.gates)
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 174, in stage_nnsight
+    lm = load_target("target")
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/pipeline/replay/modelload.py", line 59, in load_target
+    lm = LanguageModel(hf_id, **kw)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 78, in __init__
+    super().__init__(*args, automodel=automodel, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/transformers.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/huggingface.py", line 53, in __init__
+    super().__init__(repo_id, *args, revision=revision, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/mixins/meta.py", line 53, in __init__
+    super().__init__(*args, rename=rename, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/mixins/loadable.py", line 32, in __init__
+    model = self._load(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 149, in _load
+    self._check_is_text_only(repo_id)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 110, in _check_is_text_only
+    raise ValueError(
+ValueError: 'google/gemma-3-27b-it' (gemma3) is registered with AutoModelForImageTextToText — it's a multimodal model so LanguageModel(...) can't load it. Use VisionLanguageModel instead:
+
+    from nnsight import VisionLanguageModel
+    model = VisionLanguageModel('google/gemma-3-27b-it', ...)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 502, in <module>
+    main()
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 496, in main
+    stage_identity(a.out)
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 375, in stage_identity
+    z = np.load(feat / "identity_input.npz")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/lib/_npyio_impl.py", line 459, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/27b/ladder/t1/features/identity_input.npz'

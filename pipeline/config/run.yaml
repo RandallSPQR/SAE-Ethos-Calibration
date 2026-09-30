@@ -58,8 +58,8 @@ gates:
   g1_replay_dtype: float32          # rules 2026-09-29.1: the replay must run in this dtype (fp32 both sides); a replay row recording another dtype fails G1 as such
   g1_flip_margin_excuse: 0.25       # T=0: an argmax flip is excused only if generation's top-2 margin was below this (nats) AND the token is in replay's top-2
   g1_mixed:                         # rules 2026-09-29.2: served dtype != replay dtype (27B: bf16 served, fp32 replayed)
-    calibration: null               #   committed calibration file (gates/g1_calibrate.py build), repo-relative to pipeline/
-    calibration_sha256: null        #   its sha256; G1 refuses any other bytes. Both null -> a mixed-dtype store FAILS G1
+    calibration: results/t4_27b_2026-09-30_replay/27b/cal/g1_calibration.json   # built 2026-09-30 on pod mv51cqg1q1bap2 (valid)
+    calibration_sha256: 21119e19fc50c083f1a84c3a4ceff4d6f1856e08d085965349ee4af7854b1c00   # G1 refuses any other bytes
     min_rows: 300                   #   calibration rows (a separate, never-analysed run spanning all scenarios x variants)
     row_quantile: 0.99              #   tol_row = row_factor x this quantile of the calibration's per-row worst gap
     row_factor: 1.5

@@ -1,0 +1,3 @@
+{
+ "removed": "G3 ran with calibration.code_feature_index = null (no anchor chosen): the report indexed every feature and carries no G3 reading; fixed in ce478c1 (G3/G4 skipped, G3 NOT_EVALUABLE). Original 52 MB file sha256[:16] 8fd5704b8859324e, not kept."
+}

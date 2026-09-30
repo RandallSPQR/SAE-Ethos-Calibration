@@ -1,0 +1,24 @@
+{
+  "rules": "2026-09-30.1",
+  "dtype": "torch.float32",
+  "sampled_len": 96,
+  "span_len": 96,
+  "span_ids_equal_sampled": true,
+  "raw_ids_exact_match": 0.9895833333333334,
+  "raw_ids_mismatches": [
+    {
+      "k": 87,
+      "vllm_id": 506,
+      "vllm_tok": " the",
+      "replay_argmax_id": 18224,
+      "replay_argmax_tok": " floating",
+      "replay_logprob_of_vllm_tok": -0.9606098532676697,
+      "vllm_logprob": -0.9314181208610535,
+      "generation_top2_margin": 0.0,
+      "replay_top2": [
+        18224,
+        506
+      ]
+    }
+  ]
+}

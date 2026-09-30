@@ -1,0 +1,150 @@
+{
+  "chosen": {
+    "hook": "blocks.40.hook_resid_post",
+    "var_explained": 0.83501952022636,
+    "fvu": 0.1649804797736401,
+    "l0": 60.88192367553711,
+    "var_explained_per_token": 0.9671558737754822,
+    "rel_mse": 0.032840579748153687,
+    "n_tokens": 6809
+  },
+  "candidates": [
+    {
+      "hook": "layers.40.hidden_states_only",
+      "var_explained": -3657.616529038015,
+      "fvu": 3658.616529038015,
+      "l0": 924.0313110351562,
+      "var_explained_per_token": -4114.146484375,
+      "rel_mse": 4115.02099609375,
+      "n_tokens": 6809
+    },
+    {
+      "hook": "layers.40.mlp_output",
+      "var_explained": -415299218.5592364,
+      "fvu": 415299219.5592364,
+      "l0": 794.8612060546875,
+      "var_explained_per_token": -70502711296.0,
+      "rel_mse": 70468771840.0,
+      "n_tokens": 6809
+    },
+    {
+      "hook": "layers.40.attn_output",
+      "var_explained": -98818215.24156477,
+      "fvu": 98818216.24156477,
+      "l0": 793.8757934570312,
+      "var_explained_per_token": -24562650.0,
+      "rel_mse": 24562670.0,
+      "n_tokens": 6809
+    },
+    {
+      "hook": "layers.40.input_resid",
+      "var_explained": 0.8362815236939448,
+      "fvu": 0.1637184763060552,
+      "l0": 54.64268112182617,
+      "var_explained_per_token": 0.9671592712402344,
+      "rel_mse": 0.03283662721514702,
+      "n_tokens": 6809
+    },
+    {
+      "hook": "blocks.40.hook_resid_post_x0.8",
+      "var_explained": 0.7815047832610706,
+      "fvu": 0.2184952167389294,
+      "l0": 44.45748519897461,
+      "var_explained_per_token": 0.9554225206375122,
+      "rel_mse": 0.04457259178161621,
+      "n_tokens": 6809
+    },
+    {
+      "hook": "blocks.40.hook_resid_post_x1.2",
+      "var_explained": 0.7903391031394146,
+      "fvu": 0.20966089686058542,
+      "l0": 91.40769958496094,
+      "var_explained_per_token": 0.9655236601829529,
+      "rel_mse": 0.03447261452674866,
+      "n_tokens": 6809
+    }
+  ],
+  "published": {
+    "l0": 60,
+    "fvu": null,
+    "tol": 0.15,
+    "dataset": "monology/pile-uncopyrighted",
+    "context_size": 1024
+  },
+  "sae": {
+    "release": "gemma-scope-2-27b-it-res",
+    "sae_id": "layer_40_width_16k_l0_medium"
+  },
+  "rules": "2026-09-30.1",
+  "dtype": "torch.float32",
+  "per_doc_l0": [
+    65.8504409790039,
+    50.92961883544922,
+    55.07792282104492,
+    67.44413757324219,
+    56.092159271240234,
+    66.96859741210938,
+    52.588497161865234,
+    59.813560485839844,
+    60.69520568847656,
+    60.08067321777344,
+    55.6875,
+    64.78233337402344,
+    62.774192810058594,
+    56.586669921875,
+    63.2645149230957,
+    65.66129302978516
+  ],
+  "per_doc_var_explained": [
+    0.8599898217349148,
+    0.8915569132546829,
+    0.5934553585934509,
+    0.8544610579277971,
+    0.8644243514683659,
+    0.7933300113289925,
+    0.5327295065645932,
+    0.6656437428484899,
+    0.6565859886757257,
+    0.8134473207888666,
+    0.5034595340046288,
+    0.5736372115589299,
+    0.8490949013868865,
+    0.6303339588014236,
+    0.5386948011632293,
+    0.4584485251749332
+  ],
+  "n_docs": 16,
+  "ctx": 1024,
+  "bos_excluded": true,
+  "jumprelu_below_threshold_frac": 0.0,
+  "jumprelu_n_active": 414545,
+  "chat_health": {
+    "var_explained": 0.6846996721680114,
+    "fvu": 0.31530032783198864,
+    "l0": 60.90506362915039,
+    "var_explained_per_token": 0.9732983112335205,
+    "rel_mse": 0.026698175817728043,
+    "n_tokens": 158
+  },
+  "artifact": {
+    "release_requested": "gemma-scope-2-27b-it-res",
+    "sae_id_requested": "layer_40_width_16k_l0_medium",
+    "hook_name": "blocks.40.hook_resid_post",
+    "d_in": 5376,
+    "d_sae": 16384,
+    "hf_repo_id": "google/gemma-scope-2-27b-it",
+    "hf_path": "resid_post/layer_40_width_16k_l0_medium",
+    "neuronpedia_id": "gemma-3-27b-it/40-gemmascope-2-res-16k",
+    "published_l0_reference": 60,
+    "path_names_l0": null,
+    "reference_matches_artifact": null,
+    "is_it_release": true
+  },
+  "identity": {
+    "min_cos": 0.9999953508377075,
+    "max_norm_rel": 0.0022271592170000076,
+    "ref": "hf:output_hidden_states:blocks.40.hook_resid_post",
+    "dtype": "torch.float32",
+    "cross_nnpost_vs_tlpre_median_cos": 0.9981411695480347
+  }
+}
