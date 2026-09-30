@@ -83,6 +83,43 @@ describe its behavior on Python tool results here. At layer 53 the JSON anchor, 
 white-box pre-registration a red G3 blocks every feature-level statement: the analysis is not run until G3 is green under a
 committed rule.
 
+## G3 on a fresh sample (rules 2026-09-30.5; pod l21r0scbp8fnm2, created by create_armed 13:36:52Z, self-terminated 13:50:33Z: $0.73)
+
+Layer 40, 48 spans from the second row of each file: **G2 PASS** (VE 0.908, L0 59.3); JSON anchor 342 **AUROC 0.947**
+(153 vs 210 windows); replacement code anchor 7437 **0.639** (fires strongly in some definition windows, mean 604 vs 0 on
+prose, and not in most); extra 15887 0.50. The code anchor is not green, so the committed fallback applies: **G3 at layer
+40 = the JSON anchor alone, green on the fresh sample (one-anchor G3).** Disclosed: the 18 definition windows sit in the
+shared greedy prefix, which the second row of a file shares with the first, so the code anchor saw the same windows as the
+2026-09-30.4 re-run (7437 had not been evaluated on them; it was chosen from Neuronpedia alone); the assistant spans behind
+the JSON anchor are new. Finding: on this model the curated code features (13740, 7437, 15887) are sparse, local detectors.
+Layer 53's G3 stays red (JSON 0.715): no feature-level statement about layer 53.
+
+## White-box result (PREREGISTRATION_WHITEBOX_27B.md; analysis run 2026-09-30 after G1, G2, G3 (one-anchor) and G8 were green)
+
+Numbers first. Store: 2,390 rows replayed, layer 40. Primary `primary27_impossible_full_gamed_vs_nontransgression`,
+discovery on even seeds (66 vs 34 in 10 mixed cells), effects on odd seeds (62 vs 28 in 9 mixed cells; seed 17 is 10/10 and
+carries no within-cell information), K = 20, B = 1000, q = 0.05, stratified within-cell d, labels permuted within cells.
+
+| statistic | observed | null | p |
+|---|---|---|---|
+| count of selected features above their own null 95th pct | 1 | mean 1.10, 95th pct 3 | 0.644 |
+| max-abs-d over the 20 (Westfall-Young) | 0.577 | max-null 95th pct 0.978 | 0.466 |
+| features beyond the max-null quantile | **0** | | |
+
+- **G8 PASS** (rules 2026-09-28.4): worst null bias z 2.97 vs the family-wise line 3.781 (320 tests), worst |d| scale 1.34
+  vs 1.5, 40/40 testable.
+- Secondary (the 9B's gamed vs honest, 62/72 vs 11): count 0, max-abs-d 0.247 vs 0.948, p 0.89; NOT_EVALUABLE by the
+  20/20 rule, reported as exploratory.
+- Section 6 readings: no survivor, so 6.1 and 6.3 do not apply; 6.2: **0 of the 62 gamed test-half rows act at the
+  decision turn** (no test edit, no submit in the scored turn): the decision span precedes the act in every one.
+
+**Pre-registered outcome (b):** on Gemma-3-27B-IT, layer 40, the decision-span state does not predict whether the
+continuation goes on to game impossible_test beyond what its cell predicts, at a within-cell |d| of about 0.6 (the largest
+observed on the test half is 0.58; the null's 95th percentile of the max is 0.98). With the 9B's deep resample this is the
+same answer at a second model and a better-powered design (9 mixed cells here against 2 there). Layer 53 is outcome (c):
+instrument-blocked by its G3. The act comes later than the decision span in every gamed row, which is where the
+transgression-span study (the held-out matched pairs) looks next.
+
 ## Next
 
 Replay of every row on the replay pod (2 x A100, fp32 + TF32): G1 under the pinned calibration (sha 21119e19), G2 on real

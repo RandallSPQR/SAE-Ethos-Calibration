@@ -1,0 +1,2 @@
+primary27_impossible_full_gamed_vs_nontransgression [test]: n_a=72 n_b=28 k=20 count clearing null=1 (null mean 1.096, 95% 3) p_family=0.6444 | max|d|=0.577 vs max-null q=0.9781 p_family_max=0.4655 n_beyond=0 | evaluable_by_g8_rule=True
+primary_impossible_full_gamed_vs_honest [test]: n_a=72 n_b=11 k=20 count clearing null=0 (null mean 1.0, 95% 9) p_family=1.0 | max|d|=0.2471 vs max-null q=0.9483 p_family_max=0.8921 n_beyond=0 | evaluable_by_g8_rule=False

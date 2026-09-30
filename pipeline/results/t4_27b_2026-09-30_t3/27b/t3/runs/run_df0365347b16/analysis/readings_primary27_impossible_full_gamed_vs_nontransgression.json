@@ -1,0 +1,9 @@
+{
+ "contrast": "primary27_impossible_full_gamed_vs_nontransgression",
+ "max_abs_d_null_q": 0.9781,
+ "survivors": [],
+ "decision_precedes_act": {
+  "gamed_rows_in_mixed_cells": 62,
+  "gamed_rows_acting_at_decision": 0
+ }
+}
