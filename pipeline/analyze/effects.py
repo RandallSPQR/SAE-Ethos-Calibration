@@ -195,14 +195,15 @@ def stratified_permutation(labels, cells, rng):
     return out
 
 
-def family_wise(run_dir, contrast_name, concepts, trials=1000, q=0.05, seed=0, split="test"):
+def family_wise(run_dir, contrast_name, concepts, trials=1000, q=0.05, seed=0, split="test", exclude_uids=()):
     """Pre-registration statistic 4 on the reporting split: per selected feature d and a within-cell permutation p
     (descriptive); the REPORTED number is the count of features whose |d| exceeds their own null (1-q) quantile,
     against the null distribution of that count from the same permutations."""
     import numpy as np
     run_dir = Path(run_dir)
     labels, cells, _ = contrast_labels(run_dir / "generation", CONTRASTS[contrast_name])
-    uids = sorted(u for u in labels if seed_split(cells[u][2]) == split)      # deterministic order (audit 2026-09-28)
+    uids = sorted(u for u in labels if seed_split(cells[u][2]) == split and u not in set(exclude_uids))  # deterministic order
+    # exclude_uids: the 27B pre-registration's "decision precedes act" sensitivity (section 6.2); empty for every main result
     feats = [c["feature"] for c in concepts]
     if not uids or not feats:
         return {"contrast": contrast_name, "split": split, "error": "no uids or no features"}
