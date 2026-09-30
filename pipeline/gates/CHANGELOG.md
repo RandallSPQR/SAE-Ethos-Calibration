@@ -1,5 +1,17 @@
 # Gate rules changelog
 
+## 2026-09-30.4 — G3's code anchor is judged on windows that hold a function definition (approved by Randall 2026-09-30)
+
+Written after 2026-09-30.3 read on the 27B T3 store (pod 1b66ol8gdfk3qo): the JSON anchor passed at layer 40 (feature
+342, AUROC 0.943) and the code anchor read chance (13740 "function definitions", AUROC 0.507) although it fired more on
+read_file code than on prose (mean 9.8 vs 0.0). The feature fires at definitions, not across a file; 2026-09-30.3 took
+every read_file token as a concept position (447 windows, most with no definition). Construction, not the SAE: the code
+anchor's concept windows are now the read_file windows whose decoded text contains `def name(`; the prose side, the
+statistic and the 0.80 threshold are unchanged, and a thin anchor is NOT_EVALUABLE as before. The replay sample records the
+token ids at the read_file positions to make the window text available. Fixture: the window selector. Not a rescue for
+layer 53, where the JSON anchor (13119) read 0.715 on matched positions; that reading stands under either rule.
+Recorded as a finding: on this model the curated "function definitions" features are sparse, definition-local detectors.
+
 ## 2026-09-30.3 — G3, two-anchor form (approved by Randall 2026-09-30, before the 27B T3 pod exists)
 
 The handoff's open item: the 9B's "code" feature failed as a known-answer anchor on JSON tool-call spans (AUROC 0.62)

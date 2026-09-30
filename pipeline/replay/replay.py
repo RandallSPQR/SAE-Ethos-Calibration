@@ -118,7 +118,8 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         rf = _read_file_positions(lm, row["messages"][:end - 1]) if sampled else []
         sample.append({"uid": row["uid"], "resid": fr.residual[s0:e0], "span_ids": fr.token_ids[s0:e0],
                        "extra": {k: v[s0:e0] for k, v in (fr.extra or {}).items()},
-                       "code_result_resid": fr.residual[rf] if rf else None})     # gate rules 2026-09-30.3
+                       "code_result_resid": fr.residual[rf] if rf else None,      # gate rules 2026-09-30.3
+                       "code_result_ids": [fr.token_ids[i] for i in rf] if rf else None})   # 2026-09-30.4: window text
     if oracle is not None:
         exps = verbalize(oracle, fr.residual, score_positions(fr.assistant_span))
         (Path(oracle_dir) / f"{row['uid'].replace('/', '__')}.jsonl").write_text(
@@ -376,9 +377,12 @@ def main():
             instrument.build_known_answer(sae, lm.tokenizer, sample, feat_dir / "known_answer_report.json",
                                           cal["code_feature_index"], cal.get("extra_feature_indices", []))
         try:
+            if not (modelcfg.models().get("oracle") or {}).get("hf_id"):
+                raise RuntimeError("no oracle in the model profile (G5 dropped)")      # recorded, not a traceback
             instrument.build_oracle_calibration(lm, lm.tokenizer, sample, feat_dir / "oracle_calibration.json", backend=args.backend)
         except Exception as ex:                       # noqa: BLE001 — the oracle is the last, optional load
-            import traceback; traceback.print_exc()
+            if "G5 dropped" not in str(ex):
+                import traceback; traceback.print_exc()
             (feat_dir / "oracle_calibration.json").write_text(json.dumps({"error": f"{type(ex).__name__}: {ex}"}))
     # cardinality: replayed count must equal input count (no silent drops)
     assert n_in == n_out, f"replay cardinality mismatch: in={n_in} out={n_out}"

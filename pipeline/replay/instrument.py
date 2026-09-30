@@ -131,6 +131,20 @@ def build_known_answer(sae, tok, samples, out_path, feature, extra_features=()):
     return rep
 
 
+DEF_RE = re.compile(r"\bdef\s+\w+\s*\(")
+
+
+def def_window_mask(window_texts):
+    """Gate rules 2026-09-30.4: which read_file windows hold a function definition (a `def name(` in the window's text).
+    The code anchor is a "function definitions" feature that fires at definitions, not across a file; windows without
+    one are not its concept positions (2026-09-30.3's all-tokens construction read chance: AUROC 0.507 at mean 9.8 vs 0)."""
+    return [bool(DEF_RE.search(t)) for t in window_texts]
+
+
+def _windows(seq, w=WINDOW):
+    return [seq[i:i + w] for i in range(0, len(seq), w) if len(seq[i:i + w]) >= w // 2]
+
+
 def build_matched_anchors(sae, tok, samples, out_path, anchors):
     """G3, two-anchor form (gate rules 2026-09-30.3, Randall 2026-09-30). Each pre-registered anchor is tested on the
     positions it is FOR, against reasoning prose of the same spans:
@@ -158,7 +172,13 @@ def build_matched_anchors(sae, tok, samples, out_path, anchors):
                     if blk:
                         conc[f] += _window_max(blk)
                 elif cr is not None:
-                    conc[f] += _window_max(cr[:, f])
+                    # 2026-09-30.4: concept windows = read_file windows holding a function definition
+                    ids = smp.get("code_result_ids")
+                    col_w = _windows(list(cr[:, f]))
+                    if ids is None:
+                        continue
+                    keep = def_window_mask([tok.decode(w) for w in _windows(list(ids))])
+                    conc[f] += [max(v) for v, k in zip(col_w, keep) if k]
         per = {str(f): {"auroc": auroc(conc[f], other[f]) if conc[f] and other[f] else None,
                         "n_concept_windows": len(conc[f]), "n_other_windows": len(other[f]),
                         "mean_concept": float(np.mean(conc[f])) if conc[f] else None,

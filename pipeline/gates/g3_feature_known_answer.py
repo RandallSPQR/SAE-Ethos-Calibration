@@ -84,6 +84,13 @@ def _two_anchor_fixture(thr):
             and _two_anchor(inverted, thr).status == "fail" and _two_anchor(thin, thr).status == "not_evaluable")
 
 
+def _def_window_fixture():
+    """rules 2026-09-30.4: the code anchor's concept windows are the read_file windows with a function definition."""
+    from replay.instrument import def_window_mask
+    return def_window_mask(["import os\nx = 1", "def load(path):\n    return", "    self.x = y", "class A:\n    def run(self):"]) \
+        == [False, True, False, True]
+
+
 def fixture():
     thr = load_run_cfg()["g3_known_feature_auroc_min"]
     a = auroc([0.9, 0.8, 0.85, 0.7], [0.1, 0.2, 0.05, 0.15])   # clean separation ~1.0
@@ -94,7 +101,7 @@ def fixture():
     prose = [0.0] * 128
     a_pos, a_win = auroc(code, prose), auroc(window_max(code), window_max(prose))
     sparse_ok = a_pos < thr and a_win >= thr
-    two_ok = _two_anchor_fixture(thr)
+    two_ok = _two_anchor_fixture(thr) and _def_window_fixture()
     ok = a >= thr and (0.8 > 0.1) and filter_ok and sparse_ok and two_ok
     return GateResult(NAME + "[fixture]", ok, {"auroc": round(a, 3), "threshold": thr, "filter_ok": filter_ok,
                                                "two_anchor_ok": two_ok,
