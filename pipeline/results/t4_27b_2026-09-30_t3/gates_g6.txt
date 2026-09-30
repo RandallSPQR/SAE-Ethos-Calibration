@@ -1,0 +1,4 @@
+[PASS] G6_judge_agreement: kappa=0.908, threshold=0.7, n=50
+
+nogpu: 1/1 gates passed.
+All run gates green.
