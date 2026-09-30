@@ -45,6 +45,9 @@ replay:
   # sets no attn_scale (defaults to sqrt(128) where HF uses query_pre_attn_scalar 168). transformers' own
   # output_hidden_states, read without nnsight, is the identity reference; the manifest names it.
   identity_ref: "hf_hidden_states"
+  # registered as image-text-to-text: nnsight loads it as VisionLanguageModel (LanguageModel refuses it), and the identity
+  # reference uses the same auto class; the text decoder is model.language_model.layers either way
+  hf_auto_class: "AutoModelForImageTextToText"
 
 # Neuronpedia ids for the chosen SAE (labels are descriptive, not evidence)
 neuronpedia:

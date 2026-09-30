@@ -35,7 +35,7 @@ def models_cfg():
 def load_target(which="target", device="cuda"):
     """which: 'target' (IT model) or 'base' (pretrained, for §4.5.3.4)."""
     import torch
-    from nnsight import LanguageModel
+    import nnsight
     models = models_cfg()
     tm = models["target_model"]
     hf_id = tm["hf_id" if which == "target" else "base_hf_id"]
@@ -56,11 +56,16 @@ def load_target(which="target", device="cuda"):
     kw = dict(device_map=dev, torch_dtype=dtype, attn_implementation=rc["attn_implementation"], dispatch=True)
     if tm.get("revision"):
         kw["revision"] = tm["revision"]
-    lm = LanguageModel(hf_id, **kw)
+    lm = getattr(nnsight, rc["nnsight_class"])(hf_id, **kw)      # LanguageModel (Gemma-2) / VisionLanguageModel (Gemma-3)
     cfg = lm.config
+    tok = getattr(lm, "tokenizer", None)
+    if tok is None:
+        from transformers import AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(hf_id, revision=tm.get("revision"))
+        lm.tokenizer = tok
     layer = int(models["sae"]["layer"])          # LOCKED in models.yaml; never computed from a fraction
-    modelcfg.check_tokenizer(lm.tokenizer)       # stop ids / turn suffix in the profile vs this tokenizer; raises
-    return LoadedModel(model=lm, tokenizer=lm.tokenizer, n_layers=modelcfg.text_config_value(cfg, "num_hidden_layers"),
+    modelcfg.check_tokenizer(tok)                # stop ids / turn suffix in the profile vs this tokenizer; raises
+    return LoadedModel(model=lm, tokenizer=tok, n_layers=modelcfg.text_config_value(cfg, "num_hidden_layers"),
                        d_model=modelcfg.text_config_value(cfg, "hidden_size"), layer=layer)
 
 

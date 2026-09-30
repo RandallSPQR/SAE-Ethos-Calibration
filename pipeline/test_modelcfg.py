@@ -46,7 +46,8 @@ def main():
     res["9b_hooks_layer31"] = list(m.hook_names()) == ["blocks.31.hook_resid_post", "layers.31.hidden_states_only",
                                                         "layers.31.mlp_output", "layers.31.attn_output", "layers.31.input_resid"]
     res["9b_replay_cfg"] = m.replay_cfg() == {"dtype": "float32", "device_map": "cuda", "attn_implementation": "eager",
-                                              "layers_path": "model.layers"}
+                                              "layers_path": "model.layers",
+                                              "hf_auto_class": "AutoModelForCausalLM", "nnsight_class": "LanguageModel"}
     res["9b_serializer_is_gemma2"] = m.serializer().__name__ == "model_io.gemma2"
     res["9b_neuronpedia"] = m.neuronpedia() == {"model_id": "gemma-2-9b-it", "source": "31-gemmascope-res-16k"}
     res["9b_tokenizer_ok"] = m.check_tokenizer(FakeTok(107, 1, [107, 108]))["end_of_turn_id"] == 107

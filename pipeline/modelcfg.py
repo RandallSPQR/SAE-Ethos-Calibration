@@ -106,6 +106,10 @@ def replay_cfg() -> dict:
     r.setdefault("device_map", "cuda")
     r.setdefault("attn_implementation", "eager")
     r.setdefault("layers_path", models().get("layers_path", _LEGACY["layers_path"]))
+    # the HF auto class the checkpoint is registered under; Gemma-3-27B-IT is image-text-to-text, which nnsight loads as
+    # VisionLanguageModel and refuses as LanguageModel (found on replay pod mv51cqg1q1bap2, 2026-09-30)
+    r.setdefault("hf_auto_class", "AutoModelForCausalLM")
+    r.setdefault("nnsight_class", "VisionLanguageModel" if r["hf_auto_class"] == "AutoModelForImageTextToText" else "LanguageModel")
     return r
 
 

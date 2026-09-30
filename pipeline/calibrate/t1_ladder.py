@@ -391,8 +391,8 @@ def stage_identity(out):
         # Fallback where TransformerLens lacks the model: transformers' own output_hidden_states, read without nnsight.
         # hidden_states[L] enters block L and hidden_states[L+1] leaves it (valid for L < n_layers-1: the last entry is
         # post final-norm). Less independent than TL (same modeling code), so the manifest names which reference ran.
-        from transformers import AutoModelForCausalLM
-        hf = AutoModelForCausalLM.from_pretrained(MODELS["target_model"]["hf_id"], revision=MODELS["target_model"].get("revision"),
+        import transformers
+        hf = getattr(transformers, rc["hf_auto_class"]).from_pretrained(MODELS["target_model"]["hf_id"], revision=MODELS["target_model"].get("revision"),
                                                   torch_dtype=dtype, device_map=rc["device_map"], attn_implementation=rc["attn_implementation"])
         n_layers = modelcfg.text_config_value(hf.config, "num_hidden_layers")
         if L >= n_layers - 1:
