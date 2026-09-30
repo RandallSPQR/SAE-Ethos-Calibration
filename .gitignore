@@ -39,3 +39,6 @@ pipeline/results/**/relabel_*/cardinality.json
 pipeline/eval/
 # joined analysis directories copy member generation files (harness.join_runs); keep manifest, cardinality, analysis
 pipeline/results/**/*_joined/generation/
+pipeline/results/*/relabel_*/generation/
+pipeline/results/*/relabel_*/manifest.json
+pipeline/results/*/relabel_*/cardinality.json

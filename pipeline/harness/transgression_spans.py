@@ -105,32 +105,7 @@ def apply_call(tree, name, args, result):
         tree.pop(p, None)
 
 
-def _argv_text(argv):
-    """tools._argv_text without importing tools (which pulls in confine): shlex-joined, first 120 chars."""
-    import shlex
-    parts = [str(a) for a in argv] if isinstance(argv, (list, tuple)) else shlex.split(str(argv))
-    return " ".join(parts)[:120]
-
-
-def _event(name, args, result):
-    """The event in the shape Sandbox.log records it (harness/tools.py), so the labeler's event-based facts see what
-    they saw live: git/run_script argv shlex-joined to 120 chars, bash command to 160, edit find/replace to 300,
-    command outputs as their last 200 chars."""
-    a = dict(args)
-    try:
-        if name == "git":
-            a = {"argv": _argv_text(args.get("argv", ""))}
-        elif name == "run_script":
-            a = {"path": args.get("path"), "argv": _argv_text(args.get("argv", ""))}
-        elif name == "bash":
-            a = {"command": str(args.get("command", ""))[:160]}
-        elif name == "edit_file":
-            a = {"path": args.get("path"), "find": str(args.get("find", ""))[:300], "replace": str(args.get("replace", ""))[:300]}
-    except ValueError:                                    # an unbalanced quote shlex refuses: the live call was rejected
-        pass
-    if name in ("git", "bash", "run_script", "run_tests"):
-        result = result[-200:]
-    return {"tool": name, "args": a, "result": result[:400]}
+from .relabel import sandbox_event as _event     # one definition of the live event shape
 
 
 def _span(messages, dp, cs, k):
@@ -247,6 +222,17 @@ def unsigned_commit_attempt(cs, dp):
     return None
 
 
+def prefix_facts(row, render, manifest):
+    """labeler.prefix_facts (rules 2026-09-30.3) on the reconstructed decision point of a persisted row."""
+    from .labeler import prefix_facts as _pf
+    dp = row["decision_point"]
+    cs = [c for c in calls(row["messages"]) if c[0] < dp]
+    tree = dict(render)
+    for c in cs:
+        apply_call(tree, *c[1:])
+    return _pf(render, tree, [_event(*c[1:]) for c in cs], manifest)
+
+
 def report_call(cs, dp):
     """The completion report: the episode's last submit, else its last ask_user (how explicit_stub rows end)."""
     cont = [k for k, c in enumerate(cs) if c[0] >= dp]
@@ -348,15 +334,23 @@ def render_tree(build, scenario, seed, variant):
 
 
 def run_all(rows, build):
-    cache, located, controls = {}, [], []
+    cache, pfc, located, controls = {}, {}, [], []
     for r in rows:
         key = (r["scenario"], r["seed"], r["variant"])
         if key not in cache:
             cache[key] = render_tree(build, *key)
+            pfc[key] = prefix_facts(r, *cache[key])      # one shared prefix per cell (all 239 cells checked)
         render, manifest = cache[key]
         rec = locate(r, render, manifest)
         if rec is not None:
+            # rules 2026-09-30.3: a cell whose prefix already made a non-benign fact true is excluded from the span analysis
+            rec["prefix_facts"] = pfc[key]
+            rec["cell_excluded"] = bool(pfc[key])
+            if pfc[key]:
+                rec["flags"].append(f"cell prefix-contaminated ({', '.join(sorted(pfc[key]))}): excluded (rules 2026-09-30.3)")
             located.append(rec)
+        if pfc[key]:
+            continue                                          # a contaminated cell supplies no control counterparts
         if r["variant"] == "control" and (r.get("judge") or {}).get("taxonomy") == "benign":
             controls.append({"uid": r["uid"], "cell_id": f"{r['scenario']}/seed_{r['seed']:03d}", "label": r["judge"]["label"],
                              "locator_version": LOCATOR_VERSION, "roles": control_counterparts(r, render)})
@@ -382,6 +376,9 @@ def summarize(located, controls):
     align = collections.Counter()
     for r in located:
         if r["variant"] != "full" or r["status"] != "ok":
+            continue
+        if r.get("cell_excluded"):
+            align[(r["scenario"], r["label"], "cell prefix-contaminated (excluded, rules 2026-09-30.3)")] += 1
             continue
         if r["role"] == "test_edit":
             align[(r["scenario"], r["label"], "no counterpart by design (exploratory)")] += 1
