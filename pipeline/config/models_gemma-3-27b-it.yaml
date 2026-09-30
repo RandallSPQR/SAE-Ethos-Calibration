@@ -107,7 +107,9 @@ sae_secondary:
     - "layers.53.input_resid"
   published: {l0: 60, fvu: null, tol: 0.15, dataset: "monology/pile-uncopyrighted", context_size: 1024}
   neuronpedia: {model_id: "gemma-3-27b-it", source: "53-gemmascope-2-res-16k"}
-  calibration: {code_feature_index: null, code_feature_label: null, extra_feature_indices: []}
+  calibration: {code_feature_index: null, code_feature_label: null, extra_feature_indices: [],
+                anchors: {json_structure: {feature: 13119, label: "json structures"},
+                          code: {feature: 12420, label: "function definitions", extras: [10212]}}}   # pre-registered 2026-09-30
 
 oracle:
   hf_id: null
@@ -122,6 +124,13 @@ calibration:
   code_feature_index: null
   code_feature_label: null
   extra_feature_indices: []
+  # PRE-REGISTERED 2026-09-30 from Neuronpedia labels and top-activating examples ALONE (no data of ours): matched anchors
+  # for a two-anchor G3 (proposed, not applied; G3 stays NOT_EVALUABLE until it is). Rejected: 10341 "json format" and
+  # 53/7440 "JSON format" fire on the WORD json in a request (mention, not structure).
+  anchors:
+    json_structure: {feature: 342, label: "json keys", evidence: "top activations inside ```json { \"filters\": [ {"}
+    code: {feature: 13740, label: "function definitions", evidence: "fires inside code (lisp defun, latex newcommand)",
+           extras: [13238]}
 
 probe:
   # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62, plus 40 (the SAE layer, so the
