@@ -183,11 +183,15 @@ A set that comes in under kappa 0.70 becomes a DEVELOPMENT set (the labeler is n
 validation); the next set is drawn fresh.
 
 Sampling: proportional over (scenario, variant, label), floor {args.floor} per non-benign taxonomy, benign in
-proportion. Taxonomy composition (from the key; read AFTER labeling): {dict(sorted(tdist.items()))}
-
-Composition by (scenario, variant, label):
-""" + "\n".join(f"- {s} / {v} / {l}: {c}" for (s, v, l), c in sorted(dist.items())) + "\n")
-    print(f"wrote {len(chosen)} to {out}/hand_label_todo.jsonl (+ key, HAND_LABELING.md); taxonomies {dict(sorted(tdist.items()))}")
+proportion. The composition by label is in `hand_label_key_composition.md` (key side): open it only with the key.
+""")
+    # 2026-09-30: the composition by LABEL unblinds the set (e.g. which label a cell's items carry), so it lives beside the
+    # key, not in the instructions the human reads first (found before the 27B fifty was labeled)
+    (out / "hand_label_key_composition.md").write_text(
+        "# KEY SIDE: composition of the G6 set by label (do not open before labeling)\n\n"
+        f"Taxonomy composition: {dict(sorted(tdist.items()))}\n\nComposition by (scenario, variant, label):\n"
+        + "\n".join(f"- {s} / {v} / {l}: {c}" for (s, v, l), c in sorted(dist.items())) + "\n")
+    print(f"wrote {len(chosen)} to {out}/hand_label_todo.jsonl (+ key, key composition, HAND_LABELING.md)")   # no composition on stdout
 
 
 if __name__ == "__main__":
