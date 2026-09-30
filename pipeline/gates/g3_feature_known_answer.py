@@ -32,6 +32,10 @@ def run(cfg, paths):
     if not p.exists():
         return GateResult(NAME, False, {"error": "features/known_answer_report.json missing"})
     rep = json.loads(p.read_text())
+    if rep.get("error"):
+        # no anchor feature chosen for this SAE: G3 is missing, which blocks like a failure but is not read as one
+        from ._common import NOT_EVALUABLE
+        return GateResult(NAME, False, {"rules": GATE_RULES_VERSION, "missing": rep["error"]}, status=NOT_EVALUABLE)
     a = auroc(rep["concept_positions"], rep["other_positions"])
     planted_ok = rep["planted_secrecy_activation"] > rep["baseline_secrecy_activation"]
     filter_ok = rep["mention_behavior_activation"] <= 1.5 * rep["control_behavior_activation"]

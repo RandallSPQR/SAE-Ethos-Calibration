@@ -288,56 +288,63 @@ def stage_nnsight(out, gates_only=None):
 
     # ---- G3: window-max discrimination on labeled code features
     fidx = CAL.get("code_feature_index")
-    feats = [fidx] + list(CAL.get("extra_feature_indices", []) or [])
+    if fidx is None:
+        # the profile names no anchor feature for this SAE yet (Gemma Scope 2: matched anchors are chosen on Neuronpedia
+        # before G3 runs); G3/G4 read "missing", instead of indexing the decoder with None (replay pod mv51cqg1q1bap2)
+        _dump(feat / "known_answer_report.json", {"rules": GATE_RULES_VERSION, "error": "no calibration.code_feature_index in the profile; G3 skipped"})
+        _dump(feat / "steering_report.json", {"rules": GATE_RULES_VERSION, "error": "no calibration.code_feature_index in the profile; G4 skipped"})
+        print("G3/G4: skipped (no anchor feature in the profile)")
+    else:
+        feats = [fidx] + list(CAL.get("extra_feature_indices", []) or [])
 
-    def acts_on(text, fx):
-        ids = tok(text, add_special_tokens=True)["input_ids"]
-        f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids)
-        return encode_dense(sae, f.residual)[1:, fx]
-    per = {}
-    for fx in feats:
-        c, p, m = acts_on(CODE_TEXT, fx), acts_on(PROSE_TEXT, fx), acts_on(MENTION_TEXT, fx)
-        pl = acts_on(PROSE_TEXT + "\n" + CODE_TEXT, fx)
-        cw, pw, mw, plw = _window_max(c), _window_max(p), _window_max(m), _window_max(pl)
-        per[str(fx)] = {"auroc_window_max": auroc(cw, pw), "auroc_position": auroc(c.tolist(), p.tolist()),
-                        "frac_active": {"code": float((c > 0).mean()), "prose": float((p > 0).mean()), "mention": float((m > 0).mean())},
-                        "window_max": {"code": cw, "prose": pw, "mention": mw, "planted": plw},
-                        "raw": {"code": c.tolist(), "prose": p.tolist()}}
-    mf = per[str(fidx)]
-    rep3 = {"rules": GATE_RULES_VERSION, "feature": fidx, "statistic": f"window-max ({WINDOW} tokens) AUROC + fraction-active",
-            "concept_positions": mf["window_max"]["code"], "other_positions": mf["window_max"]["prose"],
-            "concept_positions_raw": mf["raw"]["code"], "other_positions_raw": mf["raw"]["prose"],
-            "planted_secrecy_activation": float(np.mean(mf["window_max"]["planted"])),
-            "baseline_secrecy_activation": float(np.mean(mf["window_max"]["prose"])),
-            "mention_behavior_activation": float(np.mean(mf["window_max"]["mention"])),
-            "control_behavior_activation": float(np.mean(mf["window_max"]["prose"])),
-            "auroc": mf["auroc_window_max"], "frac_active": mf["frac_active"],
-            "per_feature": {k: {kk: vv for kk, vv in val.items() if kk != "raw"} for k, val in per.items()},
-            "note": "planted/mention fields reuse the code feature (code planted in prose; prose that talks about code)"}
-    _dump(feat / "known_answer_report.json", rep3)
-    try:
-        fetch_neuronpedia_labels(feats, feat / "feature_labels.json")
-    except Exception as ex:
-        print("neuronpedia fetch failed:", ex)
-    for fx in feats:
-        print(f"G3 feature {fx}: auroc_window_max={per[str(fx)]['auroc_window_max']:.3f} auroc_position={per[str(fx)]['auroc_position']:.3f} active={per[str(fx)]['frac_active']}")
+        def acts_on(text, fx):
+            ids = tok(text, add_special_tokens=True)["input_ids"]
+            f = teacher_forced_forward(lm, None, capture_residual=True, input_ids=ids)
+            return encode_dense(sae, f.residual)[1:, fx]
+        per = {}
+        for fx in feats:
+            c, p, m = acts_on(CODE_TEXT, fx), acts_on(PROSE_TEXT, fx), acts_on(MENTION_TEXT, fx)
+            pl = acts_on(PROSE_TEXT + "\n" + CODE_TEXT, fx)
+            cw, pw, mw, plw = _window_max(c), _window_max(p), _window_max(m), _window_max(pl)
+            per[str(fx)] = {"auroc_window_max": auroc(cw, pw), "auroc_position": auroc(c.tolist(), p.tolist()),
+                            "frac_active": {"code": float((c > 0).mean()), "prose": float((p > 0).mean()), "mention": float((m > 0).mean())},
+                            "window_max": {"code": cw, "prose": pw, "mention": mw, "planted": plw},
+                            "raw": {"code": c.tolist(), "prose": p.tolist()}}
+        mf = per[str(fidx)]
+        rep3 = {"rules": GATE_RULES_VERSION, "feature": fidx, "statistic": f"window-max ({WINDOW} tokens) AUROC + fraction-active",
+                "concept_positions": mf["window_max"]["code"], "other_positions": mf["window_max"]["prose"],
+                "concept_positions_raw": mf["raw"]["code"], "other_positions_raw": mf["raw"]["prose"],
+                "planted_secrecy_activation": float(np.mean(mf["window_max"]["planted"])),
+                "baseline_secrecy_activation": float(np.mean(mf["window_max"]["prose"])),
+                "mention_behavior_activation": float(np.mean(mf["window_max"]["mention"])),
+                "control_behavior_activation": float(np.mean(mf["window_max"]["prose"])),
+                "auroc": mf["auroc_window_max"], "frac_active": mf["frac_active"],
+                "per_feature": {k: {kk: vv for kk, vv in val.items() if kk != "raw"} for k, val in per.items()},
+                "note": "planted/mention fields reuse the code feature (code planted in prose; prose that talks about code)"}
+        _dump(feat / "known_answer_report.json", rep3)
+        try:
+            fetch_neuronpedia_labels(feats, feat / "feature_labels.json")
+        except Exception as ex:
+            print("neuronpedia fetch failed:", ex)
+        for fx in feats:
+            print(f"G3 feature {fx}: auroc_window_max={per[str(fx)]['auroc_window_max']:.3f} auroc_position={per[str(fx)]['auroc_position']:.3f} active={per[str(fx)]['frac_active']}")
 
-    # ---- G4: steer along the code feature's decoder direction at a LIVE decision point
-    W = sae.W_dec[fidx].detach().float().cpu().numpy()
-    opener_ids = sorted({tok(t, add_special_tokens=False)["input_ids"][0] for t in ["```", "def", "import", "class", "#", "print"]})
-    sweep = yaml.safe_load((CFG / "run.yaml").read_text())["steering"]["sweep"]
-    curves, samples = {}, {}
-    for name, prompt in (("A_code_request", STEER_PROMPT_LIVE), ("B_write_something", STEER_PROMPT)):
-        ids = apply_to_tokenizer(tok, prompt, add_generation_prompt=True)
-        curves[name], samples[name] = {}, {}
-        for st in sweep:
-            curves[name][str(st)] = _last_pos_mass(lm, ids, (W, st), opener_ids)
-            samples[name][str(st)] = tok.decode(greedy_generate_at_layer(lm, ids, lm.layer, (W, st), max_new_tokens=20))
-        print(f"G4 {name}: " + " ".join(f"{k}:{val:.3f}" for k, val in curves[name].items()))
-    _dump(feat / "steering_report.json", {"rules": GATE_RULES_VERSION, "feature": fidx,
-                                          "readout": "P(first generated token in code openers)", "opener_ids": opener_ids,
-                                          "prompt": STEER_PROMPT_LIVE[0]["content"], "curve": curves["A_code_request"],
-                                          "curves_all": curves, "samples": samples})
+        # ---- G4: steer along the code feature's decoder direction at a LIVE decision point
+        W = sae.W_dec[fidx].detach().float().cpu().numpy()
+        opener_ids = sorted({tok(t, add_special_tokens=False)["input_ids"][0] for t in ["```", "def", "import", "class", "#", "print"]})
+        sweep = yaml.safe_load((CFG / "run.yaml").read_text())["steering"]["sweep"]
+        curves, samples = {}, {}
+        for name, prompt in (("A_code_request", STEER_PROMPT_LIVE), ("B_write_something", STEER_PROMPT)):
+            ids = apply_to_tokenizer(tok, prompt, add_generation_prompt=True)
+            curves[name], samples[name] = {}, {}
+            for st in sweep:
+                curves[name][str(st)] = _last_pos_mass(lm, ids, (W, st), opener_ids)
+                samples[name][str(st)] = tok.decode(greedy_generate_at_layer(lm, ids, lm.layer, (W, st), max_new_tokens=20))
+            print(f"G4 {name}: " + " ".join(f"{k}:{val:.3f}" for k, val in curves[name].items()))
+        _dump(feat / "steering_report.json", {"rules": GATE_RULES_VERSION, "feature": fidx,
+                                              "readout": "P(first generated token in code openers)", "opener_ids": opener_ids,
+                                              "prompt": STEER_PROMPT_LIVE[0]["content"], "curve": curves["A_code_request"],
+                                              "curves_all": curves, "samples": samples})
 
     # ---- G5: paired real/null verbalization. Residuals captured UNADAPTED first; the LoRA loads last of all.
     from replay.oracle import load_oracle, oracle_calibration_report, gather_residuals
