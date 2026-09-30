@@ -1,0 +1,5 @@
+[PASS] G2_sae_health: rules=2026-09-30.4, chosen_hook=blocks.40.hook_resid_post, var_explained=0.9, l0=58.8, published_l0=60, matches_published=True, decoy_ve_worst_gap=0.004, decoy_margin_min=0.1, decoys_rejected=True, decoy_rejected_by={'layers.40.hidden_states_only': 've', 'layers.40.mlp_output': 've', 'layers.40.attn_output': 've', 'layers.40.input_resid': 'identity (min cos 0.9901)'}, identity_ok=True, jumprelu_ok=True, health_ok=True, ve_scale_sensitivity={'x0.8': {'ve': 0.865, 'l0': 44.8}, 'x1.2': {'ve': 0.855, 'l0': 85.7}}, ve_detects_scale=False, identity_min_cos=0.9999953508377075, identity_max_norm_rel=0.0022271592170000076, identity_dtype=torch.float32, per_doc_l0_median=59.5, per_doc_l0_range=[51.4, 63.7], fvu_unpublished=True
+[FAIL] G3_feature_known_answer: rules=2026-09-30.4, construction=two_anchor, threshold=0.8, json_structure={'feature': 342, 'auroc': 0.943, 'ok': True}, code={'feature': 13740, 'auroc': 0.5, 'ok': False}
+
+full: 1/2 gates passed.
+BLOCKED by: G3_feature_known_answer

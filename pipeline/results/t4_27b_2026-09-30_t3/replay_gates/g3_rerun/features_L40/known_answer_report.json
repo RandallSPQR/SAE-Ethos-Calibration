@@ -1,0 +1,37 @@
+{
+  "construction": "two_anchor",
+  "window": 16,
+  "anchors": {
+    "json_structure": {
+      "feature": 342,
+      "label": "json keys",
+      "auroc": 0.9429902742596241,
+      "n_concept_windows": 153,
+      "n_other_windows": 209,
+      "mean_concept": 2230.078369140625,
+      "mean_other": 23.98990821838379,
+      "extras": {}
+    },
+    "code": {
+      "feature": 13740,
+      "label": "function definitions",
+      "auroc": 0.5,
+      "n_concept_windows": 18,
+      "n_other_windows": 209,
+      "mean_concept": 0.0,
+      "mean_other": 0.0,
+      "extras": {
+        "13238": {
+          "auroc": 0.5,
+          "n_concept_windows": 18,
+          "n_other_windows": 209,
+          "mean_concept": 0.0,
+          "mean_other": 0.0
+        }
+      }
+    }
+  },
+  "n_spans": 48,
+  "n_spans_with_read_file": 29,
+  "rules": "2026-09-30.4"
+}

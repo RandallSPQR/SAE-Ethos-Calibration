@@ -1,0 +1,37 @@
+{
+  "construction": "two_anchor",
+  "window": 16,
+  "anchors": {
+    "json_structure": {
+      "feature": 13119,
+      "label": "json structures",
+      "auroc": 0.7149513712981205,
+      "n_concept_windows": 153,
+      "n_other_windows": 209,
+      "mean_concept": 967.163818359375,
+      "mean_other": 39.96194839477539,
+      "extras": {}
+    },
+    "code": {
+      "feature": 12420,
+      "label": "function definitions",
+      "auroc": 0.44000406752084603,
+      "n_concept_windows": 447,
+      "n_other_windows": 209,
+      "mean_concept": 4.742080211639404,
+      "mean_other": 136.1456756591797,
+      "extras": {
+        "10212": {
+          "auroc": 0.5009794162037186,
+          "n_concept_windows": 447,
+          "n_other_windows": 209,
+          "mean_concept": 9.23046875,
+          "mean_other": 3.5969433784484863
+        }
+      }
+    }
+  },
+  "n_spans": 48,
+  "n_spans_with_read_file": 29,
+  "rules": "2026-09-30.3"
+}

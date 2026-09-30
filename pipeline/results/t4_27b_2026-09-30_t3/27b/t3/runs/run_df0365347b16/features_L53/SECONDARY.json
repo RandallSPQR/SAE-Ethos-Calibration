@@ -1,0 +1,9 @@
+{
+ "role": "secondary (pre-registered)",
+ "layer": 53,
+ "release": "gemma-scope-2-27b-it-res",
+ "sae_id": "layer_53_width_16k_l0_medium",
+ "hf_folder": "resid_post/layer_53_width_16k_l0_medium",
+ "revision": "5c58dd4cddd52cef653059d85e12a86bf6222a28",
+ "params_sha256": "a3492cd5ec2d00f3aa36e4fdb9d3e61d1137453c9228c5af964e5114f3c5e62b"
+}
