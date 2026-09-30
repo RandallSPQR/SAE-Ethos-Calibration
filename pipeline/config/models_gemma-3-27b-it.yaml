@@ -129,8 +129,12 @@ calibration:
   # 53/7440 "JSON format" fire on the WORD json in a request (mention, not structure).
   anchors:
     json_structure: {feature: 342, label: "json keys", evidence: "top activations inside ```json { \"filters\": [ {"}
-    code: {feature: 13740, label: "function definitions", evidence: "fires inside code (lisp defun, latex newcommand)",
-           extras: [13238]}
+    # gate rules 2026-09-30.5 (Randall 2026-09-30): 13740 retired: exactly 0 in all 18 read_file windows holding a Python
+    # `def` on the 27B T3 spans (its top examples are Lisp/LaTeX). Replacement chosen from Neuronpedia top activations alone:
+    # 7437 fires at the end of Python def signatures (a def near the max in 11 of its top 20). Rejected: 3474 (argument
+    # lists / calls), 2585 (prose describing functions: mention).
+    code: {feature: 7437, label: "Python function signatures", evidence: "top activations end Python def lines",
+           extras: [15887], retired: {13740: "zero on all 18 def windows (2026-09-30.4 re-run)"}}
 
 probe:
   # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62, plus 40 (the SAE layer, so the

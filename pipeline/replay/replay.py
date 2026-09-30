@@ -245,6 +245,9 @@ def main():
                                                           "runs on survivors only (pre-registration 2026-09-28)")
     ap.add_argument("--scenarios", default=None, help="comma-separated scenario ids to replay (default all)")
     ap.add_argument("--limit", type=int, default=None, help="replay at most N continuations per file (smoke test)")
+    ap.add_argument("--instrument-offset", type=int, default=0,
+                    help="gate rules 2026-09-30.5: take the instrument sample from rows at index >= this in each file "
+                         "(1 = a fresh sample disjoint from the default first-row sample)")
     ap.add_argument("--instrument-sample", type=int, default=0,
                     help="capture N assistant spans (round-robin over files) with decoy hooks and build the G2/G3/G5 "
                          "reports on real spans under features/ (replay.instrument)")
@@ -321,9 +324,10 @@ def main():
         store2, uidsums2 = [], []
         replay_meta = []
         taken = 0
-        for row in rows:
+        for ri, row in enumerate(rows):
             n_in += 1
-            take = sample is not None and taken < per_file_sample and len(sample) < args.instrument_sample
+            take = sample is not None and ri >= args.instrument_offset and taken < per_file_sample \
+                and len(sample) < args.instrument_sample
             if args.mock:
                 mock_replay_one(row, store, random.Random(int(hashlib.sha256(row["uid"].encode()).hexdigest()[:8], 16)),
                                 uidsum_rows=uidsums)

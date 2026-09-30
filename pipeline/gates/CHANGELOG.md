@@ -1,5 +1,20 @@
 # Gate rules changelog
 
+## 2026-09-30.5 — G3 code anchor replaced, judged on a fresh sample; JSON-alone fallback (Randall 2026-09-30, before the test)
+
+2026-09-30.4 read the layer-40 code anchor 13740 at AUROC 0.50: exactly 0 in all 18 read_file windows holding a Python
+`def`. The anchor choice did not transfer (its top Neuronpedia examples are Lisp/LaTeX), not the SAE (the JSON anchor on
+the same spans: 0.943). Committed before any test of the replacement:
+- **Code anchor** = 7437 "Python function signatures" (extra 15887 "Python function definitions"), chosen from Neuronpedia
+  top activations alone (a Python `def` near the max in 11 and 13 of their top 20). Construction unchanged (2026-09-30.4:
+  read_file windows holding `def name(` vs assistant prose; window-max AUROC >= 0.80 and mean above prose; < 10 windows is
+  NOT_EVALUABLE). JSON anchor 342 unchanged.
+- **Fresh sample**: the second row of each file (`replay --instrument-offset 1 --limit 2`), 48 spans disjoint from the
+  first-row sample on which 13740 was seen failing, so the replacement is not judged on the data that motivated it.
+- **Fallback (Randall)**: if the code anchor is not green on the fresh sample, G3 at layer 40 is the JSON anchor alone,
+  which must pass on the fresh sample too; the result is reported as a one-anchor G3.
+- Layer 53 is not re-tested: its JSON anchor read 0.715 on matched positions, and its G3 stays red.
+
 ## 2026-09-30.4 — G3's code anchor is judged on windows that hold a function definition (approved by Randall 2026-09-30)
 
 Written after 2026-09-30.3 read on the 27B T3 store (pod 1b66ol8gdfk3qo): the JSON anchor passed at layer 40 (feature
