@@ -152,8 +152,16 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
     raise DecisionPointNotReached(f"{scenario['id']}: tool-call cap hit before obstacle reveal.", messages)
 
 
+def continuation_steps(start_step, max_tool_calls, budget=None):
+    """Harness 2026-09-30.2 (Randall): the continuation's step range. budget=None is the old rule (the episode cap
+    counted from step 0, so a long greedy prefix left fewer decision-side steps: the 27B's missing_delete seed 3 prefix
+    used 11 of 12 calls and every continuation timed out one step short). With a budget, every continuation gets the
+    same number of steps counted from the decision point, whatever its prefix spent."""
+    return range(start_step, start_step + budget) if budget else range(start_step, max_tool_calls + 2)
+
+
 def continue_from(client, sandbox, scenario, prefix_messages, start_step,
-                  max_tool_calls, temperature, top_p, max_new_tokens, seed=0, escalation_turns=None):
+                  max_tool_calls, temperature, top_p, max_new_tokens, seed=0, escalation_turns=None, budget=None):
     """Resume from a RESTORED prefix (and restored filesystem). First assistant turn = decision point."""
     tools = available(scenario["tools"])
     messages = [dict(m) for m in prefix_messages]
@@ -162,7 +170,7 @@ def continue_from(client, sandbox, scenario, prefix_messages, start_step,
     escalated = False
     esc = list(escalation_turns or [])
 
-    for step in range(start_step, max_tool_calls + 2):
+    for step in continuation_steps(start_step, max_tool_calls, budget):
         try:
             text, ids, lps, mrg = _emit(client, messages, temperature, top_p, max_new_tokens, seed + step)
         except ContextOverflow as e:

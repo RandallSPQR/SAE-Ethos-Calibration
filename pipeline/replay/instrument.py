@@ -68,6 +68,9 @@ def build_sae_health(lm, sae, samples, out_path, identity_from=None):
         if t1.get("identity"):
             rep["identity"] = {**t1["identity"], "carried_from": str(identity_from),
                                "note": "tensor identity is data-independent; same pinned SAE artifact and hook as T1"}
+            ir = Path(identity_from).parent / "identity_report.json"          # rules 2026-09-30.2 reads the cross minimum
+            if rep["identity"].get("cross_nnpost_vs_tlpre_min_cos") is None and ir.exists():
+                rep["identity"]["cross_nnpost_vs_tlpre_min_cos"] = (json.loads(ir.read_text()).get("cross_nnpost_vs_tlpre") or {}).get("min_cos")
     try:
         from gates._common import GATE_RULES_VERSION
         rep["rules"] = GATE_RULES_VERSION
@@ -119,6 +122,51 @@ def build_known_answer(sae, tok, samples, out_path, feature, extra_features=()):
                                                                     "prose": float(np.mean([x > 0 for x in acts_prose[mf]])) if acts_prose[mf] else None},
            "per_feature": per, "n_spans": len(samples), "n_code_spans": n_code_spans,
            "note": "planted/mention/control fields are real-span analogues: code windows / prose windows mentioning code / prose windows not mentioning code"}
+    try:
+        from gates._common import GATE_RULES_VERSION
+        rep["rules"] = GATE_RULES_VERSION
+    except Exception:
+        pass
+    Path(out_path).write_text(json.dumps(rep, indent=2))
+    return rep
+
+
+def build_matched_anchors(sae, tok, samples, out_path, anchors):
+    """G3, two-anchor form (gate rules 2026-09-30.3, Randall 2026-09-30). Each pre-registered anchor is tested on the
+    positions it is FOR, against reasoning prose of the same spans:
+      json_structure: tokens inside a ```tool block of the assistant span (the tool-call JSON), any block;
+      code:           tokens of read_file RESULT content in the prefix (the code the model read; sample['code_result_resid']).
+    Statistic per anchor: window-max ({w}-token windows) AUROC, concept windows vs prose windows, plus mean activations.
+    Anchors were chosen from Neuronpedia labels and top activations alone, before any of our data (profile)."""
+    from .sae import encode_dense
+    from gates.g3_feature_known_answer import auroc
+    out = {}
+    for name, spec in anchors.items():
+        feats = [int(spec["feature"])] + [int(x) for x in spec.get("extras", [])]
+        conc, other = {f: [] for f in feats}, {f: [] for f in feats}
+        for smp in samples:
+            regions, _, _ = token_regions(tok, smp["span_ids"])
+            dense = encode_dense(sae, smp["resid"])
+            cr = encode_dense(sae, smp["code_result_resid"]) if (name == "code" and smp.get("code_result_resid") is not None) else None
+            for f in feats:
+                col = dense[:, f]
+                pro = [col[i] for i, r in enumerate(regions) if r == "prose"]
+                if pro:
+                    other[f] += _window_max(pro)
+                if name == "json_structure":
+                    blk = [col[i] for i, r in enumerate(regions) if r == "block"]
+                    if blk:
+                        conc[f] += _window_max(blk)
+                elif cr is not None:
+                    conc[f] += _window_max(cr[:, f])
+        per = {str(f): {"auroc": auroc(conc[f], other[f]) if conc[f] and other[f] else None,
+                        "n_concept_windows": len(conc[f]), "n_other_windows": len(other[f]),
+                        "mean_concept": float(np.mean(conc[f])) if conc[f] else None,
+                        "mean_other": float(np.mean(other[f])) if other[f] else None} for f in feats}
+        out[name] = {"feature": feats[0], "label": spec.get("label"), **per[str(feats[0])],
+                     "extras": {k: v for k, v in per.items() if k != str(feats[0])}}
+    rep = {"construction": "two_anchor", "window": WINDOW, "anchors": out, "n_spans": len(samples),
+           "n_spans_with_read_file": sum(1 for s in samples if s.get("code_result_resid") is not None)}
     try:
         from gates._common import GATE_RULES_VERSION
         rep["rules"] = GATE_RULES_VERSION

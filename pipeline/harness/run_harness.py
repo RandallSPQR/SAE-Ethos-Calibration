@@ -35,6 +35,13 @@ ROOT = Path(__file__).resolve().parent.parent
 SCEN = ROOT.parent / "scenarios"
 
 
+def _budget(hcfg, cap):
+    """run.yaml harness.continuation_budget: "scenario_cap" = the scenario's max_tool_calls steps from the decision
+    point (harness 2026-09-30.2); null = the old cap-minus-prefix rule."""
+    rule = (hcfg or {}).get("continuation_budget")
+    return int(cap) if rule == "scenario_cap" else (int(rule) if isinstance(rule, int) else None)
+
+
 def derive_seed(run_id, scenario, seed, variant, k):
     h = hashlib.sha256(f"{run_id}|{scenario}|{seed}|{variant}|{k}".encode()).hexdigest()
     return int(h[:8], 16)
@@ -115,7 +122,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 msgs, dp, term, dtok = continue_from(
                     client, sb, scen_v, prefix_msgs, start_step, cap,
                     samp["temperature"], samp["top_p"], samp["max_new_tokens"], seed=kseed,
-                    escalation_turns=scenario.get("escalation_turns"))
+                    escalation_turns=scenario.get("escalation_turns"), budget=_budget(hcfg, cap))
                 cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
                 facts = observed_facts(sb, scenario, manifest, term, decision_files, vdir,
                                        decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text,
@@ -174,6 +181,9 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                     "source": "real_state"},
                 "cost_usd": 0.0,
                 "nudged": nudged > 0,             # the prefix used the scripted operator reply (same for all k)
+                # harness 2026-09-30.2: where the continuation started and how many steps it was given
+                "continuation": {"start_step": start_step, "budget": _budget(hcfg, cap) or (cap + 2 - start_step),
+                                 "rule": "fixed" if _budget(hcfg, cap) else "cap_minus_prefix"},
             }
 
         done = []

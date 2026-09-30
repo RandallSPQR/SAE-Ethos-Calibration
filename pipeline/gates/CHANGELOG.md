@@ -1,5 +1,19 @@
 # Gate rules changelog
 
+## 2026-09-30.3 — G3, two-anchor form (approved by Randall 2026-09-30, before the 27B T3 pod exists)
+
+The handoff's open item: the 9B's "code" feature failed as a known-answer anchor on JSON tool-call spans (AUROC 0.62)
+because the anchor did not match the positions. Each pre-registered anchor is now tested on the positions it is FOR, against
+reasoning prose of the same assistant spans: `json_structure` on the tokens inside the span's ```tool block (the tool-call
+JSON), `code` on the tokens of read_file RESULT content in the prefix (up to 256 contiguous per row, located by the
+tokenizer's character offsets; 265 of 355 calibration rows carry one). Statistic per anchor: window-max (16-token) AUROC
+>= g3_known_feature_auroc_min (0.80, unchanged) AND mean concept activation above mean prose. All anchors must pass. An
+anchor with fewer than 10 windows on either side is NOT_EVALUABLE. Anchors (27B profile) were chosen from Neuronpedia
+labels and top activations alone, before any data of ours: L40 json 342 / code 13740 (+13238); L53 json 13119 / code
+12420 (+10212); two "JSON format" features that fire on the word "json" were rejected. Fixture: good anchors pass; a weak
+code anchor fails; an inverted mean fails; a thin anchor is not evaluable. The single-feature form remains for profiles
+without `calibration.anchors` (the 9B).
+
 ## 2026-09-30.2 — G2: identity may reject a same-shape decoy where VE cannot (approved by Randall 2026-09-30, after the replay ladder)
 
 Written after G2 read FAIL on the 27B replay ladder (pod mv51cqg1q1bap2), so it is justified as a construction fix, not a

@@ -27,6 +27,31 @@ import os as _os
 TEMPLATE_DEFECT = _os.environ.get("REPLAY_TEMPLATE_DEFECT") or None
 
 
+_RF = None
+
+
+def _read_file_positions(lm, messages, cap=256):
+    """Gate rules 2026-09-30.3 (two-anchor G3): token positions, in the serialized prefix, of read_file RESULT content
+    (the code the model read), located by the tokenizer's character offsets. Up to `cap` contiguous positions from the
+    first result, so window statistics see real runs of code. Returns [] when the prefix has no read_file result or the
+    offset tokenization does not reproduce the prefix ids (then nothing is claimed)."""
+    import re
+    global _RF
+    _RF = _RF or re.compile(r"Tool result from read_file:\n(.*?)(?=<end_of_turn>|\n\nTool result from )", re.S)
+    import modelcfg
+    text = modelcfg.serializer().serialize_messages(messages, add_generation_prompt=True)
+    enc = lm.tokenizer(text, add_special_tokens=True, return_offsets_mapping=True)
+    if list(enc["input_ids"]) != list(_prefix_ids(lm, messages)):
+        return []
+    pos = []
+    for m in _RF.finditer(text):
+        a, b = m.span(1)
+        pos += [i for i, (s, e) in enumerate(enc["offset_mapping"]) if e > s and a <= s < b]
+        if len(pos) >= cap:
+            break
+    return pos[:cap]
+
+
 def _prefix_ids(lm, messages):
     import modelcfg
     ser = modelcfg.serializer()
@@ -90,8 +115,10 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         for feat, tot in sums.items():
             uidsum_rows.append({"uid": row["uid"], "feature": int(feat), "sum_act": tot, "span_tokens": e0 - s0})
     if sample is not None:
+        rf = _read_file_positions(lm, row["messages"][:end - 1]) if sampled else []
         sample.append({"uid": row["uid"], "resid": fr.residual[s0:e0], "span_ids": fr.token_ids[s0:e0],
-                       "extra": {k: v[s0:e0] for k, v in (fr.extra or {}).items()}})
+                       "extra": {k: v[s0:e0] for k, v in (fr.extra or {}).items()},
+                       "code_result_resid": fr.residual[rf] if rf else None})     # gate rules 2026-09-30.3
     if oracle is not None:
         exps = verbalize(oracle, fr.residual, score_positions(fr.assistant_span))
         (Path(oracle_dir) / f"{row['uid'].replace('/', '__')}.jsonl").write_text(
@@ -340,7 +367,9 @@ def main():
         feat_dir = Path(args.features)
         print(f"instrument checks on {len(sample)} real spans ...", flush=True)
         instrument.build_sae_health(lm, sae, sample, feat_dir / "sae_health.json", identity_from=args.identity_from)
-        if cal.get("code_feature_index") is None:     # per-SAE anchor not chosen yet: G3 reads "missing", not a 9B index
+        if cal.get("anchors"):                         # gate rules 2026-09-30.3: the two-anchor G3 (pre-registered anchors)
+            instrument.build_matched_anchors(sae, lm.tokenizer, sample, feat_dir / "known_answer_report.json", cal["anchors"])
+        elif cal.get("code_feature_index") is None:     # per-SAE anchor not chosen yet: G3 reads "missing", not a 9B index
             (feat_dir / "known_answer_report.json").write_text(json.dumps({"error": "no calibration.code_feature_index in the "
                                                                           "model profile; G3 skipped and reported as missing"}))
         else:

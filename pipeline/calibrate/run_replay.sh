@@ -63,10 +63,21 @@ case "$PHASE" in
     sha256sum "$CAL" | tee "${CAL}.sha256"
     ;;
   replay)
-    RUN=$D
-    python -m replay.replay --go --run-dir "$RUN" 2>&1 | tee "${LOG}_fp32.log"
+    RUN=$D; LADDER=${3:-/workspace/27b/ladder}
+    # fp32 replay of every row (both SAE layers in one pass) + the real-span instrument checks on a 48-row sample
+    # (G2 with the ladder's identity carried; the two-anchor G3, gate rules 2026-09-30.3)
+    python -m replay.replay --go --run-dir "$RUN" --instrument-sample 48 \
+      --identity-from "$LADDER/t1/features/sae_health.json" 2>&1 | tee "${LOG}_fp32.log"
     [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: replay failed"; exit 6; }
-    python -m gates.run_gates --run-dir "$RUN" --gates G1 2>&1 | tee "$RUN/gates_g1.txt"
+    python -m gates.run_gates --run-dir "$RUN" --gates G1,G2,G3 2>&1 | tee "$RUN/gates_replay.txt"
+    if python -c 'import modelcfg,sys; sys.exit(0 if modelcfg.secondary_sae() else 1)'; then
+      echo "== secondary SAE: real-span instrument checks (its features store came from the pass above)"
+      SAE_ROLE=secondary REPLAY_SECONDARY=0 python -m replay.replay --go --transcripts "$RUN/generation" --limit 3 \
+        --replayed "$RUN/replay_secondary_instr" --features "$RUN/features_secondary_instr" --instrument-sample 48 \
+        --identity-from "$LADDER/t1_secondary/features/sae_health.json" 2>&1 | tail -3
+      SAE_ROLE=secondary python -m gates.run_gates --transcripts "$RUN/generation" --replayed "$RUN/replay_secondary_instr" \
+        --features "$RUN/features_secondary_instr" --gates G2,G3 2>&1 | tee "$RUN/gates_replay_secondary.txt"
+    fi
     ;;
   *) echo "unknown phase $PHASE"; exit 1 ;;
 esac

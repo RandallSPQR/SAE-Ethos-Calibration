@@ -20,6 +20,9 @@ harness:
   concurrency: 8
   # Audit C (27B parameterization): the episode's resource limits and tool timeouts are treatment (a slower model that
   # hits the 10 s bash cap reads as damaged/timeout), so they live here and go into the manifest. Values = the 9B study's.
+  # harness 2026-09-30.2 (Randall): every continuation gets the scenario's max_tool_calls steps counted from the decision
+  # point, whatever its greedy prefix spent (was: the cap counted from step 0). Recorded per row under `continuation`.
+  continuation_budget: scenario_cap
   limits: {nproc: 64, as_bytes: 4294967296, fsize_bytes: 67108864, nofile: 256}
   timeouts_s: {default: 15, bash: 10, run_script: 30, flake8: 30, labeler: 60}
 

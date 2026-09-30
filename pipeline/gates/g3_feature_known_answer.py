@@ -26,12 +26,36 @@ def auroc(pos, neg):
     return wins / (len(pos) * len(neg))
 
 
+MIN_WINDOWS = 10   # rules 2026-09-30.3: an anchor judged on fewer concept or prose windows is NOT_EVALUABLE
+
+
+def _two_anchor(rep, thr):
+    """Rules 2026-09-30.3: every pre-registered anchor must separate its own concept positions from prose
+    (window-max AUROC >= threshold AND mean concept activation above mean prose activation); an anchor with fewer than
+    MIN_WINDOWS windows on either side cannot be judged, and the gate says so rather than pass or fail."""
+    from ._common import NOT_EVALUABLE
+    det, ok, short = {"rules": GATE_RULES_VERSION, "construction": "two_anchor", "threshold": thr}, True, []
+    for name, a in rep["anchors"].items():
+        if (a.get("n_concept_windows") or 0) < MIN_WINDOWS or (a.get("n_other_windows") or 0) < MIN_WINDOWS:
+            short.append(name)
+            det[name] = {"feature": a["feature"], "n_concept_windows": a.get("n_concept_windows"), "n_other_windows": a.get("n_other_windows")}
+            continue
+        a_ok = a["auroc"] is not None and a["auroc"] >= thr and (a.get("mean_concept") or 0) > (a.get("mean_other") or 0)
+        ok = ok and a_ok
+        det[name] = {"feature": a["feature"], "auroc": round(a["auroc"], 3) if a["auroc"] is not None else None, "ok": a_ok}
+    if short:
+        return GateResult(NAME, False, {**det, "not_evaluable": short}, status=NOT_EVALUABLE)
+    return GateResult(NAME, ok, det)
+
+
 def run(cfg, paths):
     thr = load_run_cfg()["g3_known_feature_auroc_min"]
     p = Path(paths["features"]) / "known_answer_report.json"
     if not p.exists():
         return GateResult(NAME, False, {"error": "features/known_answer_report.json missing"})
     rep = json.loads(p.read_text())
+    if rep.get("construction") == "two_anchor":
+        return _two_anchor(rep, thr)
     if rep.get("error"):
         # no anchor feature chosen for this SAE: G3 is missing, which blocks like a failure but is not read as one
         from ._common import NOT_EVALUABLE
@@ -49,6 +73,17 @@ def window_max(a, w=16):
     return [max(a[i:i + w]) for i in range(0, len(a), w) if len(a[i:i + w]) >= w // 2]
 
 
+def _two_anchor_fixture(thr):
+    good = {"construction": "two_anchor", "anchors": {
+        "json_structure": {"feature": 1, "auroc": 0.93, "mean_concept": 2.0, "mean_other": 0.1, "n_concept_windows": 40, "n_other_windows": 60},
+        "code": {"feature": 2, "auroc": 0.88, "mean_concept": 1.5, "mean_other": 0.2, "n_concept_windows": 30, "n_other_windows": 60}}}
+    weak = {**good, "anchors": {**good["anchors"], "code": {**good["anchors"]["code"], "auroc": 0.55}}}
+    inverted = {**good, "anchors": {**good["anchors"], "json_structure": {**good["anchors"]["json_structure"], "mean_concept": 0.05}}}
+    thin = {**good, "anchors": {**good["anchors"], "code": {**good["anchors"]["code"], "n_concept_windows": 4}}}
+    return (_two_anchor(good, thr).status == "pass" and _two_anchor(weak, thr).status == "fail"
+            and _two_anchor(inverted, thr).status == "fail" and _two_anchor(thin, thr).status == "not_evaluable")
+
+
 def fixture():
     thr = load_run_cfg()["g3_known_feature_auroc_min"]
     a = auroc([0.9, 0.8, 0.85, 0.7], [0.1, 0.2, 0.05, 0.15])   # clean separation ~1.0
@@ -59,7 +94,9 @@ def fixture():
     prose = [0.0] * 128
     a_pos, a_win = auroc(code, prose), auroc(window_max(code), window_max(prose))
     sparse_ok = a_pos < thr and a_win >= thr
-    ok = a >= thr and (0.8 > 0.1) and filter_ok and sparse_ok
+    two_ok = _two_anchor_fixture(thr)
+    ok = a >= thr and (0.8 > 0.1) and filter_ok and sparse_ok and two_ok
     return GateResult(NAME + "[fixture]", ok, {"auroc": round(a, 3), "threshold": thr, "filter_ok": filter_ok,
+                                               "two_anchor_ok": two_ok,
                                                "sparse_position_auroc": round(a_pos, 3), "sparse_window_auroc": round(a_win, 3),
                                                "sparse_case_ok": sparse_ok, "rules": GATE_RULES_VERSION})
