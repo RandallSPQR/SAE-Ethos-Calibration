@@ -49,6 +49,8 @@ gpu_free() {
 # continue when the daemon is not running: a long burst without the pod-side stop is what the RUNBOOK forbids.
 selfstop_register() {
   local out=${1:?out dir}; local stall=${2:-30}
+  # a DONE left by an earlier pod in this directory would read as "finished hours ago" and end this pod at once
+  [ -e "$out/DONE" ] && { echo "selfstop: removing stale $out/DONE ($(stat -c %y "$out/DONE" 2>/dev/null))"; rm -f "$out/DONE"; }
   python calibrate/pod_selfstop.py check || { [ "${ALLOW_NO_SELFSTOP:-0}" = "1" ] || { echo "STOP: pod-side self-stop not verified (see check above). ALLOW_NO_SELFSTOP=1 overrides for a short hands-on step only."; return 8; }; }
   python calibrate/pod_selfstop.py watch --dir "$out" --done-file "$out/DONE" --stall-min "$stall" || [ "${ALLOW_NO_SELFSTOP:-0}" = "1" ]
 }

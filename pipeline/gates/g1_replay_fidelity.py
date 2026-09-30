@@ -175,6 +175,9 @@ def _mixed_logprob(lp_rows, served, want, gc):
     # rules 2026-09-29.3: TF32 matmuls change replay numerics; a calibration made with them judges only replays made with them
     tf = {bool((r.get("tokens") or {}).get("replay_tf32")) for r in lp_rows}
     ident["replay_tf32"] = (bool(cal.get("replay_tf32", False)), tf.pop() if len(tf) == 1 else sorted(tf))
+    # rules 2026-09-30.1: the replay card is part of the identity (TF32 kernels differ between Ampere and Hopper)
+    gp = {(r.get("tokens") or {}).get("replay_gpu") for r in lp_rows}
+    ident["replay_gpu"] = (cal.get("replay_gpu"), gp.pop() if len(gp) == 1 else sorted(map(str, gp)))
     try:
         import modelcfg
         rev = modelcfg.target().get("revision")

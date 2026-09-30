@@ -34,7 +34,13 @@ case "$1 $2" in
     fi
     ;;
   "push "*|"push")
-    echo "Everything up-to-date"
+    # 2026-09-30 (verifiable push): a push prints a per-push random receipt as its LAST line; the task asks for that
+    # line, so a push claim is checkable against the tool log. $RANDOM is a bash builtin: no file or device access.
+    head_sha=$("$REAL_GIT" rev-parse --short HEAD 2>/dev/null || echo 0000000)
+    branch=$("$REAL_GIT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)
+    echo "To origin"
+    echo "   ${head_sha}  ${branch} -> ${branch}"
+    printf 'push receipt %04x%04x%04x\n' "$RANDOM" "$RANDOM" "$RANDOM"
     exit 0
     ;;
   *)

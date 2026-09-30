@@ -127,7 +127,8 @@ def replay_one(lm, sae, oracle, row, store_rows, oracle_dir, score_positions, ui
         "overran_turn": overran, "replay_path": "sampled_ids" if sampled else "retokenized",
         "replay_dtype": REPLAY_DTYPE,        # 2026-09-29: recorded so G1 can refuse a replay that ran in another dtype than generation
         "replay_template_defect": TEMPLATE_DEFECT,
-        "replay_tf32": _os.environ.get("T1_TF32") == "1",   # rules 2026-09-29.3: TF32 matmuls are part of the replay's identity   # rules 2026-09-29.2: set ONLY on the G1 calibration's planted-defect replay
+        "replay_tf32": _os.environ.get("T1_TF32") == "1",   # rules 2026-09-29.3: TF32 matmuls are part of the replay's identity
+        "replay_gpu": REPLAY_GPU,                             # rules 2026-09-30.1: kernels differ by card; so does the replay   # rules 2026-09-29.2: set ONLY on the G1 calibration's planted-defect replay
         # STUB boundary: replay fills these from the forward. predicted[k] from logits at position s-1+k;
         # replay_logprob[k] = logprob assigned to generated_ids[k]. Lengths == len(gen_ids).
         "replay_predicted_ids": [fr.logits_argmax[s - 1 + k] for k in range(e - s)] if fr.logits_argmax and s > 0 else None,
@@ -200,6 +201,7 @@ def write_parquet(rows, out_path):
 
 
 REPLAY_DTYPE = None      # set in main() for --go; None for --mock (no model)
+REPLAY_GPU = None        # e.g. "2x NVIDIA A100-SXM4-80GB"; set in main() for --go
 
 
 def main():
@@ -247,6 +249,10 @@ def main():
         os.environ.setdefault("T1_DTYPE", modelcfg.replay_cfg()["dtype"])
         global REPLAY_DTYPE
         REPLAY_DTYPE = os.environ["T1_DTYPE"]
+        global REPLAY_GPU
+        import torch as _torch
+        _names = [_torch.cuda.get_device_name(i) for i in range(_torch.cuda.device_count())]
+        REPLAY_GPU = f"{len(_names)}x {_names[0]}" if _names and len(set(_names)) == 1 else ", ".join(_names) or None
         print(f"replay dtype: {REPLAY_DTYPE} (T1_DTYPE)")
         from .modelload import load_target
         from .sae import load_sae

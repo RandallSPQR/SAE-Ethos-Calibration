@@ -1,5 +1,13 @@
 # Gate rules changelog
 
+## 2026-09-30.1 — the replay card in G1's identity (written 2026-09-30 02:30 EDT, before the replay pod exists)
+
+2026-09-29.2's decisions said the replay card is part of the G1 calibration's identity, but nothing recorded it. Replay
+rows now record `replay_gpu` (e.g. "2x NVIDIA A100-SXM4-80GB", from torch on the box); `g1_calibrate build` refuses a
+calibration whose rows disagree or lack it and stores it; G1's mixed path refuses a calibration whose card differs from
+the judged replay's. Also: `selfstop_register` removes a DONE left in the directory by an earlier pod (the 27B ladder
+directory held pod z3r7h2qvgy6w7d's DONE; the replay pod would otherwise have read "finished hours ago" and stopped).
+
 ## 2026-09-29.3 — G0 under a dtype split, G2 identity required, TF32 in the replay's identity (written 2026-09-29 16:10 EDT, before any 27B pod exists)
 
 Part of the 27B parameterization (`modelcfg.py`, `config/models_gemma-3-27b-it.yaml`). Three criteria change:

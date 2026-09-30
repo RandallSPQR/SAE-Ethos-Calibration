@@ -96,6 +96,9 @@ def build(a):
     run_ids = {gen[u].get("run_id") for u in uids}
     rdt = {rep[u]["tokens"].get("replay_dtype") for u in uids}
     tf32 = {bool(rep[u]["tokens"].get("replay_tf32")) for u in uids}
+    gpus = {rep[u]["tokens"].get("replay_gpu") for u in uids}
+    if len(gpus) != 1 or None in gpus:
+        raise SystemExit(f"replay_gpu not uniform/recorded across the calibration replay: {gpus}")
     if len(tf32) != 1:
         raise SystemExit(f"replay_tf32 not uniform across the calibration replay: {tf32}")
     if len(served) != 1 or None in served or len(run_ids) != 1 or len(rdt) != 1:
@@ -107,7 +110,7 @@ def build(a):
     cal = calibration_record([_pair(rep[u]["tokens"]) for u in uids],
                              [(rep[u]["tokens"]["replay_logprob"], xc[u]["tokens"]["replay_logprob"]) for u in uids],
                              template_pairs=tmpl, uids=uids, run_id=run_ids.pop(), served_dtype=served.pop(),
-                             replay_dtype=rdt.pop(), replay_tf32=tf32.pop(), model=_model())
+                             replay_dtype=rdt.pop(), replay_tf32=tf32.pop(), replay_gpu=gpus.pop(), model=_model())
     thr, val = derive_mixed(cal, load_run_cfg()["g1_mixed"])
     cal["derived_at_build"] = {**thr, "validity": val}          # informational: G1 re-derives from the rows
     Path(a.out).write_text(json.dumps(cal, indent=1))
