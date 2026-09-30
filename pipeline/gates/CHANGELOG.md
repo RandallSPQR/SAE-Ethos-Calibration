@@ -1,5 +1,21 @@
 # Gate rules changelog
 
+## 2026-09-30.2 — G2: identity may reject a same-shape decoy where VE cannot (approved by Randall 2026-09-30, after the replay ladder)
+
+Written after G2 read FAIL on the 27B replay ladder (pod mv51cqg1q1bap2), so it is justified as a construction fix, not a
+threshold move. At Gemma-3-27B layers 40 and 53 one block moves the residual stream by about 7 % of its norm, inside the
+SAE's own reconstruction error (FVU 0.165 / 0.273): the block input reconstructs within 0.001 / 0.004 of the block output,
+so the 0.10 VE margin cannot separate them. Tensor identity can: the chosen tensor's minimum cosine to the independent
+reference (transformers hidden states, fp32) is 0.9999954 / 0.9999815, the block input's is 0.9901 / 0.9821, against the
+0.999 tolerance. Rule: a same-shape decoy is rejected by the VE margin (0.10, unchanged) OR by identity, meaning the chosen
+hook passes identity AND the decoy's minimum cosine to the reference is below `g2_identity_min_cos`. Today identity reaches
+the block-input decoy (the reference provides resid_pre); the other decoys are rejected by VE as before. The per-decoy
+reason is reported (`decoy_rejected_by`). The identity stage now writes the cross-check's minimum into sae_health; G2 reads
+it from identity_report.json on older stores. Fixture: the 27B layer-40 numbers pass; the same case with a cross-check above
+the tolerance (identity without teeth) fails; a wrongly chosen hook (the block input read as the output) still fails.
+Re-graded: 27B layer 40 PASS, layer 53 PASS (block input rejected by identity); 9B T1 fp32 PASS (all by VE, unchanged);
+9B T3 white-box FAIL (no identity block, unchanged).
+
 ## 2026-09-30.1 — the replay card in G1's identity (written 2026-09-30 02:30 EDT, before the replay pod exists)
 
 2026-09-29.2's decisions said the replay card is part of the G1 calibration's identity, but nothing recorded it. Replay

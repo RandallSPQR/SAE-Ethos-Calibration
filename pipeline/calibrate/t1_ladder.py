@@ -433,7 +433,8 @@ def stage_identity(out):
     h = json.loads((feat / "sae_health.json").read_text())
     h["identity"] = {"min_cos": rep["resid_post"]["min_cos"], "max_norm_rel": rep["resid_post"]["max_norm_rel"],
                      "ref": f"{ref_name}:{names[0]}", "dtype": str(dtype),
-                     "cross_nnpost_vs_tlpre_median_cos": rep["cross_nnpost_vs_tlpre"]["median_cos"]}
+                     "cross_nnpost_vs_tlpre_median_cos": rep["cross_nnpost_vs_tlpre"]["median_cos"],
+                     "cross_nnpost_vs_tlpre_min_cos": rep["cross_nnpost_vs_tlpre"]["min_cos"]}   # rules 2026-09-30.2
     _dump(feat / "sae_health.json", h)
     print("identity:", json.dumps(rep, indent=None))
 
