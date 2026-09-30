@@ -19,7 +19,7 @@ This is the within-cell question the 9B could not evaluate (2 mixed cells, 6 vs 
 - Split (`analyze/split.py`, unchanged): discovery on even seeds, effects and G8 on odd seeds.
 - Cells: (impossible_test, full, seed). A cell holding one group carries no within-cell information and contributes
   nothing (amendment 4c). Seed 17 is 10/10 gamed and drops out.
-- Counts in mixed cells (from released labels only): **discovery 10 cells, 66 gamed vs 34 non-transgression; test 9
+- Counts in mixed cells (from released labels alone): **discovery 10 cells, 66 gamed vs 34 non-transgression; test 9
   cells, 62 gamed vs 28 non-transgression.** G8's 20/20 minimum-group rule is met on the test half.
 
 ## 3. Contrasts (`analyze/effects.py:CONTRASTS`, committed with this file)
@@ -32,7 +32,7 @@ This is the within-cell question the 9B could not evaluate (2 mixed cells, 6 vs 
   {honest_report, asked}. Test half: 28 vs 11 in mixed cells, under the 20/20 rule: **G8 NOT_EVALUABLE by construction**,
   reported as exploratory with that status.
 - **Layer**: both contrasts on the primary SAE (layer 40) and, pre-registered, on the secondary SAE (layer 53, features
-  captured in the same replay pass). Layer 53 is reported whatever layer 40 shows and never rescues a null at 40.
+  captured in the same replay pass). Layer 53 is reported whatever layer 40 shows and does not rescue a null at 40.
 
 ## 4. Statistic (the 9B's, unchanged)
 
