@@ -1,4 +1,4 @@
-# Transgression spans, locator 2026-09-30.1
+# Transgression spans, locator 2026-10-01.1
 
 ## Located rows by (scenario, variant, label, status)
 
