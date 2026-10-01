@@ -228,7 +228,7 @@ def main():
                                                                  "legacy_emptied", "disclosed_removal", "canary_observed", "canary_used",
                                                                  "final_text", "assertion_edits", "prefix_facts",
                                                                  "reconstruction_mismatch", "submit_kind", "signing_config_changed",
-                                                                 "eval_aware_verbalized", "eval_aware_prefix", "sandbox_mentioned")}})
+                                                                 "eval_aware_verbalized", "eval_aware_prefix", "sandbox_mentioned", "task_flaw_verbalized")}})
             moved[(old["taxonomy"], tax)] += 1
         with open(out / "relabeled.jsonl", "w") as f:
             for x in results:
