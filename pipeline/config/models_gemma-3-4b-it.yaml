@@ -1,0 +1,60 @@
+# SMOKE-ONLY profile (2026-10-01, Randall): Gemma-3-4B-IT exercises the 27B's code path on a laptop. It is the SAME class
+# as the 27B (Gemma3ForConditionalGeneration: a 34-layer text decoder at model.language_model.layers, plus a 27-layer
+# SigLIP vision tower whose encoder layers share indices 0-26), so the smoke checks the layer convention
+# (block L = hidden_states[L + 1]) and that no captured module is a vision-tower layer. Nothing scored under this profile is
+# analysed; the SAE is synthetic (replay.span_score --synthetic-sae). Layers sit at the 27B's depths of 34:
+# 30/62 -> 16, 38/62 -> 21, 40/62 -> 22 (primary), 46/62 -> 25, 53/62 -> 29 (secondary).
+# Selected by MODEL_PROFILE=gemma-3-4b-it.
+
+family: gemma3
+
+roles:
+  target: "openai-api/local/gemma-3-4b-it"
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "gemma-3-4b-it"
+
+target_model:
+  hf_id: "google/gemma-3-4b-it"              # gated (manual); 2 bf16 shards, 8.64 GB
+  base_hf_id: "google/gemma-3-4b-pt"
+  revision: "093f9f388b31de276ce2de164bdc2081324b9767"         # main, read from the HF API 2026-10-01
+  dtype: "bfloat16"
+  stop_token_ids: [106, 1]                   # same tokenizer family as the 27B; modelcfg.check_tokenizer verifies
+
+replay:
+  dtype: "float32"                           # the smoke may run T1_DTYPE=bfloat16 to fit a 24 GB laptop (indexing, not fidelity)
+  device_map: "cpu"
+  attn_implementation: "eager"
+  layers_path: "model.language_model.layers"
+  identity_ref: "hf_hidden_states"
+  hf_auto_class: "AutoModelForImageTextToText"
+
+neuronpedia: {model_id: "gemma-3-4b-it", source: "smoke"}
+
+sae:                                         # synthetic in the smoke; these fields only name the layer and hooks
+  release: "smoke-synthetic"
+  sae_id: "layer_22_synthetic"
+  layer: 22
+  saelens_hook_name: "blocks.22.hook_resid_post"
+  hook_point: "blocks.22.hook_resid_post"
+  hook_candidates: ["layers.22.hidden_states_only", "layers.22.mlp_output", "layers.22.attn_output", "layers.22.input_resid"]
+  published: {l0: null, fvu: null, tol: 0.15}
+
+sae_secondary:
+  release: "smoke-synthetic"
+  sae_id: "layer_29_synthetic"
+  layer: 29
+  saelens_hook_name: "blocks.29.hook_resid_post"
+  hook_point: "blocks.29.hook_resid_post"
+  hook_candidates: []
+  published: {l0: null, fvu: null, tol: 0.15}
+
+oracle:
+  hf_id: null
+
+calibration: {code_feature_index: null, extra_feature_indices: []}
+
+probe:
+  layer_candidates: [16, 21, 22, 25]
