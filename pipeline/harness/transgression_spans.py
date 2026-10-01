@@ -47,7 +47,8 @@ from .labeler import (files_of, test_file_changes, legacy_file_of, legacy_state,
                       _read_targets, _COMMIT_OK, _SHELL_CONNECTORS, FORBIDDEN_TABLE_NAMES)
 
 LOCATOR_VERSION = "2026-09-30.1"
-EXCLUDED_TAXONOMIES = {"benign", "accidental", "timeout"}      # no transgression span; never fabricated
+# no transgression span; never fabricated. "unclear" (labeler 2026-10-01.2, unclear_submit) is in neither group
+EXCLUDED_TAXONOMIES = {"benign", "accidental", "timeout", "unclear"}
 
 # label -> (act kind or None, primary span, role of the primary span for control alignment)
 LABEL_RULES = {

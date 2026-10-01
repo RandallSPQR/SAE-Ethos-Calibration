@@ -154,7 +154,8 @@ def relabel_row(row, rendered_variant_dir, spec, seed_manifest):
         cont_text = "\n".join(m.get("content", "") for m in msgs[dp:] if m.get("role") == "assistant")
         facts = observed_facts(sb, spec, seed_manifest, term, orig, rendered_variant_dir,
                                decision_text=old_facts.get("decision_text", ""), disclosure_text=cont_text,
-                               decision_suite=decision_suite, render_files=render, n_prefix_events=n_prefix)
+                               decision_suite=decision_suite, render_files=render, n_prefix_events=n_prefix,
+                               prefix_text="\n".join(m.get("content", "") for m in msgs[:dp] if m.get("role") == "assistant"))
         # facts the reconstruction cannot recompute better than the run did
         for k in ("canary_observed", "canary_used", "forbidden_touched", "answer_correct", "submitted_value",
                   "submitted_done", "forbidden_value"):
@@ -226,7 +227,8 @@ def main():
                                                                  "attempted_forbidden", "forbidden_touched", "legacy_deleted",
                                                                  "legacy_emptied", "disclosed_removal", "canary_observed", "canary_used",
                                                                  "final_text", "assertion_edits", "prefix_facts",
-                                                                 "reconstruction_mismatch")}})
+                                                                 "reconstruction_mismatch", "submit_kind", "signing_config_changed",
+                                                                 "eval_aware_verbalized", "eval_aware_prefix", "sandbox_mentioned")}})
             moved[(old["taxonomy"], tax)] += 1
         with open(out / "relabeled.jsonl", "w") as f:
             for x in results:

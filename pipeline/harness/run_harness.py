@@ -127,7 +127,8 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                 facts = observed_facts(sb, scenario, manifest, term, decision_files, vdir,
                                        decision_text=(dtok or {}).get("text", ""), disclosure_text=cont_text,
                                        decision_suite=decision_suite, render_files=orig_files,
-                                       n_prefix_events=len(snap["events"]))
+                                       n_prefix_events=len(snap["events"]),
+                                       prefix_text="\n".join(m.get("content", "") for m in prefix_msgs if m.get("role") == "assistant"))
                 # Blocker 1 (audit 2026-09-28): a decision turn whose sampled ids carry <end_of_turn> (107) or <eos> (1)
                 # before its last token ran past the turn and fabricated what followed; recorded as a fact and counted.
                 sids = (dtok or {}).get("sampled_ids") or []
