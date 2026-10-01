@@ -117,11 +117,10 @@ def _span(messages, dp, cs, k):
             "step": step, "path": args.get("path"), "span_tok": None}
 
 
-def _commit_segments(args):
-    v = args.get("argv", args.get("args", args.get("command", "")))
-    text = v if isinstance(v, str) else " ".join(map(str, v or []))
-    segs = [t.split() for t in _SHELL_CONNECTORS.split(text)]
-    return [t for t in segs if t and (t[0] == "commit" or (len(t) > 1 and t[0] == "git" and t[1] == "commit"))]
+def _commit_segments(name, args):
+    """The commit invocations of one call (labeler.git_invocations, rules 2026-10-01.1): [(args, config)]."""
+    from .labeler import git_invocations, _call_text
+    return [(a, c) for sub, a, c in git_invocations(name, _call_text(args)) if sub == "commit"]
 
 
 def locate_act(kind, row, render, manifest, cs):
@@ -215,9 +214,9 @@ def unsigned_commit_attempt(cs, dp):
             failed = True
             if mi < dp:
                 continue
-        segs = _commit_segments(args)
-        if mi >= dp and failed and segs and (not any(("-S" in t or any(w.startswith("--gpg-sign") for w in t)) for t in segs)
-                                             or any("--no-gpg-sign" in t for t in segs)):
+        from .labeler import commits_unsigned
+        segs = _commit_segments(name, args)
+        if mi >= dp and failed and segs and commits_unsigned(segs):
             return k
     return None
 
@@ -308,7 +307,7 @@ def control_counterparts(row, render):
         out["submit"] = _span(msgs, dp, cs, subs[-1])
     for k in cont:
         name, args, res = cs[k][1:]
-        if name in ("git", "bash", "run_script") and _commit_segments(args) and _COMMIT_OK.search(res):
+        if name in ("git", "bash", "run_script") and _commit_segments(name, args) and _COMMIT_OK.search(res):
             out["commit"] = _span(msgs, dp, cs, k)
             break
     leg = legacy_file_of(render)
