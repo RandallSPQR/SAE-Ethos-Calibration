@@ -26,6 +26,7 @@ T3 = HERE / "results/t4_27b_2026-09-30_t3"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=4)
+    ap.add_argument("--spans", type=int, default=3, help="end-to-end spans scored by span_score (laptop CPU: ~minutes each)")
     args = ap.parse_args()
     assert os.environ.get("MODEL_PROFILE") == "gemma-3-4b-it", "run with MODEL_PROFILE=gemma-3-4b-it"
     import torch
@@ -49,9 +50,12 @@ def main():
     extra = sorted({L for L in probe + [sec] if L != lm.layer})
     names = S.assert_language_layers(lm, [lm.layer] + extra)
     out["1 captured blocks are language-model layers"] = (True, names)
+    report = lambda kk: print(("PASS " if out[kk][0] else "FAIL ") + kk + f": {json.dumps(out[kk][1], default=str)[:400]}", flush=True)
+    report("1 captured blocks are language-model layers")
     hf = S.torch_module(lm.model)
     vis = [n for n, _ in hf.named_modules() if "vision" in n and n.endswith(".layers.0")]
     out["1b the model has a vision tower (the collision is real)"] = (bool(vis), vis[:2])
+    report("1b the model has a vision tower (the collision is real)")
     rows = {}
     for f in sorted((T3 / "relabel_2026-10-01.2/generation/arm_a").glob("*.jsonl")):
         for l in open(f):
@@ -76,20 +80,25 @@ def main():
         conv[L] = {"min_cos_vs_hidden_states[L+1]": round(good, 6), "min_cos_vs_hidden_states[L]": round(off, 6)}
     out["2 block L == hidden_states[L+1], != hidden_states[L]"] = (
         all(c["min_cos_vs_hidden_states[L+1]"] >= 0.999 and c["min_cos_vs_hidden_states[L]"] < 0.99 for c in conv.values()), conv)
+    report("2 block L == hidden_states[L+1], != hidden_states[L]")
+    # free this process's copy before span_score loads its own (two 8.6 GB copies swapped a 24 GB laptop, 2026-10-02)
+    import gc
+    del lm, hf, hs, fr, cap
+    gc.collect()
     with tempfile.TemporaryDirectory() as t:
         (Path(t) / "uids.txt").write_text("\n".join(uids))
         p = subprocess.run([sys.executable, "-m", "replay.span_score", "--run-dir", str(T3 / "relabel_2026-10-01.2"),
                             "--spans", str(spans), "--control-spans", str(T3 / "transgression_spans/control_spans.jsonl"),
                             "--hand-check", str(T3 / "transgression_spans/hand_check/RESULT.md"), "--out", str(Path(t) / "o"),
-                            "--uids", str(Path(t) / "uids.txt"), "--go", "--synthetic-sae", "1024", "--device", "cpu"],
+                            "--uids", str(Path(t) / "uids.txt"), "--go", "--synthetic-sae", "1024", "--device", "cpu",
+                            "--limit", str(args.spans)],
                            cwd=HERE, capture_output=True, text=True, env=os.environ)
         recs = [json.loads(l) for l in open(Path(t) / "o/span_scores.jsonl")] if p.returncode == 0 else []
         ok = bool(recs) and all(len(r["generated_ids"]) == r["span_tokens"] == len(r["replay_logprob"]) == len(r["generation_logprob"])
                                 for r in recs)
         out["3 span_score end to end; G1 arrays equal length"] = (ok, {"returncode": p.returncode, "spans": len(recs),
                                                                        "stderr_tail": p.stderr[-400:] if p.returncode else ""})
-    for kk, (ok, got) in out.items():
-        print(("PASS " if ok else "FAIL ") + kk + f": {json.dumps(got, default=str)[:400]}")
+    report("3 span_score end to end; G1 arrays equal length")
     bad = [kk for kk, (ok, _) in out.items() if not ok]
     print(f"\n{len(out) - len(bad)}/{len(out)} passed")
     sys.exit(1 if bad else 0)

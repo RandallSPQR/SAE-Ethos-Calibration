@@ -1,0 +1,5 @@
+PASS 1 captured blocks are language-model layers: {"22": "model.language_model.layers.22", "16": "model.language_model.layers.16", "21": "model.language_model.layers.21", "25": "model.language_model.layers.25", "29": "model.language_model.layers.29"}
+PASS 1b the model has a vision tower (the collision is real): ["model.vision_tower.vision_model.encoder.layers.0"]
+PASS 2 block L == hidden_states[L+1], != hidden_states[L]: {"22": {"min_cos_vs_hidden_states[L+1]": 1.0, "min_cos_vs_hidden_states[L]": 0.964719}, "16": {"min_cos_vs_hidden_states[L+1]": 1.0, "min_cos_vs_hidden_states[L]": 0.946743}, "21": {"min_cos_vs_hidden_states[L+1]": 1.0, "min_cos_vs_hidden_states[L]": 0.956064}, "25": {"min_cos_vs_hidden_states[L+1]": 1.0, "min_cos_vs_hidden_states[L]": 0.970121}, "29": {"min_cos_vs_hidden_states[L+1]": 1.0, "min_c
+PASS 3 span_score end to end; G1 arrays equal length: {"returncode": 0, "spans": 3, "stderr_tail": ""}
+4/4 passed
