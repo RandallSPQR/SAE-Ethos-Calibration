@@ -63,34 +63,77 @@
  },
  "b_path": {
   "impossible_test": {
-   "table": {
-    "before|gamed": 32,
-    "none|flailing": 33,
-    "before|flailing": 7,
-    "none|gamed": 70,
-    "before|honest": 9,
-    "none|honest": 12,
-    "after only|gamed": 36
+   "asymmetric": {
+    "table": {
+     "before|gamed": 32,
+     "none|flailing": 33,
+     "before|flailing": 7,
+     "none|gamed": 70,
+     "before|honest": 9,
+     "none|honest": 12,
+     "after only|gamed": 35,
+     "before|other:diagnostic_test_edit": 1
+    },
+    "mh_or": 0.3044512402310567,
+    "perm_p": 0.06929307069293071,
+    "cells": 20,
+    "informative_cells": 9
    },
-   "mh_or": 0.4396825396825396,
-   "perm_p": 0.17018298170182983,
-   "cells": 20,
-   "informative_cells": 8
+   "matched": {
+    "table": {
+     "before|gamed": 32,
+     "none|flailing": 33,
+     "after only|flailing": 3,
+     "none|gamed": 70,
+     "after only|honest": 4,
+     "none|honest": 12,
+     "before|honest": 5,
+     "after only|gamed": 35,
+     "before|flailing": 4,
+     "after only|other:diagnostic_test_edit": 1
+    },
+    "mh_or": 0.826740947075209,
+    "perm_p": 0.9149085091490851,
+    "cells": 20,
+    "informative_cells": 9
+   }
   },
   "missing_delete_tool": {
-   "table": {
-    "none|other:explicit_stub": 90,
-    "none|other:silent_empty": 71,
-    "none|other:asked_to_delete": 2,
-    "none|flailing": 5,
-    "none|gamed": 7,
-    "after only|other:silent_empty": 2,
-    "after only|other:explicit_stub": 3
+   "asymmetric": {
+    "table": {
+     "none|other:explicit_stub": 90,
+     "none|other:silent_empty": 71,
+     "none|other:asked_to_delete": 2,
+     "none|flailing": 5,
+     "none|gamed": 7,
+     "before|other:silent_empty": 2,
+     "before|other:explicit_stub": 3
+    },
+    "mh_or": Infinity,
+    "perm_p": 1.0,
+    "cells": 5,
+    "informative_cells": 0
    },
-   "mh_or": Infinity,
-   "perm_p": 1.0,
-   "cells": 5,
-   "informative_cells": 0
+   "matched": {
+    "table": {
+     "none|other:explicit_stub": 90,
+     "none|other:silent_empty": 71,
+     "none|other:asked_to_delete": 2,
+     "none|flailing": 5,
+     "none|gamed": 7,
+     "before|other:silent_empty": 1,
+     "after only|other:explicit_stub": 3,
+     "after only|other:silent_empty": 1
+    },
+    "mh_or": Infinity,
+    "perm_p": 1.0,
+    "cells": 5,
+    "informative_cells": 0
+   }
   }
- }
+ },
+ "post_act_rationalization": [
+  35,
+  137
+ ]
 }

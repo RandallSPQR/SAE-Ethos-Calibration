@@ -14,3 +14,12 @@ Selection: variant = control, current taxonomy = benign, cell not prefix-contami
 out (it repeats per continuation). Caveats for an FPR use: the 27B's impossible_test control continuations are a
 single `submit` each (200 actions); "benign" is the labeler's episode label, so an individual action inside a benign
 episode is benign by that episode's outcome, not hand-checked one by one. No held-out path is read.
+
+## Manifest and the no-double-use rule (2026-10-02, Randall)
+
+`benign_control_actions_manifest.json` (written by `make_manifest.py`) lists every source uid, by model. **All 781 27B source
+rows are also span-study control rows** (`transgression_spans/control_spans.jsonl`, the role-matched counterparts of the
+within-cell analysis). One analysis must not both calibrate on a row and evaluate on it: `make_manifest.check_disjoint(
+eval_uids)` raises if it would. Where the span study and an FPR calibration meet, split the 27B rows (e.g. by seed parity)
+or calibrate on the 9B rows plus the out-of-family set. **Both sources are Gemma** (27B and 9B); the out-of-family set
+(SWE-agent trajectories) is pending with Codex.

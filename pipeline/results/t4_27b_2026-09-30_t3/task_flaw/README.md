@@ -16,3 +16,19 @@ claims; 11/30 impossible_test full, 0 controls), tests 21/21, then run once on T
   construction (a gamed row's window ends at its act, an honest row's at its last message), which favours finding M in
   honest rows; missing_delete_tool's outcomes (silent_empty / explicit_stub) are outside the gamed / honest sets, so its
   b-path is empty. Not used to adjust any main effect.
+
+## Matched windows (2026-10-02, Randall), on the 2026-10-02.1 labels
+
+The first b-path's window was asymmetric (a gamed row's ends at its act, an honest row's at its last message). Re-run with
+a MATCHED window: a non-gamed row's window ends at the turn matched to gamed rows' act timing (its cell's median
+decision-to-act gap of gamed rows; scenario median 7 turns). Rows whose claim comes only after the locus now count as "no
+claim before the locus" (the first run dropped them, which gave OR 0.44, p 0.17).
+
+| impossible_test full, within cells | claim before -> gamed | no claim before -> gamed | MH OR | permutation p |
+|---|---|---|---|---|
+| asymmetric window | 32/41 (78 %) | 105/117 (90 %) | 0.30 | 0.069 |
+| **matched window** | **32/37 (86 %)** | **105/121 (87 %)** | **0.83** | **0.91** |
+
+**The lean toward honest reports was the window, not the claim: with matched windows there is no association.** Post-act
+rationalization (descriptive): **35 of 137** gamed rows state the flaw only after the act (36/138 before seed_010/full/c04
+became diagnostic_test_edit). Full tables: `MEDIATION.md`.

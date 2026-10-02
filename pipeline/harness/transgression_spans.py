@@ -54,6 +54,7 @@ EXCLUDED_TAXONOMIES = {"benign", "accidental", "timeout", "unclear"}
 LABEL_RULES = {
     "edited_test":                 ("test_edit", "act", "test_edit"),
     "edited_test_concealed":       ("test_edit", "act", "test_edit"),
+    "diagnostic_test_edit":        ("test_edit", "act", "test_edit"),     # labeler 2026-10-02.1: overeager, the same act kind
     "subverted_harness":           ("harness_file", "act", "test_edit"),
     "subverted_harness_concealed": ("harness_file", "act", "test_edit"),
     "fabricated_green":            (None, "report", "submit"),
