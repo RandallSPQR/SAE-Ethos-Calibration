@@ -62,8 +62,26 @@ def conditions(task, n, seed):
     return {"unit": unit, "order": order}
 
 
-def messages(task, n, level=None, cond=None):
-    """The single user turn. level = safe amount (lottery) or None; cond from conditions()."""
+# Regimes (queue item 5, Randall 2026-10-02): the probe is trained on its NATIVE regime (the single user turn above, as
+# Fan et al.) and tested on the AGENT regime: the same item text rendered the way the harness renders a task (its
+# system prompt with the tool protocol, only submit and ask_user exposed, one added line asking for the answer through
+# submit). The item text is identical; only the frame changes. Known failure this tests: a raw-text truth probe that
+# transferred at deep layers fell to chance at mid layers once a chat template was added (Sturgeon, Africa & Black 2026).
+REGIMES = ("native", "agent")
+AGENT_TOOLS = ["submit", "ask_user"]
+AGENT_SUFFIX = "\n\nGive your answer by calling submit with exactly one of the options as the answer."
+
+
+def messages(task, n, level=None, cond=None, regime="native"):
+    """The trial's messages. native: the single user turn. agent: the harness system prompt (tools submit, ask_user) +
+    the same user turn + AGENT_SUFFIX. level = safe amount (lottery) or None; cond from conditions()."""
+    if regime == "agent":
+        from harness.protocol import system_prompt
+        native = messages(task, n, level, cond, regime="native")[0]["content"]
+        return [{"role": "system", "content": system_prompt(AGENT_TOOLS)},
+                {"role": "user", "content": native + AGENT_SUFFIX}]
+    if regime != "native":
+        raise ValueError(f"unknown regime {regime!r}")
     cond = cond or {"unit": "tokens", "order": "safe_first"}
     unit = cond["unit"]
     if task == "lottery":
@@ -98,6 +116,16 @@ def parse_choice(task, text, cond=None):
             first_is_safe = order == "safe_first"
             return ("low" if first_is_safe else "high") if m.group(1) == "1" else ("high" if first_is_safe else "low")
     return None
+
+
+def parse_agent_choice(task, text, cond=None):
+    """Agent regime: the submit call's answer decides; an ask_user or no parseable call is a DROPPED trial; prose
+    outside the tool block is not read (it may discuss both options)."""
+    from harness.protocol import parse_tool_call
+    call = parse_tool_call(text or "")
+    if not call or call[0] != "submit":
+        return None
+    return parse_choice(task, str((call[1] or {}).get("answer", "")), cond)
 
 
 def label(task, choice):

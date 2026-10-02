@@ -18,7 +18,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from probe.tasks import TASKS, messages, parse_choice, label, conditions  # noqa: E402
+from probe.tasks import TASKS, messages, parse_choice, parse_agent_choice, label, conditions, REGIMES  # noqa: E402
 from probe.psychometric import switching_point                          # noqa: E402
 
 CFG = ROOT / "config"
@@ -37,41 +37,58 @@ def probe_cfg():
     return modelcfg.probe_cfg()
 
 
-def mock_choice(task, param, seed, level=None):
+def subdir(regime):
+    """native trials live in probe/<task> (unchanged), agent-regime trials in probe_agent/<task>."""
+    return "probe" if regime == "native" else f"probe_{regime}"
+
+
+def mock_choice(task, param, seed, level=None, regime="native"):
     rng = np.random.default_rng(hash((task, float(param), int(seed), level)) % (2 ** 32))
     p_high = 1.0 / (1.0 + math.exp(-MOCK_SLOPE[task] * (param - mock_sp(task, level))))
     hi = rng.random() < p_high
     text = TASKS[task]["options"]["high" if hi else "low"]
+    if regime == "agent":
+        text = '```tool\n{"tool": "submit", "args": {"answer": "%s"}}\n```' % text
     ids = [hash((text, i)) % 32000 for i in range(3)]
     return {"text": text, "token_ids": ids, "token_logprobs": [-0.1] * 3}
 
 
-def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95):
+def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95, regime="native", concurrency=1):
     t = TASKS[task]
-    rows, dropped = [], 0
-    for level in t["levels"]:
-      for n in t["grid"]:
-        for seed in range(n_agents):
-            cond = conditions(task, n, seed)
-            msgs = messages(task, n, level, cond)
-            if mock:
-                r = mock_choice(task, n, seed, level)
-            else:
-                # T>0 across agents is what gives a GRADED psychometric curve (Fan et al. sampled). At T=0 a
-                # deterministic model is a step function and the seed axis is degenerate (run 1: 2 distinct
-                # responses in 280 trials). The temperature is recorded per trial.
-                r = client.complete(msgs, temperature=temperature, top_p=top_p, max_tokens=16, seed=seed)
-                if r.get("token_ids") is None:
-                    raise RuntimeError("vLLM returned no token ids (return_token_ids); refusing to retokenize")
-            choice = parse_choice(task, r["text"], cond)
-            y = label(task, choice)
-            if y is None:
-                dropped += 1
-            rows.append({"uid": f"probe:{task}:{level}:{n}:{seed}", "task": task, "param": n, "level": level,
-                         "seed": seed, "cond": cond, "sampling": {"temperature": temperature, "top_p": top_p},
-                         "text": r["text"], "token_ids": r["token_ids"], "choice": choice, "label": y,
-                         "messages": msgs})
-    d = Path(out_dir) / "probe" / task
+    jobs = [(level, n, seed) for level in t["levels"] for n in t["grid"] for seed in range(n_agents)]
+    max_tokens = 16 if regime == "native" else 96            # the agent regime answers through a tool block
+    parse = parse_choice if regime == "native" else parse_agent_choice
+
+    def one(job):
+        level, n, seed = job
+        cond = conditions(task, n, seed)
+        msgs = messages(task, n, level, cond, regime=regime)
+        if mock:
+            r = mock_choice(task, n, seed, level, regime=regime)
+        else:
+            # T>0 across agents is what gives a GRADED psychometric curve (Fan et al. sampled). At T=0 a
+            # deterministic model is a step function and the seed axis is degenerate (run 1: 2 distinct
+            # responses in 280 trials). The temperature is recorded per trial.
+            r = client.complete(msgs, temperature=temperature, top_p=top_p, max_tokens=max_tokens, seed=seed)
+            if r.get("token_ids") is None:
+                raise RuntimeError("vLLM returned no token ids (return_token_ids); refusing to retokenize")
+        choice = parse(task, r["text"], cond)
+        y = label(task, choice)
+        return {"uid": f"{subdir(regime)}:{task}:{level}:{n}:{seed}", "task": task, "regime": regime, "param": n,
+                "level": level, "seed": seed, "cond": cond, "sampling": {"temperature": temperature, "top_p": top_p},
+                "text": r["text"], "token_ids": r["token_ids"], "choice": choice, "label": y, "messages": msgs}
+
+    if concurrency > 1 and not mock:
+        # independent requests: vLLM batches them; the output order is the job order. The client is created once here,
+        # not lazily inside the threads.
+        client._lazy()
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(concurrency) as ex:
+            rows = list(ex.map(one, jobs))
+    else:
+        rows = [one(j) for j in jobs]
+    dropped = sum(1 for r in rows if r["label"] is None)
+    d = Path(out_dir) / subdir(regime) / task
     d.mkdir(parents=True, exist_ok=True)
     with open(d / "trials.jsonl", "w") as fh:
         for r in rows:
@@ -81,7 +98,7 @@ def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95)
     sp = switching_point([r["param"] for r in ref_rows], [r["label"] for r in ref_rows])
     sp_by_level = {str(lv): switching_point([r["param"] for r in rows if r["level"] == lv],
                                             [r["label"] for r in rows if r["level"] == lv]) for lv in t["levels"]}
-    base = {**sp, "task": task, "trait": t["trait"], "reference_level": ref, "levels": t["levels"],
+    base = {**sp, "task": task, "regime": regime, "trait": t["trait"], "reference_level": ref, "levels": t["levels"],
             "heldout_level": t["heldout_level"], "decision_variable": t["decision_variable"],
             "sp_by_level": {k: {"sp": v["sp"], "method": v["method"], "sp_over_level": (None if v["sp"] is None or k == "None" else v["sp"] / float(k))}
                             for k, v in sp_by_level.items()},
@@ -95,6 +112,11 @@ def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95)
     print(f"[{task}] n={len(rows)} dropped={dropped} sp@ref={None if sp['sp'] is None else round(sp['sp'], 1)} ({sp['method']})"
           f"  by level: " + " ".join(f"{k}:{None if v['sp'] is None else round(v['sp'], 1)}" for k, v in base["sp_by_level"].items())
           + f"  fan2026 baseline_sp={t['fan2026_reference']['baseline_sp']}")
+    if regime != "native":
+        # the agent regime is the TEST set of the transfer check: its drop rate and curve are findings, reported in
+        # baseline.json; they gate nothing here (a regime the model will not answer in is itself a transfer result)
+        print(f"[{task}/{regime}] drop rate {base['drop_rate']:.2%}; graded grid points {base['n_graded_grid_points']}")
+        return True
     if base["drop_rate"] > 0.05:
         print(f"STOP: {task} drop rate {base['drop_rate']:.2%} > 5% — the model isn't answering the format; "
               "fix the prompt at T0, not on the meter.")
@@ -116,6 +138,8 @@ def main():
     ap.add_argument("--tasks", default=None)
     ap.add_argument("--n-agents", type=int, default=None)
     ap.add_argument("--mock", action="store_true")
+    ap.add_argument("--regime", default="native", choices=list(REGIMES))
+    ap.add_argument("--concurrency", type=int, default=1, help="parallel requests to the served model (pod: 16)")
     a = ap.parse_args()
     pc = probe_cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
@@ -125,7 +149,7 @@ def main():
         from resample.target_client import TargetClient
         client = TargetClient(mock=False)
     oks = [run_task(t, a.run_dir, n_agents, client, a.mock, temperature=float(pc.get("temperature", 0.8)),
-                    top_p=float(pc.get("top_p", 0.95))) for t in tasks]
+                    top_p=float(pc.get("top_p", 0.95)), regime=a.regime, concurrency=a.concurrency) for t in tasks]
     # a task with no dial on this model is a FINDING; the run continues with the tasks that have one
     sys.exit(0 if any(oks) else 1)
 

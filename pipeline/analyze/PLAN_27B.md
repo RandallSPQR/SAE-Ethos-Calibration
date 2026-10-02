@@ -108,3 +108,7 @@ own pre-registration, which is written after the hand-check passes and before th
     said, not what the log kept. Swept before applying: 11 missing_delete_tool full rows move (silent_empty ->
     explicit_stub); impossible_test and every concealment label unchanged. The span pre-registration is built on the .4
     labels (`relabel_2026-09-30.4/`) and the revised hand-check sheet.
+12. **Probe-regime transfer before any probe is used** (Randall, 2026-10-02; gate rules 2026-10-02.1). For each probe layer
+    (30/38/40/46) and task, train on the native regime and test AUROC on the same items under the harness's agent
+    template; a layer that fails is not used for that task. Run on one 2 x A100 pod (calibrate/run_probe_transfer.sh):
+    1,368 trials per regime sampled bf16 (vLLM), prompt-final residuals fp32; the transfer test runs offline.

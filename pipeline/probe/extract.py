@@ -87,6 +87,7 @@ def main():
     ap.add_argument("--run-dir", required=True)
     ap.add_argument("--tasks", default=None)
     ap.add_argument("--mock", action="store_true")
+    ap.add_argument("--regime", default="native", help="native (probe/<task>) or agent (probe_agent/<task>)")
     a = ap.parse_args()
     pc = probe_cfg()
     tasks = a.tasks.split(",") if a.tasks else pc["tasks"]
@@ -96,10 +97,11 @@ def main():
         from replay.modelload import load_target
         lm = load_target("target")
     from probe.synth_trials import task_has_dial
+    from probe.synth_trials import subdir
     for task in tasks:
-        if not task_has_dial(a.run_dir, task):
+        if not task_has_dial(a.run_dir, task):        # decided on the NATIVE curve for both regimes
             print(f"[{task}] skipped: no dial on this model (see baseline.json)"); continue
-        d = Path(a.run_dir) / "probe" / task
+        d = Path(a.run_dir) / subdir(a.regime) / task
         rows = load_trials(d)
         arrays, y = mock_activations(rows, layers) if a.mock else real_activations(rows, layers, lm)
         np.savez(d / "activations.npz", y=y, uid=np.array([r["uid"] for r in rows]),
@@ -108,7 +110,7 @@ def main():
                  unit=np.array([r.get("cond", {}).get("unit", "") for r in rows]),
                  order=np.array([r.get("cond", {}).get("order", "") for r in rows]), **arrays)
         cs = Path(a.run_dir) / "features" / "model_checksum.json"
-        meta = {"task": task, "layers": layers, "n": int(len(rows)), "position": pc.get("position", "prompt_final"),
+        meta = {"task": task, "regime": a.regime, "layers": layers, "n": int(len(rows)), "position": pc.get("position", "prompt_final"),
                 "hook_transform": "replay.hooks.resid_post (G2-verified at layer 31)", "mock": bool(a.mock),
                 "model_checksum": json.loads(cs.read_text()) if cs.exists() else None}
         (d / "meta.json").write_text(json.dumps(meta, indent=2))

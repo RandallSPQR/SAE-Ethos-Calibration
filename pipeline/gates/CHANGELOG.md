@@ -1,5 +1,22 @@
 # Gate rules changelog
 
+## 2026-10-02.1 — probe-regime transfer criterion (Randall 2026-10-02, before the probe pod; queue item 5)
+
+A probe trained on its native regime is used at a layer only if it transfers to the agent template the harness uses.
+Known failure: a raw-text truth probe transferred at deep layers but fell to chance at mid layers once a chat template was
+added (Sturgeon, Africa & Black 2026). Committed before any 27B probe trial exists (`probe/transfer.py`):
+- **Native regime** (training): the Fan et al. single user turn (probe/<task>), the training split probe.train uses (every
+  lottery safe level except the held-out 70); C by 5-fold CV per layer. Raw and surface-cleaned directions.
+- **Agent regime** (test): the same item text under the harness's agent template (its system prompt with the tool protocol,
+  only submit and ask_user, one added line asking for the answer through submit), labeled by the model's OWN choice in
+  that regime (the submit answer; ask_user or no call = a dropped trial).
+- **PASS at (task, layer)**: agent-regime AUROC >= 0.70 AND its 95 % cluster-bootstrap lower bound (clusters = grid
+  points, param x level; 2,000 resamples) > 0.50. **FAIL**: the probe is not used at that layer for that task.
+  **NOT_EVALUABLE**: fewer than 10 agent trials of either class. The CLEANED direction's verdict decides use (it is the
+  one steering and G9 use); the raw verdict is reported beside it. Native held-out AUROC is reported as the reference.
+- Layers: probe.layer_candidates of the profile (27B: 30, 38, 40, 46). Tasks: lottery, ultimatum.
+- Tests: probe/test_transfer.py (shared direction -> PASS, no agent signal -> FAIL, one class -> NOT_EVALUABLE, parser).
+
 ## 2026-09-30.5 — G3 code anchor replaced, judged on a fresh sample; JSON-alone fallback (Randall 2026-09-30, before the test)
 
 2026-09-30.4 read the layer-40 code anchor 13740 at AUROC 0.50: exactly 0 in all 18 read_file windows holding a Python
