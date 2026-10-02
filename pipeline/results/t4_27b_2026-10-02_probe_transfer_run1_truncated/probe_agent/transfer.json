@@ -1,0 +1,202 @@
+{
+ "rules": "2026-10-02.1",
+ "criterion": {
+  "auroc_min": 0.7,
+  "boot_lower_min": 0.5,
+  "min_per_class": 10,
+  "decides_use": "cleaned direction"
+ },
+ "tasks": {
+  "lottery": {
+   "n_native_train": 840,
+   "n_native_heldout": 280,
+   "n_agent": 450,
+   "agent_class_balance": 0.15777777777777777,
+   "per_layer": {
+    "30": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.8949050503548999,
+      "agent_ci95": [
+       0.8271605422862908,
+       0.9472752310561017
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9918271076737425
+     },
+     "clean": {
+      "agent_auroc": 0.8786279683377308,
+      "agent_ci95": [
+       0.823320072272624,
+       0.9239449376636876
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9261148593055785
+     }
+    },
+    "38": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.886729347058605,
+      "agent_ci95": [
+       0.8159115452354467,
+       0.9416626260509094
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9993417804837913
+     },
+     "clean": {
+      "agent_auroc": 0.8805604072986734,
+      "agent_ci95": [
+       0.815762653350222,
+       0.9325277095439183
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9913882946629368
+     }
+    },
+    "40": {
+     "C": 0.01,
+     "raw": {
+      "agent_auroc": 0.8342561968114757,
+      "agent_ci95": [
+       0.7585765856830929,
+       0.8939414652742759
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9994514837364928
+     },
+     "clean": {
+      "agent_auroc": 0.7862425210895982,
+      "agent_ci95": [
+       0.7193455909617941,
+       0.8402955309904424
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9940760243541221
+     }
+    },
+    "46": {
+     "C": 0.01,
+     "raw": {
+      "agent_auroc": 0.707755769445167,
+      "agent_ci95": [
+       0.6368388048727498,
+       0.7708547744746327
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9993966321101421
+     },
+     "clean": {
+      "agent_auroc": 0.7582221561559329,
+      "agent_ci95": [
+       0.6915952959404036,
+       0.817059556635355
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9948987987493829
+     }
+    }
+   },
+   "usable_layers": [
+    "30",
+    "38",
+    "40",
+    "46"
+   ]
+  },
+  "ultimatum": {
+   "n_native_train": 248,
+   "n_native_heldout": 0,
+   "n_agent": 23,
+   "agent_class_balance": 1.0,
+   "per_layer": {
+    "30": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     }
+    },
+    "38": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     }
+    },
+    "40": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     }
+    },
+    "46": {
+     "C": 0.01,
+     "raw": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": NaN,
+      "agent_ci95": [
+       NaN,
+       NaN
+      ],
+      "verdict": "NOT_EVALUABLE",
+      "native_heldout_auroc": null
+     }
+    }
+   },
+   "usable_layers": []
+  }
+ }
+}

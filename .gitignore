@@ -42,3 +42,5 @@ pipeline/results/**/*_joined/generation/
 pipeline/results/*/relabel_*/generation/
 pipeline/results/*/relabel_*/manifest.json
 pipeline/results/*/relabel_*/cardinality.json
+# probe-transfer activations (316 MB; kept locally, re-derivable on a pod)
+pipeline/results/t4_27b_2026-10-02_probe_transfer*/**/activations.npz

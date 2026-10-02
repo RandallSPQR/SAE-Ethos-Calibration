@@ -24,6 +24,7 @@ if [ ! -s "$RUN/probe_agent/ultimatum/trials.jsonl" ]; then
   python -m probe.synth_trials --run-dir "$RUN" --regime native --concurrency "$CONC" 2>&1 | tee "${LOG}_p1_native.log"
   [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: no task has a dial in the native regime (see baseline.json); nothing to transfer"; gpu_free; touch "$RUN/DONE"; exit 4; }
   python -m probe.synth_trials --run-dir "$RUN" --regime agent --concurrency "$CONC" 2>&1 | tee "${LOG}_p1_agent.log"
+  [ "${PIPESTATUS[0]}" = "0" ] || { echo "STOP: agent-regime trials truncated at max_tokens (see probe_agent/*/baseline.json)"; kill "$VPID" 2>/dev/null; gpu_free; touch "$RUN/DONE"; exit 9; }
   kill "$VPID" 2>/dev/null; sleep 5; gpu_free
 fi
 echo "== P2: fp32 prompt-final residuals, both regimes (device_map $REPLAY_DEVICE_MAP)"

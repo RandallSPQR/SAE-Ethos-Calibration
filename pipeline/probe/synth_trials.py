@@ -37,6 +37,10 @@ def probe_cfg():
     return modelcfg.probe_cfg()
 
 
+AGENT_MAX_TOKENS = 1024     # = the harness per-turn budget (g2_max_tokens)
+TRUNC_MAX = 0.01            # agent regime: share of trials allowed to hit the cap
+
+
 def subdir(regime):
     """native trials live in probe/<task> (unchanged), agent-regime trials in probe_agent/<task>."""
     return "probe" if regime == "native" else f"probe_{regime}"
@@ -56,7 +60,10 @@ def mock_choice(task, param, seed, level=None, regime="native"):
 def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95, regime="native", concurrency=1):
     t = TASKS[task]
     jobs = [(level, n, seed) for level in t["levels"] for n in t["grid"] for seed in range(n_agents)]
-    max_tokens = 16 if regime == "native" else 96            # the agent regime answers through a tool block
+    # the agent regime reasons in prose before its submit call: its cap is the harness's per-turn budget. The first
+    # transfer pod (2026-10-02) capped it at 96 and 60 % / 91 % of agent trials were cut mid-reasoning, non-randomly
+    # (riskier items cut more); a cut trial is an instrument failure and is counted apart from a model drop below.
+    max_tokens = 16 if regime == "native" else AGENT_MAX_TOKENS
     parse = parse_choice if regime == "native" else parse_agent_choice
 
     def one(job):
@@ -76,7 +83,8 @@ def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95,
         y = label(task, choice)
         return {"uid": f"{subdir(regime)}:{task}:{level}:{n}:{seed}", "task": task, "regime": regime, "param": n,
                 "level": level, "seed": seed, "cond": cond, "sampling": {"temperature": temperature, "top_p": top_p},
-                "text": r["text"], "token_ids": r["token_ids"], "choice": choice, "label": y, "messages": msgs}
+                "text": r["text"], "token_ids": r["token_ids"], "choice": choice, "label": y, "messages": msgs,
+                "truncated": len(r["token_ids"]) >= max_tokens}
 
     if concurrency > 1 and not mock:
         # independent requests: vLLM batches them; the output order is the job order. The client is created once here,
@@ -102,7 +110,7 @@ def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95,
             "heldout_level": t["heldout_level"], "decision_variable": t["decision_variable"],
             "sp_by_level": {k: {"sp": v["sp"], "method": v["method"], "sp_over_level": (None if v["sp"] is None or k == "None" else v["sp"] / float(k))}
                             for k, v in sp_by_level.items()},
-            "n_trials": len(rows), "n_dropped": dropped,
+            "n_trials": len(rows), "n_dropped": dropped, "n_truncated": sum(1 for r in rows if r["truncated"]), "max_tokens": max_tokens,
             "drop_rate": dropped / max(1, len(rows)), "n_agents": n_agents, "grid": t["grid"],
             "temperature": temperature, "top_p": top_p, "mock": bool(mock),
             "n_distinct_responses": len(set(r["text"] for r in rows)),
@@ -115,7 +123,12 @@ def run_task(task, out_dir, n_agents, client, mock, temperature=0.8, top_p=0.95,
     if regime != "native":
         # the agent regime is the TEST set of the transfer check: its drop rate and curve are findings, reported in
         # baseline.json; they gate nothing here (a regime the model will not answer in is itself a transfer result)
-        print(f"[{task}/{regime}] drop rate {base['drop_rate']:.2%}; graded grid points {base['n_graded_grid_points']}")
+        print(f"[{task}/{regime}] drop rate {base['drop_rate']:.2%}; truncated {base['n_truncated']}; graded grid points {base['n_graded_grid_points']}")
+        if base["n_truncated"] > TRUNC_MAX * len(rows):
+            # a truncated trial is the sampler's failure, not the model's: dropping it selects on response length
+            print(f"STOP: {task}/{regime} {base['n_truncated']} of {len(rows)} trials hit max_tokens={max_tokens} "
+                  f"(> {TRUNC_MAX:.0%}); raise the cap, do not score a length-selected subset.")
+            return False
         return True
     if base["drop_rate"] > 0.05:
         print(f"STOP: {task} drop rate {base['drop_rate']:.2%} > 5% — the model isn't answering the format; "
@@ -151,7 +164,8 @@ def main():
     oks = [run_task(t, a.run_dir, n_agents, client, a.mock, temperature=float(pc.get("temperature", 0.8)),
                     top_p=float(pc.get("top_p", 0.95)), regime=a.regime, concurrency=a.concurrency) for t in tasks]
     # a task with no dial on this model is a FINDING; the run continues with the tasks that have one
-    sys.exit(0 if any(oks) else 1)
+    # agent regime: every task must pass the truncation guard (a cut trial is a sampler failure, never a finding)
+    sys.exit(0 if (all(oks) if a.regime != "native" else any(oks)) else 1)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+[lottery] n=1120 dropped=0 sp@ref=89.3 (logistic_lapse)  by level: 30:63.8 50:89.3 70:100.9 100:121.2  fan2026 baseline_sp=125
+[ultimatum] n=248 dropped=0 sp@ref=5.5 (logistic_lapse)  by level: None:5.5  fan2026 baseline_sp=30
