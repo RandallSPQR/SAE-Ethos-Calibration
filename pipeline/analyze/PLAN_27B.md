@@ -112,3 +112,18 @@ own pre-registration, which is written after the hand-check passes and before th
     (30/38/40/46) and task, train on the native regime and test AUROC on the same items under the harness's agent
     template; a layer that fails is not used for that task. Run on one 2 x A100 pod (calibrate/run_probe_transfer.sh):
     1,368 trials per regime sampled bf16 (vLLM), prompt-final residuals fp32; the transfer test runs offline.
+    **Result (run 2, 2026-10-03, `results/t4_27b_2026-10-02_probe_transfer_run2/`):** usable layers lottery 30/38,
+    ultimatum 38/40/46. Run 1 is INVALID (agent replies cut at 96 tokens; `..._run1_truncated/`).
+13. **Cleaned-direction transfer is a gate; raw L40 lottery transfer was surface** (Randall, 2026-10-03). At L40 the raw
+    lottery direction transfers (agent AUROC 0.750) and the cleaned one does not (0.604): what carried over to the agent
+    frame was the order/unit surface component, not the choice. The cleaned direction's verdict decides use; a raw PASS
+    never licenses a layer.
+14. **Item 6 steering design** (Randall, 2026-10-03; draft pre-registration `analyze/PREREG_ITEM6_STEERING_DRAFT.md`,
+    not yet registered). Primary G4/steering site lottery L38 (cleaned transfer 0.839); secondary lottery L30.
+    Ultimatum L40/46 exploratory only (20 native rejections, no native held-out level). No lottery steering at L40/46.
+    Steering is judged on behavior change minus a norm-matched placebo at the same layer and every strength, never on
+    the probe readout; coherence per strength; per-item shift distribution reported. Mean-of-differences (MoD) vectors
+    are built beside the probe direction and pass a naturalness check and the native-to-agent transfer check before any
+    use. Any thresholded probe readout is recalibrated per regime: the agent wrapper moves the behavior itself
+    (switching points lottery 88.5 -> 100.2 at safe 50, ultimatum 5.5 -> 17.6), so a native threshold is not an agent
+    threshold.

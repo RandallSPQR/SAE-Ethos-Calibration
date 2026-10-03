@@ -110,3 +110,21 @@ is terminated (a pod nobody armed is a pod nobody is watching); every terminatio
 `~/runpod_watch/watchdog.log` and raises a macOS notification. Re-arm to extend a deadline; disarm after
 you terminate a pod yourself. The create-retry loops in the session arm the pod in the same command
 that creates it.
+
+## Driving a pod (scripts kept in the repo, 2026-10-03)
+
+Scratch directories get cleared (the 2026-10-03 re-run lost its tarball and watcher overnight and paid ~15 pod-minutes
+to rebuild them), so the pod workflow lives here. Tarballs and copy-back archives go to `<repo>/.ship/` (gitignored).
+
+| step | command |
+|---|---|
+| create, armed | `create_armed.py --name N --gpu-count 2 --dc EUR-IS-1 --volume u0isne6ams --hours H --note "..."` |
+| ship code | `ship.sh <pod_id>` (packs HEAD via `pipeline/calibrate/pack.sh`, uploads, verifies the pod's GIT_COMMIT) |
+| start a job | `run_detached.sh <pod_id> /workspace/logs/X.log 'MODEL_PROFILE=... bash calibrate/run_X.sh <run_dir>'` |
+| watch | `watch_run.sh <pod_id> <run_dir>/DONE /workspace/logs/X.log` (exit 0 DONE, 2 STOP, 3 stall, 4 unreachable) |
+| copy back | `fetch.sh <pod_id> <local_dir> <paths under /workspace>` |
+| terminate | `terminate.sh <pod_id>` (DELETE, confirms gone, disarms the watchdog; prints price and start time) |
+| ad hoc | `pod.sh <pod_id> '<command>'`, `pod.sh <pod_id> --addr` |
+
+Run `watch_run.sh` in the background with the longest timeout the shell allows; a background shell limit stops only the
+local watcher, never the detached pod job.
