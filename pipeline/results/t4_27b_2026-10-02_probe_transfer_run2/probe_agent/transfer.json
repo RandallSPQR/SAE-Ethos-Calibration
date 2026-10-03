@@ -1,0 +1,204 @@
+{
+ "rules": "2026-10-02.1",
+ "criterion": {
+  "auroc_min": 0.7,
+  "boot_lower_min": 0.5,
+  "min_per_class": 10,
+  "decides_use": "cleaned direction"
+ },
+ "tasks": {
+  "lottery": {
+   "n_native_train": 840,
+   "n_native_heldout": 280,
+   "n_agent": 1073,
+   "agent_class_balance": 0.35228331780055916,
+   "per_layer": {
+    "30": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.87643980054052,
+      "agent_ci95": [
+       0.8321377275621545,
+       0.9132069964927405
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9882539335664335
+     },
+     "clean": {
+      "agent_auroc": 0.864974686917133,
+      "agent_ci95": [
+       0.8261823905257972,
+       0.8981831244917533
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9259178321678322
+     }
+    },
+    "38": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.858511286209128,
+      "agent_ci95": [
+       0.8202011463863262,
+       0.8914096498347311
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9990712412587412
+     },
+     "clean": {
+      "agent_auroc": 0.8392086330935252,
+      "agent_ci95": [
+       0.8033237956708614,
+       0.8711573005115674
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.9921875
+     }
+    },
+    "40": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.7504187126489285,
+      "agent_ci95": [
+       0.6990317111822082,
+       0.7980836534757231
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": 0.999180506993007
+     },
+     "clean": {
+      "agent_auroc": 0.6036561227208709,
+      "agent_ci95": [
+       0.5527554601790721,
+       0.6526797553297198
+      ],
+      "verdict": "FAIL",
+      "native_heldout_auroc": 0.9915319055944056
+     }
+    },
+    "46": {
+     "C": 0.1,
+     "raw": {
+      "agent_auroc": 0.6004815195462677,
+      "agent_ci95": [
+       0.5512267574463486,
+       0.6496405338420499
+      ],
+      "verdict": "FAIL",
+      "native_heldout_auroc": 0.9992351398601399
+     },
+     "clean": {
+      "agent_auroc": 0.6720813825130372,
+      "agent_ci95": [
+       0.6201841264602344,
+       0.7216987914833168
+      ],
+      "verdict": "FAIL",
+      "native_heldout_auroc": 0.9925152972027972
+     }
+    }
+   },
+   "usable_layers": [
+    "30",
+    "38"
+   ]
+  },
+  "ultimatum": {
+   "n_native_train": 248,
+   "n_native_heldout": 0,
+   "n_agent": 235,
+   "agent_class_balance": 0.825531914893617,
+   "per_layer": {
+    "30": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": 0.4223032436509932,
+      "agent_ci95": [
+       0.23482449494949498,
+       0.6264670177383592
+      ],
+      "verdict": "FAIL",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": 0.4344983656022127,
+      "agent_ci95": [
+       0.24588024158928362,
+       0.6291465930253515
+      ],
+      "verdict": "FAIL",
+      "native_heldout_auroc": null
+     }
+    },
+    "38": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": 0.8179532310787025,
+      "agent_ci95": [
+       0.6852499512957895,
+       0.9070736997404918
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": 0.8175760623585617,
+      "agent_ci95": [
+       0.6866382628277347,
+       0.9058120837546096
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     }
+    },
+    "40": {
+     "C": 1.0,
+     "raw": {
+      "agent_auroc": 0.865350766909731,
+      "agent_ci95": [
+       0.762355695215227,
+       0.9314083936737805
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": 0.8657279356298717,
+      "agent_ci95": [
+       0.7631306610519625,
+       0.9319016766331224
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     }
+    },
+    "46": {
+     "C": 0.01,
+     "raw": {
+      "agent_auroc": 0.842217752074428,
+      "agent_ci95": [
+       0.7306286602597422,
+       0.9165109658420854
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     },
+     "clean": {
+      "agent_auroc": 0.8414634146341463,
+      "agent_ci95": [
+       0.7286913075660542,
+       0.9159760964594503
+      ],
+      "verdict": "PASS",
+      "native_heldout_auroc": null
+     }
+    }
+   },
+   "usable_layers": [
+    "38",
+    "40",
+    "46"
+   ]
+  }
+ }
+}

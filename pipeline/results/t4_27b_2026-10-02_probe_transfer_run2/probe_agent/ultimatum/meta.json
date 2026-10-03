@@ -1,0 +1,15 @@
+{
+  "task": "ultimatum",
+  "regime": "agent",
+  "layers": [
+    30,
+    38,
+    40,
+    46
+  ],
+  "n": 235,
+  "position": "prompt_final",
+  "hook_transform": "replay.hooks.resid_post (G2-verified at layer 31)",
+  "mock": false,
+  "model_checksum": null
+}

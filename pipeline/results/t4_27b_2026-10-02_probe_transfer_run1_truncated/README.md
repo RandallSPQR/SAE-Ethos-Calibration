@@ -27,3 +27,5 @@ Fix (committed with this record): agent cap = 1024 (the harness per-turn budget,
 The criterion (gate rules 2026-10-02.1) is unchanged. A re-run needs a pod (Randall's approval).
 
 `activations.npz` files (316 MB) are gitignored and kept locally.
+
+**Superseded by run 2** (`../t4_27b_2026-10-02_probe_transfer_run2/`, 2026-10-03, 0 truncated trials).

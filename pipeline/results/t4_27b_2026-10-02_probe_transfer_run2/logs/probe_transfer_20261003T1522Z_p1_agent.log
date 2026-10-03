@@ -1,0 +1,4 @@
+[lottery] n=1120 dropped=47 sp@ref=100.2 (logistic_lapse)  by level: 30:62.8 50:100.2 70:136.0 100:None  fan2026 baseline_sp=125
+[lottery/agent] drop rate 4.20%; truncated 0; graded grid points 3
+[ultimatum] n=248 dropped=13 sp@ref=17.6 (logistic_lapse)  by level: None:17.6  fan2026 baseline_sp=30
+[ultimatum/agent] drop rate 5.24%; truncated 0; graded grid points 17
