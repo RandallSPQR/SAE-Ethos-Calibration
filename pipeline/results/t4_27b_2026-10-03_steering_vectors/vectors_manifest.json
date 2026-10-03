@@ -1,0 +1,458 @@
+{
+ "rules": "2026-10-03.1",
+ "run_dir": "results/t4_27b_2026-10-02_probe_transfer_run2",
+ "position": "X",
+ "sites": {
+  "lottery_L38": {
+   "task": "lottery",
+   "layer": 38,
+   "role": "primary",
+   "C": 0.1,
+   "n_train": 840,
+   "placebos": {
+    "isotropic": 8,
+    "covariance": 8
+   },
+   "cos_raw_clean": 0.9966889987689183,
+   "transfer": {
+    "probe_clean": {
+     "agent_auroc": 0.8392086330935252,
+     "agent_ci95": [
+      0.8033237956708614,
+      0.8711573005115674
+     ],
+     "verdict": "PASS",
+     "n_agent": 1073
+    }
+   },
+   "descriptives": {
+    "cos_n_direction": {
+     "below": {
+      "grid_points": 43,
+      "trials": 344,
+      "levels": [
+       30.0,
+       50.0,
+       70.0,
+       100.0
+      ],
+      "cos": 0.018671092739056316
+     },
+     "above": {
+      "grid_points": 28,
+      "trials": 224,
+      "levels": [
+       30.0,
+       50.0,
+       70.0,
+       100.0
+      ],
+      "cos": 0.09508323583528215
+     }
+    },
+    "auroc_pooled": {
+     "probe_clean": 0.995532675835677,
+     "n": 0.867376815502562,
+     "n_over_safe": 0.9162011531892489,
+     "trials": 1120,
+     "levels": [
+      30.0,
+      50.0,
+      70.0,
+      100.0
+     ]
+    },
+    "auroc_heldout_level": {
+     "level": 70,
+     "probe_clean": 0.9921875,
+     "n": 0.888548951048951,
+     "trials": 280
+    }
+   }
+  },
+  "lottery_L30": {
+   "task": "lottery",
+   "layer": 30,
+   "role": "secondary",
+   "C": 0.1,
+   "n_train": 840,
+   "placebos": {
+    "isotropic": 2,
+    "covariance": 2
+   },
+   "cos_raw_clean": 0.9988112247492809,
+   "transfer": {
+    "probe_clean": {
+     "agent_auroc": 0.864974686917133,
+     "agent_ci95": [
+      0.8261823905257972,
+      0.8981831244917533
+     ],
+     "verdict": "PASS",
+     "n_agent": 1073
+    }
+   },
+   "descriptives": {
+    "cos_n_direction": {
+     "below": {
+      "grid_points": 43,
+      "trials": 344,
+      "levels": [
+       30.0,
+       50.0,
+       70.0,
+       100.0
+      ],
+      "cos": 0.02048679322194341
+     },
+     "above": {
+      "grid_points": 28,
+      "trials": 224,
+      "levels": [
+       30.0,
+       50.0,
+       70.0,
+       100.0
+      ],
+      "cos": 0.0900567476135995
+     }
+    },
+    "auroc_pooled": {
+     "probe_clean": 0.9670721449576865,
+     "n": 0.867376815502562,
+     "n_over_safe": 0.9162011531892489,
+     "trials": 1120,
+     "levels": [
+      30.0,
+      50.0,
+      70.0,
+      100.0
+     ]
+    },
+    "auroc_heldout_level": {
+     "level": 70,
+     "probe_clean": 0.9259178321678322,
+     "n": 0.888548951048951,
+     "trials": 280
+    }
+   }
+  },
+  "ultimatum_L40": {
+   "task": "ultimatum",
+   "layer": 40,
+   "role": "exploratory",
+   "C": 1.0,
+   "n_train": 248,
+   "placebos": {
+    "isotropic": 2,
+    "covariance": 2
+   },
+   "cos_raw_clean": 0.9999668548741387,
+   "transfer": {
+    "probe_clean": {
+     "agent_auroc": 0.8657279356298717,
+     "agent_ci95": [
+      0.7631306610519625,
+      0.9319016766331224
+     ],
+     "verdict": "PASS",
+     "n_agent": 235
+    }
+   },
+   "descriptives": {
+    "cos_n_direction": {
+     "below": {
+      "grid_points": 2,
+      "cos": null
+     },
+     "above": {
+      "grid_points": 27,
+      "trials": 216,
+      "levels": [
+       -1.0
+      ],
+      "cos": -0.0024564116320580933
+     }
+    },
+    "auroc_pooled": {
+     "probe_clean": 1.0,
+     "n": 0.9947368421052631,
+     "n_over_safe": null,
+     "trials": 248,
+     "levels": null
+    },
+    "auroc_heldout_level": {}
+   }
+  },
+  "ultimatum_L46": {
+   "task": "ultimatum",
+   "layer": 46,
+   "role": "exploratory",
+   "C": 0.01,
+   "n_train": 248,
+   "placebos": {
+    "isotropic": 2,
+    "covariance": 2
+   },
+   "cos_raw_clean": 0.99985280274776,
+   "transfer": {
+    "probe_clean": {
+     "agent_auroc": 0.8414634146341463,
+     "agent_ci95": [
+      0.7286913075660542,
+      0.9159760964594503
+     ],
+     "verdict": "PASS",
+     "n_agent": 235
+    }
+   },
+   "descriptives": {
+    "cos_n_direction": {
+     "below": {
+      "grid_points": 2,
+      "cos": null
+     },
+     "above": {
+      "grid_points": 27,
+      "trials": 216,
+      "levels": [
+       -1.0
+      ],
+      "cos": 0.0026055579882626615
+     }
+    },
+    "auroc_pooled": {
+     "probe_clean": 1.0,
+     "n": 0.9947368421052631,
+     "n_over_safe": null,
+     "trials": 248,
+     "levels": null
+    },
+    "auroc_heldout_level": {}
+   }
+  }
+ },
+ "vectors": {
+  "lottery_L38_probe_clean": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "probe_clean",
+   "sha256": "7f61b8437fab7ab4cf4fb5dc647df3c1a94ab3f80fd171f29e25b96fcbaf3da2"
+  },
+  "lottery_L38_placebo_iso1": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso1",
+   "sha256": "bb0b4fe31e64ed703a0b341e7d2fe5c8105501fc08fcb80a1859640e1f9fa98e",
+   "seed": 61138
+  },
+  "lottery_L38_placebo_cov1": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov1",
+   "sha256": "6a8ef808291df9dbdd7f2208473fec5a81250cdba37f6c6b976b2a02ef3833f5",
+   "seed": 62138
+  },
+  "lottery_L38_placebo_iso2": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso2",
+   "sha256": "9346de2f888dc2ebceaa5331f0bb1b3e032f5552cd206a7fcc27975d77b5b8d9",
+   "seed": 61238
+  },
+  "lottery_L38_placebo_cov2": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov2",
+   "sha256": "ef559befe6a3c0ca93b264946c73a0c7500c35dc0e0e39151c10191f6f92d122",
+   "seed": 62238
+  },
+  "lottery_L38_placebo_iso3": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso3",
+   "sha256": "e08af2c1fc256e1cb5b5818fa9a0a3914cdd0c853f5261fbe68c1cc4a8c466cc",
+   "seed": 61338
+  },
+  "lottery_L38_placebo_cov3": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov3",
+   "sha256": "caa9f8ec092fd9ca5dc2ff8e69b98888dd811c6c6724d724ad013b6c3649822a",
+   "seed": 62338
+  },
+  "lottery_L38_placebo_iso4": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso4",
+   "sha256": "33e6fb459d43d64d4b43838cf9d0d5343a04d85ba7612a253a727b86090792d9",
+   "seed": 61438
+  },
+  "lottery_L38_placebo_cov4": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov4",
+   "sha256": "14aec574c8011e351447173305fe9aa642cdc9bdafa6bb10105b88e243d9ee9b",
+   "seed": 62438
+  },
+  "lottery_L38_placebo_iso5": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso5",
+   "sha256": "aaefec4ebe1cbcda180b0735b05a26a2a6cabae9ae1a0049b234a1e9a5e67c3e",
+   "seed": 61538
+  },
+  "lottery_L38_placebo_cov5": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov5",
+   "sha256": "81a38e7ac805ccd9c96dcfc877755bb638e5c112e2c152dab18a0460daa439ec",
+   "seed": 62538
+  },
+  "lottery_L38_placebo_iso6": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso6",
+   "sha256": "e0d9248cc574d5097066e1c606931f0b27611127b8349fc2fa36aca81a751886",
+   "seed": 61638
+  },
+  "lottery_L38_placebo_cov6": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov6",
+   "sha256": "3065db94d8c84747cc9ef7953124371df72a24c710f6648888bb0eec7d03ca18",
+   "seed": 62638
+  },
+  "lottery_L38_placebo_iso7": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso7",
+   "sha256": "574a24a69b1b0fb36b4bb251ac3e398fbb381d045c28f9e61fc9d4c6b162382d",
+   "seed": 61738
+  },
+  "lottery_L38_placebo_cov7": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov7",
+   "sha256": "28f9f50cc0f1f31a809b10034341cab9677626d2aa2074ea5a529151dff88f91",
+   "seed": 62738
+  },
+  "lottery_L38_placebo_iso8": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_iso8",
+   "sha256": "b6e2112a98e8d5402039b019b2e818191360fdd78c27353cfff2dba5f1d2e2bf",
+   "seed": 61838
+  },
+  "lottery_L38_placebo_cov8": {
+   "task": "lottery",
+   "layer": 38,
+   "kind": "placebo_cov8",
+   "sha256": "b5746da354255cc44c7a72f14a4782404d312f39d898806e5a15a046d357ac25",
+   "seed": 62838
+  },
+  "lottery_L30_probe_clean": {
+   "task": "lottery",
+   "layer": 30,
+   "kind": "probe_clean",
+   "sha256": "1b8601e658329345ddd7fccf469a8daba02abe3f94a2f00008247fa76ebacbbe"
+  },
+  "lottery_L30_placebo_iso1": {
+   "task": "lottery",
+   "layer": 30,
+   "kind": "placebo_iso1",
+   "sha256": "abb25416601912af020b8da3049929a1c2803565e81d9d00c57e4f8a82a75567",
+   "seed": 61130
+  },
+  "lottery_L30_placebo_cov1": {
+   "task": "lottery",
+   "layer": 30,
+   "kind": "placebo_cov1",
+   "sha256": "ab77b2b73cedc0b779546b9104b766ccc53cd4a18edab64c3f7c41296f13c5d7",
+   "seed": 62130
+  },
+  "lottery_L30_placebo_iso2": {
+   "task": "lottery",
+   "layer": 30,
+   "kind": "placebo_iso2",
+   "sha256": "27d547562c498b0b93d2f0653eb98e62055d0a79122e9ceafdff9c69edb0d6eb",
+   "seed": 61230
+  },
+  "lottery_L30_placebo_cov2": {
+   "task": "lottery",
+   "layer": 30,
+   "kind": "placebo_cov2",
+   "sha256": "922c104ba8557b659c88c347d531ac52ef3b915917e1bb317927bbb82ac0e47b",
+   "seed": 62230
+  },
+  "ultimatum_L40_probe_clean": {
+   "task": "ultimatum",
+   "layer": 40,
+   "kind": "probe_clean",
+   "sha256": "6a2384e6129118326bc22e17f47ca91a5569ebdd08bc1ea4dd9039ed5edda37f"
+  },
+  "ultimatum_L40_placebo_iso1": {
+   "task": "ultimatum",
+   "layer": 40,
+   "kind": "placebo_iso1",
+   "sha256": "64f4692e1e1ef7234063f7141e724522b3c64888e1cd786a3767e66a68dcdf4a",
+   "seed": 61140
+  },
+  "ultimatum_L40_placebo_cov1": {
+   "task": "ultimatum",
+   "layer": 40,
+   "kind": "placebo_cov1",
+   "sha256": "286806ad42a38841aa680be9f088f25603797b5e29a14b3e1d94c7087a601f7e",
+   "seed": 62140
+  },
+  "ultimatum_L40_placebo_iso2": {
+   "task": "ultimatum",
+   "layer": 40,
+   "kind": "placebo_iso2",
+   "sha256": "42da7172e682370da16623cf2154270c9c50a72300d99dbfa4e3724f046d4e9f",
+   "seed": 61240
+  },
+  "ultimatum_L40_placebo_cov2": {
+   "task": "ultimatum",
+   "layer": 40,
+   "kind": "placebo_cov2",
+   "sha256": "3bd3b886553c0fc252adab1b90af1161014ea243fa206a53999516999c028bbc",
+   "seed": 62240
+  },
+  "ultimatum_L46_probe_clean": {
+   "task": "ultimatum",
+   "layer": 46,
+   "kind": "probe_clean",
+   "sha256": "f35e604e2fedec2bd6a4d185531ab64ce65149a9d17484330498b4c6dd73d956"
+  },
+  "ultimatum_L46_placebo_iso1": {
+   "task": "ultimatum",
+   "layer": 46,
+   "kind": "placebo_iso1",
+   "sha256": "38234607a5acda0e8f6a9d4681cd104af0c621304c7a2cc5a4defcf7f65da55a",
+   "seed": 61146
+  },
+  "ultimatum_L46_placebo_cov1": {
+   "task": "ultimatum",
+   "layer": 46,
+   "kind": "placebo_cov1",
+   "sha256": "43003e4ac85fc7e1523b0a804cad02981cb808d0c8fb2f94256a4627bcd2e222",
+   "seed": 62146
+  },
+  "ultimatum_L46_placebo_iso2": {
+   "task": "ultimatum",
+   "layer": 46,
+   "kind": "placebo_iso2",
+   "sha256": "c0e5d6117c1dadd4b3498febede1f2d1285b89ff7c9e4019b259fcffbc124388",
+   "seed": 61246
+  },
+  "ultimatum_L46_placebo_cov2": {
+   "task": "ultimatum",
+   "layer": 46,
+   "kind": "placebo_cov2",
+   "sha256": "06ced7a0002c5dc1f0c1deca27651c51de1ccd618c01a66a0cb50e8b23fb7edf",
+   "seed": 62246
+  }
+ },
+ "npz_sha256": "302557c37fec4dcef301e3594e3378df1ac23631059326e6821564a51a86c22d"
+}
