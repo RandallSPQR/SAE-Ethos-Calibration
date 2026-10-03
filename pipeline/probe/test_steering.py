@@ -144,8 +144,21 @@ def run():
     XX = np.stack([r[4] for r in rows]); yy = np.array([r[5] for r in rows]); trr = np.arange(len(rows))
     g_mod, _ = VE.mod_matched(XX, zz, yy, trr); f_mod, _ = VE.mod_frame_matched(XX, zz, yy, trr)
     c = lambda a_, b_: abs(float(a_ @ b_ / np.linalg.norm(a_) / np.linalg.norm(b_)))
-    res["MoD blocker (synthetic): grid-point matching -> surface direction; frame matching -> decision variable"] = (
+    res["MoD dropped (ruling C), the reason reproduced: grid-point matching -> surface direction; frame matching -> stimulus/decision variable"] = (
         c(g_mod, w_s) > 0.8 and c(g_mod, w_dv) < 0.3 and c(f_mod, w_dv) > 0.9)
+
+    # ---- descriptive: n direction from choice-homogeneous prompts (needs a run dir with baseline.json)
+    td = Path(tempfile.mkdtemp()); (td / "probe" / "lottery").mkdir(parents=True)
+    (td / "probe" / "lottery" / "baseline.json").write_text(json.dumps({"sp_by_level": {"50": {"sp": 100.0}}}))
+    rng3 = np.random.default_rng(3); d3 = 16; w_n = rng3.normal(size=d3); w_n /= np.linalg.norm(w_n)
+    w_c = rng3.normal(size=d3); w_c -= (w_c @ w_n) * w_n; w_c /= np.linalg.norm(w_c)
+    ns3 = np.repeat(np.arange(10, 181, 10), 4).astype(float); lv3 = np.full(len(ns3), 50.0)
+    y3 = (ns3 > 100).astype(int)
+    X3 = (ns3[:, None] / 100.0) * w_n + 2.0 * (2 * y3[:, None] - 1) * w_c + 0.01 * rng3.normal(size=(len(ns3), d3))
+    z3 = {"level": lv3, "param": ns3}
+    dn, info = VE.n_direction_homogeneous(X3, z3, y3, "lottery", td, "below")
+    res["descriptive: homogeneous-region n direction recovers the number axis, orthogonal to the choice axis"] = (
+        dn is not None and abs(float(dn @ w_n)) > 0.95 and abs(float(dn @ w_c)) < 0.1 and info["grid_points"] >= 3)
 
     # ---- driver end to end on the mock (vectors built to a temp dir from run 2 when available)
     run2 = ROOT / "results" / "t4_27b_2026-10-02_probe_transfer_run2"

@@ -4,14 +4,14 @@
 From a run's NATIVE prompt-final activations (probe/<task>/activations.npz), per steering site (task, layer):
   probe_clean   as probe.train / probe.transfer: z-scored L2 logistic, C by 5-fold CV, raw-space unit direction,
                 surface directions (order, unit; matched on grid point and label) projected out
-  mod_clean     mean of differences matched on the grid point: within each (level, n) stratum holding both choices,
-                mean(x | high) - mean(x | low); averaged with weights min(n_high, n_low); surface directions projected
-                out; unit-normalized
+  (MoD was dropped from item 6 by Randall's ruling C, 2026-10-03: prompt-final activations are prompt-deterministic, so
+   every MoD is a between-prompt contrast; mod_matched / mod_frame_matched stay below as the record of why.)
   placebo_iso<k>, placebo_cov<k>   unit vectors, isotropic (uniform on the sphere) and covariance-matched (x ~ N(0, S_L),
                 S_L from the centered training-split activations); seeds 61000 + 100 k + L and 62000 + 100 k + L
 Orientation: + points to the high class (Risky Option / Accept) for every target vector.
 
-Then the MoD use gate (a): gate rules 2026-10-02.1 applied to the mod_clean direction on the run's AGENT activations.
+Descriptives for probe_clean (no gate; PREREG_ITEM6_STEERING.md section 2.4): its cosine with the n direction estimated
+from choice-HOMOGENEOUS prompts only, and AUROC pooled across safe levels (where raw n and the choice dissociate).
 
   python -m probe.vectors --run-dir <run2 dir> --out <dir>      writes steering_vectors.npz + vectors_manifest.json
   python -m probe.vectors --verify <dir>                         re-hashes the npz against its manifest (exit 1 on mismatch)
@@ -85,7 +85,7 @@ def mod_matched(X, z, y, tr):
 
 
 def mod_frame_matched(X, z, y, tr):
-    """Option A for the MoD blocker (PREREG_ITEM6_STEERING_DRAFT 2.2, pending Randall): strata = (level, order, unit), i.e.
+    """Option A for the MoD blocker (PREREG_ITEM6_STEERING.md 2.2; NOT used: ruling C dropped MoD, A is confounded with n): strata = (level, order, unit), i.e.
     the frame and the safe amount held fixed and n left free; within each stratum holding both choices
     mean(x | high) - mean(x | low); weights min(n_high, n_low). Returns (direction, n strata used)."""
     lv, od, un = z["level"][tr], z["order"][tr], z["unit"][tr]
@@ -111,10 +111,66 @@ def placebo_cov(Xc, seed):
     return _unit(Xc.T @ g / np.sqrt(max(1, Xc.shape[0] - 1)))
 
 
-def n_direction(X, z, tr):
-    """Unit least-squares slope of the activations on the prompt's n (descriptive: how much of a vector is the number)."""
-    n = z["param"][tr].astype(float); n = n - n.mean()
-    return _unit((X[tr] - X[tr].mean(0)).T @ n)
+def _f(x):
+    return "-" if x is None else f"{x:.3f}"
+
+
+HOMOG_BELOW, HOMOG_ABOVE = 0.75, 1.25       # grid points at <= 0.75 x / >= 1.25 x the level's switching point
+
+
+def _sp_by_level(task, run_dir):
+    """{level as stored in activations.npz: native switching point}. The ultimatum's single level is stored as -1."""
+    base = json.loads((Path(run_dir) / "probe" / task / "baseline.json").read_text())
+    return {(-1.0 if k == "None" else float(k)): v["sp"] for k, v in base["sp_by_level"].items()}
+
+
+def n_direction_homogeneous(X, z, y, task, run_dir, region):
+    """The n direction where the choice does not vary: grid points (level, n) whose native trials ALL chose low and
+    n <= 0.75 x the level's switching point ("below"), or ALL chose high and n >= 1.25 x it ("above"). Within those
+    prompts, X and n are centered per level and the least-squares slope of X on n is the direction (unit). A probe that
+    reads the choice should be near-orthogonal to it; one that reads the number should not. None if fewer than 3
+    distinct n qualify."""
+    spl = _sp_by_level(task, run_dir)
+    lv, par = z["level"].astype(float), z["param"].astype(float)
+    idx, used = [], []
+    for lvl, n in sorted(set(zip(lv.tolist(), par.tolist()))):
+        sp = spl.get(lvl)
+        if sp is None:
+            continue
+        m = np.where((lv == lvl) & (par == n))[0]
+        ys = y[m]
+        if (region == "below" and n <= HOMOG_BELOW * sp and ys.max() == 0) or (region == "above" and n >= HOMOG_ABOVE * sp and ys.min() == 1):
+            idx.append(m); used.append((lvl, n))
+    if len({u[1] for u in used}) < 3:
+        return None, {"grid_points": len(used)}
+    idx = np.concatenate(idx)
+    Xc, nc = X[idx].copy(), par[idx].copy()
+    for l in set(lv[idx].tolist()):
+        mm = lv[idx] == l
+        Xc[mm] -= Xc[mm].mean(0); nc[mm] -= nc[mm].mean()
+    return _unit(Xc.T @ nc), {"grid_points": len(used), "trials": int(len(idx)), "levels": sorted({u[0] for u in used})}
+
+
+def descriptives(w, X, z, y, task, run_dir):
+    """No gate. cos(probe_clean, homogeneous n direction) below and above the switching point (random |cos| 99th pct at
+    d = 5376 is ~0.035), and AUROC of the probe score, raw n and n / safe, pooled over every native trial (all safe
+    levels: where raw n and the choice dissociate) and on the held-out level alone."""
+    from probe import transfer as T
+    from probe.tasks import TASKS
+    out = {"cos_n_direction": {}, "auroc_pooled": {}, "auroc_heldout_level": {}}
+    for region in ("below", "above"):
+        d, info = n_direction_homogeneous(X, z, y, task, run_dir, region)
+        out["cos_n_direction"][region] = {**info, "cos": None if d is None else float(w @ d)}
+    s = X @ w; n = z["param"].astype(float)
+    safe = z["level"].astype(float) if TASKS[task]["levels"] != [None] else None
+    out["auroc_pooled"] = {"probe_clean": T.auroc(s, y), "n": T.auroc(n, y),
+                           "n_over_safe": None if safe is None else T.auroc(n / safe, y), "trials": int(len(y)),
+                           "levels": None if safe is None else sorted({float(a) for a in safe})}
+    ho = TASKS[task].get("heldout_level")
+    if ho is not None:
+        m = safe == float(ho)
+        out["auroc_heldout_level"] = {"level": ho, "probe_clean": T.auroc(s[m], y[m]), "n": T.auroc(n[m], y[m]), "trials": int(m.sum())}
+    return out
 
 
 def mod_transfer(direc, run_dir, task, L, key, n_boot=2000):
@@ -147,15 +203,8 @@ def build(run_dir, out_dir, sites=SITES, n_boot=2000):
         X, y = z[f"{key}_{L}"].astype(np.float64), z["y"].astype(int)
         tr = training_split(task, z)
         w_clean, w_raw, dirs, C = probe_clean(X, z, y.astype(float), tr, pc["c_grid"])
-        mod_raw, n_strata = mod_matched(X, z, y, tr)
-        from probe.train import orthogonalize
-        mod_clean, _ = orthogonalize(_unit(mod_raw), dirs)
-        mod_clean = _unit(mod_clean)
-        # unmatched class-mean difference and the n direction: descriptive only
-        unmatched = _unit(X[tr][y[tr] == 1].mean(0) - X[tr][y[tr] == 0].mean(0))
-        ndir = n_direction(X, z, tr)
         Xc = X[tr] - X[tr].mean(0)
-        vecs = {"probe_clean": w_clean, "mod_clean": mod_clean}
+        vecs = {"probe_clean": w_clean}
         for k in range(1, k_per + 1):
             vecs[f"placebo_iso{k}"] = placebo_iso(X.shape[1], iso_seed(k, L))
             vecs[f"placebo_cov{k}"] = placebo_cov(Xc, cov_seed(k, L))
@@ -165,24 +214,20 @@ def build(run_dir, out_dir, sites=SITES, n_boot=2000):
             man["vectors"][nm] = {"task": task, "layer": L, "kind": kind, "sha256": sha(store[nm]),
                                   **({"seed": iso_seed(int(kind[11:]), L)} if kind.startswith("placebo_iso") else {}),
                                   **({"seed": cov_seed(int(kind[11:]), L)} if kind.startswith("placebo_cov") else {})}
-        cos = lambda a, b: float(_unit(a) @ _unit(b))
         man["sites"][f"{task}_L{L}"] = {
-            "task": task, "layer": L, "role": role, "C": C, "n_train": int(len(tr)), "mod_strata": n_strata,
+            "task": task, "layer": L, "role": role, "C": C, "n_train": int(len(tr)),
             "placebos": {"isotropic": k_per, "covariance": k_per},
-            "cos": {"mod_clean__probe_clean": cos(mod_clean, w_clean), "probe_raw__probe_clean": cos(w_raw, w_clean),
-                    "unmatched_mod__n_direction": cos(unmatched, ndir), "mod_clean__n_direction": cos(mod_clean, ndir),
-                    "probe_clean__n_direction": cos(w_clean, ndir), "unmatched_mod__mod_clean": cos(unmatched, mod_clean)},
-            "transfer": {"probe_clean": mod_transfer(w_clean, run_dir, task, L, key, n_boot),
-                         "mod_clean": mod_transfer(mod_clean, run_dir, task, L, key, n_boot)}}
-        s = man["sites"][f"{task}_L{L}"]
-        print(f"[{task} L{L} {role}] cos(MoD, probe) {s['cos']['mod_clean__probe_clean']:.3f}  "
-              f"cos(unmatched MoD, n-dir) {s['cos']['unmatched_mod__n_direction']:.3f}  "
-              f"transfer probe {s['transfer']['probe_clean']['agent_auroc']:.3f} {s['transfer']['probe_clean']['verdict']}  "
-              f"MoD {s['transfer']['mod_clean']['agent_auroc']:.3f} {s['transfer']['mod_clean']['verdict']}", flush=True)
+            "cos_raw_clean": float(_unit(w_raw) @ w_clean),
+            "transfer": {"probe_clean": mod_transfer(w_clean, run_dir, task, L, key, n_boot)},
+            "descriptives": descriptives(w_clean, X, z, y, task, run_dir)}
+        s = man["sites"][f"{task}_L{L}"]; ds = s["descriptives"]
+        print(f"[{task} L{L} {role}] transfer {s['transfer']['probe_clean']['agent_auroc']:.3f} {s['transfer']['probe_clean']['verdict']}  "
+              f"cos(probe_clean, n-dir homogeneous below / above) {_f(ds['cos_n_direction']['below'].get('cos'))} / "
+              f"{_f(ds['cos_n_direction']['above'].get('cos'))}  AUROC pooled: probe {_f(ds['auroc_pooled']['probe_clean'])} "
+              f"n {_f(ds['auroc_pooled']['n'])} n/safe {_f(ds['auroc_pooled']['n_over_safe'])}", flush=True)
     p = out_dir / "steering_vectors.npz"
     np.savez(p, **store)
     man["npz_sha256"] = file_sha(p)
-    man["mod_allowed_by_transfer"] = {k: v["transfer"]["mod_clean"]["verdict"] == "PASS" for k, v in man["sites"].items()}
     (out_dir / "vectors_manifest.json").write_text(json.dumps(man, indent=1))
     return man
 

@@ -118,8 +118,9 @@ own pre-registration, which is written after the hand-check passes and before th
     lottery direction transfers (agent AUROC 0.750) and the cleaned one does not (0.604): what carried over to the agent
     frame was the order/unit surface component, not the choice. The cleaned direction's verdict decides use; a raw PASS
     never licenses a layer.
-14. **Item 6 steering design** (Randall, 2026-10-03; draft pre-registration `analyze/PREREG_ITEM6_STEERING_DRAFT.md`,
-    not yet registered). Primary G4/steering site lottery L38 (cleaned transfer 0.839); secondary lottery L30.
+14. **Item 6 steering design** (Randall, 2026-10-03; registered as gate rules 2026-10-03.1 in
+    `analyze/PREREG_ITEM6_STEERING.md`; MoD dropped from item 6 by ruling C, deferred to a CAA answer-token vs
+    persona-contrast follow-up). Primary G4/steering site lottery L38 (cleaned transfer 0.839); secondary lottery L30.
     Ultimatum L40/46 exploratory only (20 native rejections, no native held-out level). No lottery steering at L40/46.
     Steering is judged on behavior change minus a norm-matched placebo at the same layer and every strength, never on
     the probe readout; coherence per strength; per-item shift distribution reported. Mean-of-differences (MoD) vectors

@@ -1,5 +1,49 @@
 # Gate rules changelog
 
+## 2026-10-03.1 — item 6 steering: G4 is the placebo-subtracted test of the cleaned lottery probe at L38 (Randall 2026-10-03, before any 27B steering run)
+
+Full rules: `analyze/PREREG_ITEM6_STEERING.md`. Vectors frozen with sha256 (`probe/STEERING_FREEZE.json`) before the pod.
+
+- **Sites**:
+  - lottery L38 primary (G4); lottery L30 secondary; ultimatum L40/L46 exploratory;
+  - not steered: lottery L40/46 and ultimatum L30, which failed cleaned transfer (2026-10-02.1).
+  - Only probe_clean is steered. **MoD dropped** (ruling C): prompt-final activations are prompt-deterministic, so every
+    mean-of-differences is a between-prompt contrast (framing when grid-point matched; confounded with n when
+    frame-matched). It is deferred to a CAA answer-token vs persona-contrast follow-up.
+- **Readout**:
+  - exact first-token choice probability, one forward per prompt. The first token alone decides the choice in all
+    1,368 native run-2 trials.
+  - Served distribution (T 0.8, top-p 0.95) primary; untruncated softmax at T 0.8 reported beside every effect.
+- **Placebos**: 16 at L38 (8 isotropic + 8 covariance-matched), 4 elsewhere; norm-matched; every strength.
+- **G4 PASS** (served; λ* = 0.4, or the widest smaller symmetric |λ| coherent for the target with every cell inside
+  the grid for target and placebos), all five:
+  1. median placebo-subtracted per-cell effect E_c ≤ −10 tokens;
+  2. E_c < 0 in ≥ 5/6 cells;
+  3. the target's symmetric effect exceeds each of the 16 placebos' in ≥ 5/6 cells;
+  4. the grid-point cluster-bootstrap 95 % CI of the pooled E excludes 0;
+  5. the placebo-subtracted dose curve is monotone (10 % dip tolerance).
+
+  NOT_EVALUABLE if no λ* exists or an instrument check fails.
+- **G4 is an instrument gate**: a PASS shows steering works in this pipeline, not that the direction is a
+  risk-preference variable.
+- **Instrument checks** (STOP on failure):
+  - option token ids == run 2's;
+  - batch gate (fp32);
+  - HF-hook path == nnsight path;
+  - λ = 0: logistic-lapse, as lambda0_checksum, exact soft labels weighted to run 2's design, within 2 served SE;
+  - sampled agreement at λ ∈ {−0.4, 0, 0.4}: the first token decides ≥ 99 %; sampled sp within 2 SE (floor 1) in ≥ 5/6
+    cells.
+- **Coherence per strength**: parseable mass ≥ 0.95; ppl ratio (unsteered scorer) ≤ 2.0; repeated 4-grams ≤ 0.25.
+  Required of the target. For placebos it runs on 4/16 at L38, report-only.
+- **Descriptive**, gating nothing:
+  - per-item shifts;
+  - naturalness (cos with the persona-induced shift; lexical priming noted);
+  - cos(probe_clean, the n direction from choice-homogeneous prompts);
+  - AUROC pooled across safe levels vs raw n and n/safe.
+- **Version constant**: `_common.GATE_RULES_VERSION` was left at 2026-09-30.5 when 2026-10-02.1 was registered (that rule
+  lived in probe/transfer.py's own RULES constant). It is bumped here to 2026-10-03.1; the 2026-10-02.1 transfer
+  results are unaffected.
+
 ## 2026-10-02.1 — probe-regime transfer criterion (Randall 2026-10-02, before the probe pod; queue item 5)
 
 A probe trained on its native regime is used at a layer only if it transfers to the agent template the harness uses.

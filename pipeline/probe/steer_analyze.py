@@ -45,12 +45,12 @@ def analyze(out_dir, vectors_dir, n_boot=SE.N_BOOT):
         its = items_for(t)
         vec_names = sorted({r["vec"] for r in raw.values() if r.get("site") == site})
         placebos = [v for v in vec_names if v.startswith("placebo")]
-        targets = [v for v in ("probe_clean", "mod_clean") if v in vec_names]
+        targets = [v for v in ("probe_clean",) if v in vec_names]
         z0 = raw.get(f"{t}|lambda0")
         if z0 is None or not targets:
             rep["sites"][site] = {"status": "not run"}; continue
         srep = {"role": s["role"], "targets": targets, "n_placebos": len(placebos), "naturalness": checks.get(f"naturalness_{t}", {}).get(str(L)),
-                "transfer": s["transfer"], "mod_steered": checks.get("mod_steered", {}).get(site), "by_target": {}}
+                "transfer": s["transfer"], "descriptives": s.get("descriptives"), "by_target": {}}
         for tv in targets:
             lams = [l for l in lams_all if l == 0 or (f"{site}|{tv}|{l}" in raw and all(f"{site}|{p}|{l}" in raw for p in placebos))]
             coherent, coh_detail = {}, {}
@@ -101,7 +101,7 @@ def render(rep):
     for site, s in rep["sites"].items():
         if "by_target" not in s:
             L += [f"## {site}: {s.get('status')}", ""]; continue
-        L += [f"## {site} ({s['role']}; {s['n_placebos']} placebos; MoD steered: {s['mod_steered']})", ""]
+        L += [f"## {site} ({s['role']}; {s['n_placebos']} placebos)", ""]
         nat = s.get("naturalness") or {}
         if nat:
             L += [f"Naturalness: personas valid {nat.get('valid')} (dP {f(nat.get('behavior_shift_mean'), 3)}); null p99 |cos| "
@@ -135,7 +135,9 @@ def render(rep):
                     L.append(f"- {tv} lambda {k}: [{', '.join(f(x, 3) for x in p['quantiles_5_25_50_75_95'])}], moved {f(p['share_moved'], 2)}, "
                              f"wrong way {f(p['share_wrong_way'], 2)}, at-target-side ({p['n_at_target_side']}) {f(p['mean_d_at_target_side'], 3)}")
         L.append("")
-    L += ["Reading: steering is judged on behavior minus placebo, never on probe readout. The served readout decides; the untruncated "
+    L += ["G4 is an INSTRUMENT gate: a PASS shows that steering works in this pipeline, not that probe_clean is a "
+          "risk-preference variable (PREREG_ITEM6_STEERING.md section 6).", "",
+          "Reading: steering is judged on behavior minus placebo, never on probe readout. The served readout decides; the untruncated "
           "softmax is a sensitivity readout (top-p can drop an option from the nucleus and put a step in the dose curve). Naturalness "
           "of the lottery personas includes lexical priming: personas 1, 3 and 4 share vocabulary with the option text."]
     return "\n".join(L) + "\n"

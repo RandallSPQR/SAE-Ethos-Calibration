@@ -7,7 +7,7 @@ Order (a failed instrument check STOPs with exit 2; a budget overrun STOPs with 
   2  batch gate (probe.batch_gate) and the HF-hook path check (prefill logits and GPU readout)
   3  lambda = 0 check per task: exact pooled sp (weighted to run 2's cell mix) within 2 SE of run 2's served sp
   4  timing probe -> projected minutes; STOP if over --budget-min
-  5  naturalness per task (gates MoD with the transfer verdict from the manifest)
+  5  naturalness per task (probe_clean; reported, gates nothing: MoD was dropped from item 6)
   6  per site, in priority order: sweeps (every vector x every lambda != 0, exact readout, both readouts kept),
      sampled agreement (primary site, probe_clean, lambda -0.4 / 0 / +0.4), coherence
   7  analysis (probe.steer_analyze) -> STEERING.md, steering.json; DONE
@@ -224,9 +224,9 @@ def main():
             stop(f"lambda-0 exact readout does not reproduce the served curve ({t})")
 
     # plan of conditions
-    def steered_vecs(s, allowed_mod):
-        base = ["probe_clean"] + (["mod_clean"] if allowed_mod else [])
-        return base, [k.split(f"_L{s['layer']}_", 1)[1] for k in man["vectors"] if k.startswith(f"{s['task']}_L{s['layer']}_placebo")]
+    def steered_vecs(s):
+        """probe_clean and the site's placebos (MoD dropped from item 6, ruling C)."""
+        return ["probe_clean"], [k.split(f"_L{s['layer']}_", 1)[1] for k in man["vectors"] if k.startswith(f"{s['task']}_L{s['layer']}_placebo")]
 
     # 4 timing probe: one steered condition at the primary site + the lambda-0 coherence pass
     cm = coherence_messages()
@@ -244,7 +244,7 @@ def main():
         t_coh = coh.done["base"]["sec_gen"] + coh.done["base"]["sec_nll"]
         n_read = n_coh = 0
         for s in sites:
-            nv, npl = steered_vecs(s, True)
+            nv, npl = steered_vecs(s)
             n_read += (len(nv) + len(npl)) * (len(lams) - 1) * len(items_for(s["task"]))
             n_coh += (len(nv) + (len(PLACEBO_COHERENCE) if s is prim else 0)) * (len(lams) - 1)
         n_nat = sum(2 * 4 * len(items_for(t)) for t in tasks)
@@ -276,7 +276,7 @@ def main():
         for L in layers:
             Xc = zn[f"X_{L}"][tr].astype(np.float64); Xc = Xc - Xc.mean(0)
             res[str(L)] = nat_evaluate(Hh[L], Hl[L], rh["served"][0], rl["served"][0],
-                                       {k: vecs[f"{t}_L{L}_{k}"] for k in ("probe_clean", "mod_clean")}, Xc, L)
+                                       {"probe_clean": vecs[f"{t}_L{L}_probe_clean"]}, Xc, L)
             r = res[str(L)]
             print(f"[{t} L{L}] naturalness: valid {r['valid']} (dP {r['behavior_shift_mean']:+.3f})  "
                   + "  ".join(f"{k} cos {v['cos']:.3f} {v['verdict']}" for k, v in r["vectors"].items()) + f"  null p99 {r['null_p99_abs_cos']:.3f}", flush=True)
@@ -285,9 +285,7 @@ def main():
     # 6 per site
     for s in sites:
         t, L = s["task"], s["layer"]; site = f"{t}_L{L}"
-        mod_ok = bool(man["mod_allowed_by_transfer"].get(site)) and checks[f"naturalness_{t}"][str(L)]["vectors"]["mod_clean"]["verdict"] == "PASS"
-        checks.setdefault("mod_steered", {})[site] = mod_ok; save()
-        nv, npl = steered_vecs(s, mod_ok)
+        nv, npl = steered_vecs(s)
         be.option_ids(t); its = items_for(t); msgs = msgs_for(t, its)
         for vname in nv + npl:
             v = vecs[f"{site}_{vname}"]
