@@ -97,3 +97,39 @@ def switching_point(params, labels):
     if out["sp_interp"] is not None:
         out.update(sp=float(out["sp_interp"]), method="interpolation")
     return out
+
+
+def switching_point_soft(params, probs, weights=None):
+    """switching_point() for probabilities instead of 0/1 labels (item 6's exact readout): the per-grid-point rate is the
+    weighted mean probability, and the same lapse-aware logistic is fit with the probabilities as soft targets (the
+    expected Bernoulli log-likelihood). weights: per-item trial counts, so a design-weighted curve can be compared with a
+    sampled one."""
+    params = np.asarray(params, float); probs = np.asarray(probs, float)
+    w = np.ones_like(probs) if weights is None else np.asarray(weights, float)
+    ok = (~np.isnan(probs)) & (w > 0)
+    params, probs, w = params[ok], probs[ok], w[ok]
+    curve = {float(p): float(np.average(probs[params == p], weights=w[params == p])) for p in np.unique(params)}
+    out = {"sp": None, "method": "none", "slope": None, "curve": curve}
+    if not curve:
+        return out
+    rates = np.array(list(curve.values()))
+    if rates.min() > 0.5 or rates.max() < 0.5:
+        return out
+    g, l = _tail_rates(curve)
+    out["guess_rate"], out["lapse_rate"] = g, l
+    out["sp_interp"] = _interp_crossing(curve)
+    # expand integer weights into repeated rows so the fit matches the sampled estimator's weighting
+    reps = np.maximum(1, np.round(w).astype(int))
+    x = np.repeat(params, reps); y = np.repeat(probs, reps)
+    try:
+        a_z, b_z, mu, sd = _logistic_fit(x, y, g=g, l=l)
+        if abs(a_z) <= 50 and a_z != 0:
+            c = mu - sd * b_z / a_z
+            if min(curve) <= c <= max(curve):
+                out.update(sp=float(c), method="logistic_lapse", slope=float(a_z / sd))
+                return out
+    except (np.linalg.LinAlgError, FloatingPointError, ValueError):
+        pass
+    if out["sp_interp"] is not None:
+        out.update(sp=float(out["sp_interp"]), method="interpolation")
+    return out

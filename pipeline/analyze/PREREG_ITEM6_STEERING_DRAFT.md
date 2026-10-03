@@ -1,8 +1,9 @@
 # Item 6: steering on Gemma-3-27B-IT — design and pre-registration DRAFT
 
-Status: **DRAFT, not registered.** Registration = Randall approves the open decisions (section 12); the rules are then
-written to `gates/CHANGELOG.md` as gate rules 2026-10-03.1 and committed, and the vectors are built, hashed and
-committed, all before any pod. Nothing here has touched steering data: no 27B steering run exists.
+Status: **DRAFT v2, not yet registered.** D1–D8 were decided by Randall on 2026-10-03 (section 12). One blocker was found
+while building, in the MoD definition (section 2.2), and registration as gate rules 2026-10-03.1 waits on Randall's
+decision there. After registration the vectors are built, hashed and committed, all before any pod. No 27B steering data
+exists. The code is built and mock-tested (section 11).
 
 Inputs: Randall's item 6 decisions of 2026-10-03 (PLAN_27B decisions 13 and 14), CC_UPDATE_2026-10-01 item 6, probe
 transfer run 2 (`results/t4_27b_2026-10-02_probe_transfer_run2/`).
@@ -41,15 +42,49 @@ Training split: lottery = every safe level except the held-out 70 (as `probe.tra
 2.1 **probe_clean**: as `probe.train`: z-scored L2 logistic, C by 5-fold CV per layer, the raw-space unit direction,
 surface directions (order, unit; difference of means matched on grid point and label) projected out.
 
-2.2 **MoD_clean**: within each stratum (level, n) where both choices occur, mean(x | high) − mean(x | low); average
-over strata weighted by min(n_high, n_low); project out the same surface directions; unit-normalize. Matching on the
-grid point is required: the unmatched class-mean difference is dominated by the number in the prompt (the risky
-option is chosen at high n). Reported descriptively: cos(MoD_clean, probe_clean), and cos(unmatched MoD, the n
-direction).
+2.2 **MoD_clean: BLOCKER found while building (Randall to decide).** As drafted: within each stratum (level, n) where
+both choices occur, mean(x | high) − mean(x | low), averaged over strata weighted by min(n_high, n_low), surface
+directions projected out, unit-normalized.
 
-2.3 **Placebos**, per site, four unit vectors, seeds fixed here: two isotropic (uniform on the sphere; seeds 6100 + L,
-6200 + L) and two covariance-matched (x ~ N(0, Σ_L), Σ_L from the training-split activations at L; seeds 6300 + L,
-6400 + L). Norm matching is automatic: every vector is unit-normalized and scaled by the same λ × mean residual norm.
+The flaw: the prompt-final residual is a deterministic function of the prompt. Run 2 shows it: 280 prompts appear more
+than once, and the activations within a repeated prompt are identical (max |ΔX| = 0.0). Each (level, n) stratum holds
+exactly 6 distinct prompts, and they differ only by surface cell (order × unit). So a grid-point-matched difference of
+means can only contrast surface cells: the framings that tilt toward risky at that n against those that tilt toward
+safe. It is a framing direction by construction. Cleaning removes the linear order and unit effects, which leaves
+their interaction.
+
+The diagnostics in `probe.vectors`, computed on the trial build before this was seen:
+
+| site | cos(MoD_clean, probe_clean) | MoD transfer (2026-10-02.1) |
+|---|---|---|
+| lottery L38 | 0.175 | 0.860 PASS |
+| lottery L30 | 0.197 | 0.676 FAIL |
+| ultimatum L40 | 0.065 | 0.722 PASS |
+| ultimatum L46 | 0.077 | 0.491 FAIL |
+
+The unmatched class-mean difference is mostly the number in the prompt: cos with the n direction is 0.96 / 0.85 / 0.75 /
+0.79. A transfer PASS for a framing direction is what PLAN_27B decision 13 warns about.
+
+Options:
+- **(A, recommended) Match on the frame, not the grid point.** Strata = (level, order, unit): within a fixed frame and
+  safe amount, mean(x | high) − mean(x | low) across n. This is the contrast between choice classes that holds
+  everything but the stimulus magnitude fixed, which is the only thing the choice responds to inside a frame. Expect it
+  to sit close to the probe direction and to the within-level n direction; both cosines would be reported.
+- **(B) MoD from the persona contrast pairs** (same item, risk-seeking vs risk-averse line). This is Im & Li's
+  contrast-pair form, but the naturalness check (cosine with the same persona shift) becomes circular. It would need a
+  held-out persona split: two pairs build it, two judge it.
+- **(C) Drop MoD from item 6** and report the defect.
+
+Recommendation: A. Decide on the construct, before any number for A or B is computed. No transfer AUROC or cosine has
+been computed for A or B.
+
+2.3 **Placebos** (D5):
+- **Primary site (lottery L38): 16 unit vectors**, 8 isotropic (uniform on the sphere) and 8 covariance-matched
+  (x ~ N(0, Σ_L), Σ_L from the centered training-split activations at L, drawn as Xcᵀg without forming Σ).
+- **Every other site: 4 vectors** (k = 1, 2 of each kind).
+- **Seeds:** isotropic k = 61000 + 100k + L; covariance-matched k = 62000 + 100k + L (k = 1..8). All 64 are distinct;
+  checked in the tests.
+- **Norm matching** is automatic: every vector is unit-normalized and scaled by the same λ × mean residual norm.
 
 2.4 **Freeze**: all vectors go to `steering_vectors.npz` with their sha256 in the registration commit, before the pod.
 
@@ -62,6 +97,10 @@ b. **Naturalness**: does the vector point where a prompt that induces the behavi
    per task (Appendix A, fixed here), each a one-sentence line prepended to the native user turn. The prompt-induced
    shift Δ_L = mean over the reference-level items and the four pairs of h(high-persona) − h(low-persona) at the
    prompt-final position of layer L. Naturalness = cos(v, Δ_L), 95 % CI by bootstrap over items × pairs.
+   - 95 % percentile CI by bootstrap over (item, pair) units. It sits below the point estimate when Δ_L is noisy, because a
+     resampled mean adds noise and noise shrinks a cosine. The decision uses the point estimate.
+   - Interpretation (D8): lottery personas 1, 3 and 4 share vocabulary with the option text ("risks", "gambles", "sure
+     thing", "guaranteed amount"). So Δ_L includes lexical priming of the option words, not only an induced disposition.
    - Validity: the personas must move the behavior. The exact P(high) (section 3) must be higher under the
      high persona, averaged over items, with a CI excluding 0. Otherwise the check is NOT_EVALUABLE: the prompt doesn't
      induce the behavior.
@@ -71,14 +110,19 @@ b. **Naturalness**: does the vector point where a prompt that induces the behavi
    - The probe vectors get the same naturalness number, reported but not gating, since their use gate is transfer,
      which they passed.
 
-## 3. Behavior readout: exact first-token choice probability (**decision D1**)
+## 3. Behavior readout: exact first-token choice probability (D1, approved)
 
 In all 1,368 native trials of run 2 the first token alone decides the choice: each task has exactly two first tokens,
 one per option (lottery: `Safe` 606 → low, `Risky` 514 → high; ultimatum: `Accept` 228 → high, `Reject` 20 → low).
 So under steering, the behavior is read exactly from one forward per prompt:
 
-  q = the first-token sampling distribution at T = 0.8, top-p 0.95 (the probe track's settings)
+  **served (primary)**: q = the first-token sampling distribution at T = 0.8, top-p 0.95 (the probe track's settings;
+  nucleus as vLLM and this repo's sampler: keep a token while the cumulative mass before it is < 0.95)
+  **softmax (sensitivity, D1)**: q = the untruncated softmax at T = 0.8, reported beside every effect. Top-p can drop an
+  option from the nucleus and put a step in the dose curve that the model's preferences don't have.
   P_i(λ) = q(high tokens) / q(high ∪ low tokens);  m_i(λ) = q(high ∪ low tokens), the parseable mass
+  Option tokens: the first token of each option name, which must equal run 2's observed ids (lottery 99510 / 39316,
+  ultimatum 24040 / 137256); the pod STOPs otherwise.
 
 Items: lottery at safe 50: 35 values of n × 6 surface cells (order × unit) = 210 distinct prompts. Run 2's 280
 reference trials are 8 seeds over these 210 prompts. Ultimatum: 31 offers × 3 units = 93 prompts.
@@ -89,10 +133,21 @@ Why replace sampled agents:
 - Per-item shifts become exact, not estimates.
 
 Instrument checks on the pod (STOP on failure):
-- **λ = 0**: the exact-readout switching point at safe 50 lies within 2 combined SE of the served vLLM curve from run 2
-  (88.5). Same rule as `probe.calibrate.lambda0_checksum`.
-- **Sampled agreement**: probe_clean at L38, λ ∈ {−0.4, 0, +0.4}, 6 sampled agents per item through the existing batched
-  sampler. Per cell, the sampled switching point lies within 2 SE of the exact-readout one in at least 5 of 6 cells.
+- **λ = 0**, per task: the same estimator as `probe.calibrate.lambda0_checksum` (the lapse-aware logistic,
+  `psychometric.switching_point`). Served side: run 2's reference-level labels (lottery 88.5). Exact side: the λ-0
+  probabilities as soft labels (`switching_point_soft`), weighted to run 2's (n, cell) trial counts. Pass if |gap| ≤ 2 ×
+  the served sp's within-grid-point bootstrap SE; the exact side has no sampling noise. The PAV crossings of both are
+  reported beside it. Run 2's pooled served curve plateaus at 0.375 from n = 55 to 110, a mixture of surface cells, so
+  its PAV crossing (111 ± 12) and its logistic-lapse estimate (88.5 ± 4) differ. The check uses the drafted rule's
+  estimator.
+- **Sampled agreement**: probe_clean at L38, λ ∈ {−0.4, 0, +0.4}, 6 sampled agents per item (T 0.8, top-p 0.95, 6 new
+  tokens; seed 1,000,000 + 10,000·cell + 1,000·agent + n). Two conditions at each λ:
+  1. The first token decides the parsed answer in ≥ 99 % of parseable answers. This is the property the exact readout
+     rests on, checked under steering.
+  2. Per cell, the sampled switching point (PAV) lies within 2 SE of the exact one (SE by within-grid-point bootstrap,
+     floor 1 token; both saturated counts as agreement) in at least 5 of 6 cells.
+- **Path check**: the HF-hook path used for generation equals the nnsight path's prefill log-probs (top-20, within the
+  batch gate's tolerance) at λ ∈ {0, ±0.4}, and the GPU readout equals the numpy readout to 1e-6.
 - **Batch gate** (`probe.batch_gate`) on the 27B before any batched forward is trusted.
 
 Switching point from exact probabilities: per cell, the curve P(n) = mean of P_i over the cell's items at n,
@@ -126,7 +181,8 @@ b. **Free text**: 24 neutral prompts plus 8 lottery prompts that ask for two sen
    - Scores: the perplexity of the steered continuation under the **unsteered** model (teacher-forced), as a ratio to
      the λ = 0 continuation's; and the share of repeated 4-grams.
    - Coherent (**decision D4**): ppl ratio ≤ 2.0 and repeated-4-gram share ≤ 0.25.
-   - Required for the steered vectors at every λ; for placebos, run at the primary site and reported.
+   - Required for the steered vectors at every λ. For placebos, it runs at the primary site on 4 of the 16 (iso1, iso2,
+     cov1, cov2) and is reported only; placebo coherence gates nothing.
 
 ## 6. Statistics and the G4 decision
 
@@ -145,15 +201,17 @@ This is `cell_effects`' fallback rule, extended to placebos.
 **G4 PASS** iff all of the following hold (otherwise FAIL; NOT_EVALUABLE if no λ* exists or an instrument check fails):
 1. median over cells of E_c ≤ −10 tokens: the expected sign, with G9's magnitude `g9_cell_effect_min` (**decision D7**).
 2. E_c < 0 in at least 5 of 6 cells.
-3. In at least 5 of 6 cells, v's own symmetric effect exceeds **every individual** placebo's in magnitude
-   (**decision D5**).
+3. In at least 5 of 6 cells, v's own symmetric effect exceeds **all 16** placebos' individually in magnitude (D5). The
+   pooled E subtracts the 16-placebo mean.
 4. The 95 % CI of the pooled E (the mean over cells) excludes 0. Bootstrap over grid points n as clusters (all 6 cells
    of an n together), 2,000 draws.
 5. Dose curve: the pooled placebo-subtracted sp(λ) is monotone in the expected direction over the coherent strengths
    (G4's `coherent()`, 10 % dip tolerance).
 
-Secondary and exploratory (MoD at L38; both vectors at L30; the ultimatum sites) get the same statistics. They are
-reported side by side, MoD next to probe direction, and gate nothing.
+Secondary and exploratory (MoD at L38; both vectors at L30; the ultimatum sites) get the same statistics against their
+own placebos. They are reported side by side, MoD next to the probe direction, and gate nothing. The ultimatum has 3
+cells (unit only; its prompt has no option order), so its "n − 1 of n" reads 2 of 3. D2: if MoD steers clearly better
+than probe_clean, that is reported as a finding; it does not change G4.
 
 ## 7. Per-item shifts (reported for every vector, at λ* and at every coherent strength)
 
@@ -166,7 +224,7 @@ Reported overall and per cell:
 - the mean d_i on items already at the target side at λ = 0 (P_i(0) ≥ 0.9 for +λ, ≤ 0.1 for −λ), the ceiling and
   floor items.
 
-Descriptive (**decision D6**: or a gate, wrong-way share ≤ 0.10).
+Descriptive (D6).
 
 ## 8. Per-regime readout recalibration (a rule for readouts; item 6's measure is behavior)
 
@@ -192,38 +250,48 @@ agent trials are the calibration set. The span study names its own calibration s
 - Steering tests the causal role: the vector added to unprompted rows, judged on the transgression rate minus placebo.
 - Pre-registered separately, before any of it runs.
 
-## 11. Code to build after registration (offline, tested on mocks; STOP before the pod)
+## 11. Code (built 2026-10-03, offline; nothing has run on the 27B)
 
-- `probe/vectors.py`: probe_clean, MoD, MoD_clean, placebos; the npz with hashes; the MoD transfer check via
-  `probe.transfer`.
-- `probe/steer_exact.py`: the exact readout, sweeps, sp per cell, E_c, the bootstrap, the G4 verdict, per-item shifts.
-- `probe/coherence.py`: the hook path, its check against nnsight, ppl and repeated 4-grams.
-- `probe/naturalness.py`: persona activations, Δ_L, cos, the null and the validity check.
-- `calibrate/run_steering.sh`: the pod driver. Order: batch gate → λ = 0 check → naturalness (gates MoD) → sweeps →
-  sampled agreement → coherence. A 10-minute timing probe at the start projects the total, and the driver STOPs if the
-  projection exceeds the self-stop deadline minus 30 minutes.
-- G4 fixture cases: the placebo-subtracted verdict on synthetic curves (PASS, a placebo-sized effect FAILs, wrong sign
-  FAILs, no λ* gives NOT_EVALUABLE).
+| file | what |
+|---|---|
+| `probe/vectors.py` | probe_clean (the `probe.transfer` construction, so its transfer verdict applies to this exact vector), MoD (definition pending, 2.2), placebos, `steering_vectors.npz` + `vectors_manifest.json` with per-vector and file sha256, the MoD transfer gate; `--verify` |
+| `probe/steer_exact.py` | served and softmax readouts, PAV switching points per cell, λ*, E_c, the grid-point cluster bootstrap, the G4 verdict, per-item shifts |
+| `probe/psychometric.py` | + `switching_point_soft` (the lapse-aware logistic on probabilities; the λ-0 check) |
+| `probe/coherence.py` | the 32 prompts verbatim, repeated 4-grams, the ppl ratio, the coherence rule |
+| `probe/naturalness.py` | the persona pairs verbatim, Δ_L, cos, the covariance-matched null, validity, the verdict |
+| `probe/steer_backend.py` | MockBackend (offline) and TorchBackend (pod: nnsight readout and residuals; HF forward hook + KV-cached generate for coherence and sampled agreement; per-row seeded sampling through a logits processor) |
+| `probe/run_steering.py` | the driver: frozen-vector check → option ids → batch gate + path check → λ-0 per task → timing probe (STOP if the projection exceeds the budget) → naturalness → per site (primary first): sweeps, sampled agreement, coherence → analysis. Resumable (each finished condition is a logged line) |
+| `probe/steer_analyze.py` | steering.json and STEERING.md, offline-rerunnable after copy-back |
+| `calibrate/run_steering.sh` | the pod wrapper (self-stop registration, weight preflight, fp32 + TF32) |
+| `probe/test_steering.py` | 28 tests: the readout's top-p step, sp, every G4 branch (PASS; placebo-sized FAIL; wrong sign; one placebo bigger; saturation NOT_EVALUABLE; λ* fallback; instrument NOT_EVALUABLE), per-item, coherence, naturalness, seeds, covariance placebo, freeze tamper, and the mock driver end to end (budget STOP, PASS, resume, unfrozen-vector STOP) |
+| `probe/smoke_steer_4b.py` | TorchBackend on Gemma-3-4B-IT locally (same class and tokenizer): readout, path check, generation, seeded sampling, the first-token property, NLL, residual capture, batch gate |
 
-Pod estimate, not measured on the 27B:
-- Conditions: lottery sites 6 vectors × 10 strengths + λ = 0 over 210 prompts; ultimatum sites over 93 prompts. That's
-  about 37k batched fp32 (TF32) forwards, plus sampled agreement, naturalness and coherence.
-- About 1.5–2.5 h on 2 × A100 SXM at $3.18/h, so $5–8, with a 3 h self-stop ($9.54 cap).
-- The timing probe gives the real figure in its first 10 minutes. The price is restated before creation.
+Pod estimate (not measured on the 27B), counting MoD at every site as the upper bound:
+- 61,560 exact-readout prompt forwards:
+  - lottery L38: 18 vectors × 10 strengths × 210 prompts;
+  - lottery L30: 6 × 10 × 210;
+  - ultimatum: 2 sites × 6 × 10 × 93.
+- 2,424 naturalness forwards, 3,780 six-token sampled answers, and 120 coherence conditions (32 prompts × 64 tokens,
+  plus NLL).
+- At an assumed 0.05–0.10 s per batched fp32 prompt forward that's ~1.5–2.5 h, plus ~15 min load and preflight. So
+  **~2–3 h on 2 × A100 SXM at $3.18/h, ~$6–9.5; a 3.5 h self-stop caps it at $11.13.**
+- The driver's timing probe measures the real rate on the first condition and STOPs if the projection exceeds the
+  budget passed in (the self-stop deadline minus 30 minutes).
 
-## 12. Open decisions (Randall)
+## 12. Decisions (Randall, 2026-10-03)
 
-- **D1**: The behavior measure is the exact first-token choice probability (section 3), validated against sampled answers.
-  The alternative is sampled agents per grid point, as P4. Recommended: exact.
-- **D2**: The G4 vector is probe_clean, with MoD side by side. The alternative is MoD as primary (Im & Li's optimum).
-  Recommended: probe_clean, since it's the direction that passed transfer and the one G9 replicates.
-- **D3**: Naturalness PASS = cos ≥ 0.20 and above the random-direction 99th percentile.
-- **D4**: Coherence = parseable mass ≥ 0.95, ppl ratio ≤ 2.0, repeated 4-grams ≤ 0.25.
-- **D5**: Placebos = 2 isotropic + 2 covariance-matched. Subtract their mean, and the vector must also beat each one
-  individually in ≥ 5/6 cells.
-- **D6**: Per-item wrong-way share is descriptive (recommended), or a gate at ≤ 0.10.
-- **D7**: The effect threshold is 10 tokens (G9's), placebo-subtracted.
-- **D8**: Persona pairs and coherence prompts verbatim as in the appendices.
+- **D1 approved**, plus a sensitivity readout. The primary readout is the served first-token distribution (T = 0.8, top-p
+  0.95). The pre-registered sensitivity readout is the untruncated softmax at T = 0.8, reported beside every effect.
+- **D2 approved.** probe_clean decides G4, with MoD side by side. If MoD steers clearly better, that is reported as a
+  finding.
+- **D3 approved.** cos ≥ 0.20 binds; the random 99th percentile is ~0.035 at this d_model.
+- **D4 approved.**
+- **D5 changed.** The primary site gets 16 placebos (8 isotropic + 8 covariance-matched). Criterion 3: v beats all 16 in
+  ≥ 5/6 cells. The pooled E subtracts the 16-placebo mean. The other sites keep 4. Pod time re-estimated (section 11).
+- **D6: descriptive.**
+- **D7 approved** (10 tokens).
+- **D8 approved verbatim**, with the lexical-priming note in the interpretation (section 2.5b).
+- **Pending: the MoD definition (section 2.2).** Registration waits on it.
 
 ## Appendix A: persona pairs (one line, then a blank line, before the native user turn)
 
@@ -268,10 +336,11 @@ Neutral (24):
 24. What does a postal worker do?
 
 Lottery with reasoning (8): the native lottery prompt at safe 50, n ∈ {30, 60, 90, 120} × order {safe_first,
-risky_first}, unit "tokens", with the final instruction replaced by "Explain your choice in two sentences, then give your
-answer."
+risky_first}, unit "tokens". The sentence "Answer with exactly one of: Safe Option, Risky Option." is replaced by
+"Explain your choice in two sentences, then give your answer."; the question "Which option do you choose?" stays.
 
 ## Appendix C: seeds
 
-Placebos: 6100 + L, 6200 + L (isotropic), 6300 + L, 6400 + L (covariance-matched). Naturalness null: 7000 + L.
-Bootstraps: 20261003. Sampled agreement: the agent seed for item (n, cell, a) is 8000 + 100·a + n.
+Placebos: isotropic k = 61000 + 100k + L, covariance-matched k = 62000 + 100k + L (k = 1..8 at lottery L38, 1..2
+elsewhere). Naturalness null: 70000 + L. Bootstraps: 20261003. Sampled agreement: seed 1,000,000 + 10,000·cell + 1,000·agent
++ n (per-row seeded; the draft's 8000 + 100·a + n collided across cells and agents).

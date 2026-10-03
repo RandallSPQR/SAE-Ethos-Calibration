@@ -1,0 +1,12 @@
+PASS 0 model loaded: 18s; hf class Gemma3ForConditionalGeneration; 34 layers
+PASS 1 option first-token ids equal run 2's 27B ids (shared Gemma-3 tokenizer): ((99510,), (39316,))
+PASS 2 exact readout: P and masses in [0, 1]; unsteered option mass ~1: P0 served [0.0, 0.0, 1.0, 1.0, 1.0, 1.0] mass0 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0] mass(+0.4) [0.0, 0.0, 0.0, 0.0, 0.0, 0.0] mass(-0.4) [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+PASS 3 steering changes the readout: max |P(+0.4) - P(-0.4)| softmax 0.0354
+PASS 4 HF-hook path == nnsight path at prefill; GPU readout == numpy readout: {"tol": 0.05, "lams": [0.0, -0.4, 0.4], "gaps": {"0.0": 0.0, "-0.4": 0.0, "0.4": 0.0}, "readout_gap": 6.776263578034403e-21, "ok": true}
+PASS 5 steered greedy generation (KV cache, hook): ्स्स्स्स्स्स्स्स | ्स्स्स्स्स्स्स्स
+PASS 6 seeded sampling is reproducible and parses: Safe Option
+PASS 7 first token decides the parsed answer: ['low', 'low', 'high', 'high'] vs ['low', 'low', 'high', 'high']
+PASS 8 coherence pass: continuation NLLs finite, rep4 computable: mean NLL 0.07; rep4 [0.0, 0.0, 0.0]
+PASS 9 residual capture at two layers + readout in one pass: shapes [(4, 2560), (4, 2560)]
+PASS 10 batch gate (batched == unbatched, steering present): {"max_gap_unsteered": 0.0, "max_gap_steered": 6.67572021484375e-05, "steering_effect_max_dlogprob": 56.60978698730469, "steering_effect_present": true}
+11/11 passed (144s)
