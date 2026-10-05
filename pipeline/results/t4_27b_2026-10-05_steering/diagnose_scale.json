@@ -1,0 +1,214 @@
+{
+ "lottery_L38": {
+  "mean_residual_norm_prompt_final": 55386.723124407974,
+  "vectors": {
+   "placebo_cov1": {
+    "sd_along_v": 1866.5539056184978,
+    "lambda_for_1sd": 0.03370038522455826,
+    "low_variance_share": 0.01190984306073106,
+    "max_per_dim_push_sd_at_0.1": 6.391607850527584
+   },
+   "placebo_cov2": {
+    "sd_along_v": 2418.930300903331,
+    "lambda_for_1sd": 0.04367346837743052,
+    "low_variance_share": 0.004904366713979542,
+    "max_per_dim_push_sd_at_0.1": 3.46412422319482
+   },
+   "placebo_cov3": {
+    "sd_along_v": 2268.8303171711414,
+    "lambda_for_1sd": 0.04096343291649451,
+    "low_variance_share": 0.00529888995981839,
+    "max_per_dim_push_sd_at_0.1": 4.272496300845521
+   },
+   "placebo_cov4": {
+    "sd_along_v": 1831.435542178546,
+    "lambda_for_1sd": 0.03306632779239947,
+    "low_variance_share": 0.01307050001802221,
+    "max_per_dim_push_sd_at_0.1": 6.794317545024655
+   },
+   "placebo_cov5": {
+    "sd_along_v": 1539.645262929599,
+    "lambda_for_1sd": 0.02779809268497966,
+    "low_variance_share": 0.01032440649640632,
+    "max_per_dim_push_sd_at_0.1": 6.178675441006393
+   },
+   "placebo_cov6": {
+    "sd_along_v": 2431.777063373345,
+    "lambda_for_1sd": 0.043905414983861045,
+    "low_variance_share": 0.004996367397193613,
+    "max_per_dim_push_sd_at_0.1": 3.4596920342982918
+   },
+   "placebo_cov7": {
+    "sd_along_v": 2015.812920010489,
+    "lambda_for_1sd": 0.03639523709468479,
+    "low_variance_share": 0.00947692911050692,
+    "max_per_dim_push_sd_at_0.1": 5.131113321936657
+   },
+   "placebo_cov8": {
+    "sd_along_v": 2107.814969385586,
+    "lambda_for_1sd": 0.03805632199346902,
+    "low_variance_share": 0.008028728303580788,
+    "max_per_dim_push_sd_at_0.1": 4.363322311645327
+   },
+   "placebo_iso1": {
+    "sd_along_v": 48.17340824419921,
+    "lambda_for_1sd": 0.0008697645487347855,
+    "low_variance_share": 0.09501113632230784,
+    "max_per_dim_push_sd_at_0.1": 329.63896544543985
+   },
+   "placebo_iso2": {
+    "sd_along_v": 36.0568450076812,
+    "lambda_for_1sd": 0.0006510015934087924,
+    "low_variance_share": 0.10626737983179915,
+    "max_per_dim_push_sd_at_0.1": 169.45451056660823
+   },
+   "placebo_iso3": {
+    "sd_along_v": 21.00234381145878,
+    "lambda_for_1sd": 0.00037919455470012103,
+    "low_variance_share": 0.09813703525552948,
+    "max_per_dim_push_sd_at_0.1": 275.72646870224236
+   },
+   "placebo_iso4": {
+    "sd_along_v": 29.05376480224955,
+    "lambda_for_1sd": 0.0005245619015407332,
+    "low_variance_share": 0.100660731857785,
+    "max_per_dim_push_sd_at_0.1": 119.72083908829931
+   },
+   "placebo_iso5": {
+    "sd_along_v": 31.762111706438393,
+    "lambda_for_1sd": 0.000573460748618316,
+    "low_variance_share": 0.09757311006243466,
+    "max_per_dim_push_sd_at_0.1": 211.7544739384486
+   },
+   "placebo_iso6": {
+    "sd_along_v": 87.88207959602926,
+    "lambda_for_1sd": 0.0015866993863968301,
+    "low_variance_share": 0.1016300974898045,
+    "max_per_dim_push_sd_at_0.1": 96.32960829582686
+   },
+   "placebo_iso7": {
+    "sd_along_v": 75.1304752838186,
+    "lambda_for_1sd": 0.001356470847987573,
+    "low_variance_share": 0.1031736121654515,
+    "max_per_dim_push_sd_at_0.1": 130.4114924936759
+   },
+   "placebo_iso8": {
+    "sd_along_v": 48.30226123751342,
+    "lambda_for_1sd": 0.0008720909725787235,
+    "low_variance_share": 0.10255939439491962,
+    "max_per_dim_push_sd_at_0.1": 137.44705508383578
+   },
+   "probe_clean": {
+    "sd_along_v": 265.48930543497175,
+    "lambda_for_1sd": 0.004793374485048299,
+    "low_variance_share": 0.8953871836278912,
+    "max_per_dim_push_sd_at_0.1": 1398.723737231383
+   }
+  }
+ },
+ "lottery_L30": {
+  "mean_residual_norm_prompt_final": 46464.72800548509,
+  "vectors": {
+   "placebo_cov1": {
+    "sd_along_v": 307.974748897431,
+    "lambda_for_1sd": 0.006628140572803419,
+    "low_variance_share": 0.007532287078085545,
+    "max_per_dim_push_sd_at_0.1": 23.70725363710517
+   },
+   "placebo_cov2": {
+    "sd_along_v": 334.0559641771555,
+    "lambda_for_1sd": 0.007189452699211339,
+    "low_variance_share": 0.0081982078861111,
+    "max_per_dim_push_sd_at_0.1": 28.354468861288183
+   },
+   "placebo_iso1": {
+    "sd_along_v": 4.559076213676263,
+    "lambda_for_1sd": 9.811907675727857e-05,
+    "low_variance_share": 0.0965208349353871,
+    "max_per_dim_push_sd_at_0.1": 306.54786769905957
+   },
+   "placebo_iso2": {
+    "sd_along_v": 8.409791162833397,
+    "lambda_for_1sd": 0.00018099301392317702,
+    "low_variance_share": 0.09497537862736245,
+    "max_per_dim_push_sd_at_0.1": 613.0441818417914
+   },
+   "probe_clean": {
+    "sd_along_v": 45.89897818348071,
+    "lambda_for_1sd": 0.0009878241012852243,
+    "low_variance_share": 0.7393036516271774,
+    "max_per_dim_push_sd_at_0.1": 3341.884433289705
+   }
+  }
+ },
+ "ultimatum_L40": {
+  "mean_residual_norm_prompt_final": 58557.699214740984,
+  "vectors": {
+   "placebo_cov1": {
+    "sd_along_v": 1299.8944321199822,
+    "lambda_for_1sd": 0.02219852298761004,
+    "low_variance_share": 0.013042214640392397,
+    "max_per_dim_push_sd_at_0.1": 8.386880074570374
+   },
+   "placebo_cov2": {
+    "sd_along_v": 1799.4272395651853,
+    "lambda_for_1sd": 0.030729131500989843,
+    "low_variance_share": 0.010428116797719588,
+    "max_per_dim_push_sd_at_0.1": 7.116622513933453
+   },
+   "placebo_iso1": {
+    "sd_along_v": 50.44680236425197,
+    "lambda_for_1sd": 0.0008614888057547313,
+    "low_variance_share": 0.10289345059300121,
+    "max_per_dim_push_sd_at_0.1": 161.68114076264717
+   },
+   "placebo_iso2": {
+    "sd_along_v": 36.194867155561084,
+    "lambda_for_1sd": 0.0006181060328690236,
+    "low_variance_share": 0.09833792830501113,
+    "max_per_dim_push_sd_at_0.1": 186.49176146027773
+   },
+   "probe_clean": {
+    "sd_along_v": 182.48915048132793,
+    "lambda_for_1sd": 0.0031163989181355873,
+    "low_variance_share": 0.9210717550360418,
+    "max_per_dim_push_sd_at_0.1": 3435.142636800832
+   }
+  }
+ },
+ "ultimatum_L46": {
+  "mean_residual_norm_prompt_final": 61496.551034175856,
+  "vectors": {
+   "placebo_cov1": {
+    "sd_along_v": 2588.651535109257,
+    "lambda_for_1sd": 0.04209425555704172,
+    "low_variance_share": 0.006749168531240347,
+    "max_per_dim_push_sd_at_0.1": 4.529992342459596
+   },
+   "placebo_cov2": {
+    "sd_along_v": 2600.2472393716916,
+    "lambda_for_1sd": 0.042282814168336694,
+    "low_variance_share": 0.007037638560610795,
+    "max_per_dim_push_sd_at_0.1": 5.399820813856959
+   },
+   "placebo_iso1": {
+    "sd_along_v": 56.871697051527796,
+    "lambda_for_1sd": 0.0009247949046755832,
+    "low_variance_share": 0.09688428694559686,
+    "max_per_dim_push_sd_at_0.1": 107.73569159109186
+   },
+   "placebo_iso2": {
+    "sd_along_v": 41.315739484686766,
+    "lambda_for_1sd": 0.0006718383192209611,
+    "low_variance_share": 0.09734388782050526,
+    "max_per_dim_push_sd_at_0.1": 174.0200131866123
+   },
+   "probe_clean": {
+    "sd_along_v": 288.1671542655841,
+    "lambda_for_1sd": 0.0046859075739945025,
+    "low_variance_share": 0.9207931265607889,
+    "max_per_dim_push_sd_at_0.1": 1068.0871552266526
+   }
+  }
+ }
+}
