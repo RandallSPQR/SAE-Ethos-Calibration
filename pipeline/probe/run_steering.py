@@ -123,13 +123,13 @@ def lambda0_check(task, run_dir, P0, its):
             "pav_exact": SE.sp_of([it["n"] for it in its], P0, w), "pav_served": SE.sp_of(ns, np.array(ys, float))}
 
 
-def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam):
+def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam, lams=AGREE_LAMS):
     """Steered sampled answers (6 agents per item) vs the exact readout: first token decides the parsed answer in
     >= 99 % of parseable answers, and per cell the sampled sp lies within 2 SE of the exact served sp in >= n-1 cells."""
     cells = sorted({it["cell"] for it in its}); cidx = {c: i for i, c in enumerate(cells)}
     rep = {"by_lambda": {}}
     ok = True
-    for lam in AGREE_LAMS:
+    for lam in lams:
         rows = [(it, a) for it in its for a in range(AGENTS)]
         msgs = [messages(task, it["n"], it["level"], it["cond"]) for it, _ in rows]
         seeds = [seed_for(cidx[it["cell"]], a, it["n"]) for it, a in rows]
@@ -227,6 +227,18 @@ def main():
             print(f"[{t}] lambda0: exact sp {SE.fmt(c['sp_exact'])} vs served {SE.fmt(c['sp_served'])} +- {SE.fmt(c['se_served'])} -> {'OK' if c['ok'] else 'FAIL'}", flush=True)
         if not checks[f"lambda0_{t}"]["ok"]:
             stop(f"lambda-0 exact readout does not reproduce the served curve ({t})")
+
+    # 3b (item 6b (4)): the FIRST generation on the pod is lambda-0 sampled agreement through the KV-cached decode loop: the
+    # steered sampler at lambda 0 must reproduce the exact readout (first token decides >= 99 %, per-cell sp within 2 SE)
+    # before any sweep spends pod time. STOP on failure.
+    if "agreement_lambda0" not in checks:
+        be.option_ids(prim["task"]); its0 = items_for(prim["task"])
+        P0 = raw.done[f"{prim['task']}|lambda0"]["served_P"]
+        rep0 = sampled_agreement(be, prim["task"], its0, pv, prim["layer"], {0.0: P0}, lams=(0.0,))
+        checks["agreement_lambda0"] = rep0; save()
+        print(f"[{prim['task']}] lambda-0 sampled agreement (KV decode loop): ok={rep0['ok']}", flush=True)
+    if not checks["agreement_lambda0"]["ok"]:
+        stop("lambda-0 sampled agreement failed: the decode loop does not reproduce the exact readout")
 
     # plan of conditions
     def steered_vecs(s):

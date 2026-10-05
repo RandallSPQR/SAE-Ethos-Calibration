@@ -108,6 +108,15 @@ def run():
     res["naturalness: aligned vector PASS, random vector FAIL"] = ev["vectors"]["aligned"]["verdict"] == "PASS" and ev["vectors"]["random"]["verdict"] == "FAIL"
     ev2 = NA.evaluate(Hh, Hl, np.full(U, 0.5), np.full(U, 0.5), {"aligned": w}, Xc, 38, n_boot=100)
     res["naturalness: personas that do not move behavior -> NOT_EVALUABLE"] = ev2["vectors"]["aligned"]["verdict"] == "NOT_EVALUABLE"
+    # whitened cosine: identity on itself; two vectors that share only a dominant high-variance axis look aligned raw, not whitened
+    rngw = np.random.default_rng(11); dw = 40
+    big = np.zeros(dw); big[0] = 1.0
+    Xw = rngw.normal(size=(400, dw)); Xw[:, 0] *= 30.0; Xw -= Xw.mean(0)
+    Wf = NA.whitener(Xw)
+    va = big * 5 + np.eye(dw)[1]; vb = big * 5 + np.eye(dw)[2]
+    raw_c = float(va @ vb / np.linalg.norm(va) / np.linalg.norm(vb))
+    res["whitened cosine: 1 on itself; shared dominant axis drops from raw ~0.96 to whitened < 0.3"] = (
+        abs(NA.whitened_cos(va, va, Wf) - 1) < 1e-9 and raw_c > 0.9 and NA.whitened_cos(va, vb, Wf) < 0.3)
     res["personas: 4 pairs per task, verbatim count"] = all(len(v) == 4 for v in NA.PERSONAS.values())
 
     # ---- vectors: seeds, covariance placebo, freeze

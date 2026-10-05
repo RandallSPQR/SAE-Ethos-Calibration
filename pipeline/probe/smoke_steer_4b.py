@@ -4,8 +4,8 @@ $0. Mechanics only, nothing analysed: a random unit vector at a 4B layer. Run in
 bf16 on CPU the batch gate shows 0.87 nats of dtype noise between padded and unpadded shapes; fp32 shows 0.0 / 7e-5.
 
   MODEL_PROFILE=gemma-3-4b-it T1_DTYPE=float32 HF_HUB_OFFLINE=1 uv run --no-project --with pyyaml --with numpy \
-      --with pyarrow --with "torch==2.8.0" --with "nnsight<0.8" --with accelerate --with "transformers>=4.50,<4.58" \
-      --with pillow --with torchvision python -m probe.smoke_steer_4b
+      --with pyarrow --with "torch==2.8.0" --with "nnsight==0.7.0" --with "accelerate==1.15.0" \
+      --with "transformers==5.17.0" --with pillow --with torchvision python -m probe.smoke_steer_4b   (the 27B replay pins)
 """
 import json
 import sys

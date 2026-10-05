@@ -30,6 +30,7 @@ replay:
   layers_path: "model.language_model.layers"
   identity_ref: "hf_hidden_states"
   hf_auto_class: "AutoModelForImageTextToText"
+  pins: {transformers: "5.17.0", nnsight: "0.7.0", accelerate: "1.15.0", torch: "2.8.0"}   # the 27B replay pins: the smoke tests what the pod runs
 
 neuronpedia: {model_id: "gemma-3-4b-it", source: "smoke"}
 

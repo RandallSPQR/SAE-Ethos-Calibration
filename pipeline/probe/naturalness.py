@@ -11,7 +11,9 @@ Appendix A (approved D8): one line, a blank line, then the native user turn.
         directions r (seed 70000 + L)
 Interpretation note (D8): lottery personas 1, 3 and 4 share vocabulary with the options ("risks", "gambles", "sure
 thing", "guaranteed amount"), so delta_L includes lexical priming of the option words, not only an induced disposition.
-Gates MoD use; reported, not gating, for probe_clean (whose use gate is transfer).
+Descriptive (item 6b (3)); also reported: the WHITENED cosine, cos(S_s^(-1/2) v, S_s^(-1/2) delta_L) with the shrinkage
+covariance of the training activations (SHRINK = 0.1), because the raw cosine in this anisotropic space is dominated by a
+few high-variance components (2026-10-05: the covariance-matched null's 99th percentile was 0.56-0.63).
 """
 import numpy as np
 
@@ -45,6 +47,32 @@ def _unit(v):
     return v / (np.linalg.norm(v) + 1e-12)
 
 
+SHRINK = 0.1        # whitened cosine: S_s = (1 - a) S + a (tr S / d) I, a fixed here (descriptive, item 6b (3))
+
+
+def whitener(Xc, shrink=SHRINK):
+    """Returns f(u) = S_s^(-1/2) u for the shrinkage covariance of the centered activations Xc [n, d], through the thin SVD
+    (no d x d matrix): inside the row space each component is scaled by (eig (1 - a) + a m)^(-1/2); the orthogonal
+    complement by (a m)^(-1/2), m = tr S / d."""
+    n, d = Xc.shape
+    _, S, Vt = np.linalg.svd(Xc, full_matrices=False)
+    eig = S ** 2 / max(1, n - 1)
+    m = float(eig.sum() / d)
+    inside = 1.0 / np.sqrt(eig * (1 - shrink) + shrink * m)
+    outside = 1.0 / np.sqrt(shrink * m)
+
+    def f(u):
+        u = np.asarray(u, float)
+        c = Vt @ u
+        return Vt.T @ (c * inside) + (u - Vt.T @ c) * outside
+    return f
+
+
+def whitened_cos(v, delta, W):
+    a, b = W(v), W(delta)
+    return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-12))
+
+
 def null_p99(delta, Xc, seed, n_null=N_NULL):
     """99th percentile of |cos(delta, r)|, r ~ N(0, S) with S from the centered training activations Xc."""
     rng = np.random.default_rng(seed)
@@ -66,6 +94,7 @@ def evaluate(H_hi, H_lo, P_hi, P_lo, vecs, Xc, layer, n_boot=N_BOOT):
     dP_b = [float(np.nanmean(dP[ix])) for ix in draws]
     valid = bool(np.nanmean(dP) > 0 and np.percentile(dP_b, 2.5) > 0)
     p99 = null_p99(delta, Xc, NULL_SEED + layer)
+    W = whitener(Xc)
     out = {"layer": layer, "units": U, "behavior_shift_mean": float(np.nanmean(dP)),
            "behavior_shift_ci95": [float(np.percentile(dP_b, 2.5)), float(np.percentile(dP_b, 97.5))],
            "valid": valid, "null_p99_abs_cos": p99, "delta_norm": float(np.linalg.norm(delta)), "vectors": {}}
@@ -74,5 +103,6 @@ def evaluate(H_hi, H_lo, P_hi, P_lo, vecs, Xc, layer, n_boot=N_BOOT):
         c = float(u @ _unit(delta))
         cb = [float(u @ _unit(D[ix].mean(0))) for ix in draws]
         verdict = "NOT_EVALUABLE" if not valid else ("PASS" if (c >= COS_MIN and c > p99) else "FAIL")
-        out["vectors"][name] = {"cos": c, "ci95": [float(np.percentile(cb, 2.5)), float(np.percentile(cb, 97.5))], "verdict": verdict}
+        out["vectors"][name] = {"cos": c, "ci95": [float(np.percentile(cb, 2.5)), float(np.percentile(cb, 97.5))], "verdict": verdict,
+                                "whitened_cos": whitened_cos(u, delta, W)}
     return out

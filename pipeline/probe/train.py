@@ -30,8 +30,11 @@ CFG = ROOT / "config"
 
 
 def _cfg():
+    """The probe block WITH the profile's overrides (layer_candidates are model-specific: run.yaml's [20, 26, 31] are the
+    9B's; 2026-10-05: on the 27B this read run.yaml alone and asked for X_20, which the 27B activations do not have)."""
+    import modelcfg
     r = yaml.safe_load((CFG / "run.yaml").read_text())
-    return r["probe"], r["gates"]
+    return modelcfg.probe_cfg(), r["gates"]
 
 
 def _sigmoid(z):

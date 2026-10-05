@@ -48,6 +48,10 @@ replay:
   # registered as image-text-to-text: nnsight loads it as VisionLanguageModel (LanguageModel refuses it), and the identity
   # reference uses the same auto class; the text decoder is model.language_model.layers either way
   hf_auto_class: "AutoModelForImageTextToText"
+  # runtime pins (2026-10-05, item 6b (4)): the replay venv on the volume runs these; the item 6 pod failed because the local
+  # smoke had used transformers 4.57. probe.steer_backend.TorchBackend STOPs when the installed versions differ; the local
+  # 4B smoke runs with the same pins (probe/smoke_steer_4b.py docstring)
+  pins: {transformers: "5.17.0", nnsight: "0.7.0", accelerate: "1.15.0", torch: "2.8.0"}
 
 # Neuronpedia ids for the chosen SAE (labels are descriptive, not evidence)
 neuronpedia:

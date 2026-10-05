@@ -126,9 +126,25 @@ class MockBackend:
 
 
 # ====================================================================== torch (pod)
+def check_pins():
+    """The replay profile's pinned library versions must be the installed ones (torch compared without its +cuda suffix)."""
+    import importlib
+    import modelcfg
+    pins = (modelcfg.models().get("replay") or {}).get("pins") or {}
+    bad = {}
+    for lib, want in pins.items():
+        got = importlib.import_module(lib).__version__.split("+")[0]
+        if got != str(want):
+            bad[lib] = {"want": str(want), "got": got}
+    if bad:
+        raise RuntimeError(f"STOP: library versions differ from the profile's replay.pins: {bad}")
+    return pins
+
+
 class TorchBackend:
     def __init__(self, batch_size=32):
         import modelcfg
+        self.pins = check_pins()
         from replay.modelload import load_target
         self.lm = load_target("target")
         self.ser = modelcfg.serializer().apply_to_tokenizer
