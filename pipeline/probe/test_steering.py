@@ -177,9 +177,17 @@ def run():
         p = subprocess.run(cmd + ["--out", str(od / "b")], cwd=ROOT, env=env, capture_output=True, text=True)
         n2 = sum(1 for _ in open(od / "b" / "raw.jsonl"))
         res["driver: rerun resumes (no condition recomputed)"] = p.returncode == 0 and n1 == n2
-        p = subprocess.run([sys.executable, "-m", "probe.run_steering", "--vectors", str(vd), "--run-dir", str(run2), "--mock",
+        # a deterministic rebuild equals the frozen set (so it would pass); tamper one vector and re-hash its manifest entry:
+        # the npz no longer matches STEERING_FREEZE.json and the driver must refuse
+        import shutil
+        vt = Path(tempfile.mkdtemp()) / "v"; shutil.copytree(vd, vt)
+        zt = dict(np.load(vt / "steering_vectors.npz")); k0 = next(k for k in zt if k.endswith("probe_clean"))
+        zt[k0] = (zt[k0] * 1.0001).astype(np.float32); np.savez(vt / "steering_vectors.npz", **zt)
+        mt = json.loads((vt / "vectors_manifest.json").read_text()); mt["vectors"][k0]["sha256"] = VE.sha(zt[k0])
+        mt["npz_sha256"] = VE.file_sha(vt / "steering_vectors.npz"); (vt / "vectors_manifest.json").write_text(json.dumps(mt))
+        p = subprocess.run([sys.executable, "-m", "probe.run_steering", "--vectors", str(vt), "--run-dir", str(run2), "--mock",
                             "--out", str(od / "c")], cwd=ROOT, env=env, capture_output=True, text=True)
-        res["driver: unfrozen vectors (no matching STEERING_FREEZE) -> STOP"] = p.returncode != 0 and "STOP" in (p.stdout + p.stderr)
+        res["driver: vectors that do not match STEERING_FREEZE (self-consistent manifest) -> STOP"] = p.returncode != 0 and "STOP" in (p.stdout + p.stderr)
     return res
 
 
