@@ -1,5 +1,15 @@
 # Gate rules changelog
 
+## 2026-10-05.1 — G9 enforces the probe-regime transfer verdict (Randall 2026-10-05, ruling 3 on the item 6b STOP)
+
+- `probe.train` (the G9 path) chooses the probe layer ONLY among layers whose cleaned direction passed the 2026-10-02.1
+  transfer test for that task (`<run>/probe_agent/transfer.json` `usable_layers`, or `PROBE_TRANSFER_JSON`). No verdict on file,
+  or no passing layer, is a STOP. probe.json records `transfer_verdict`.
+- G9 gains the check `transfer_pass` (the chosen layer's verdict is PASS); a probe.json without the record fails it.
+  Fixture: a FAIL verdict and a missing verdict are both caught.
+- Found with it (2026-10-05, a code fix, not a rule): `probe.train._cfg()` read run.yaml's probe block alone, whose
+  layer_candidates [20, 26, 31] are the 9B's, so on the 27B it asked for X_20; it now reads `modelcfg.probe_cfg()`.
+
 ## 2026-10-03.1 — item 6 steering: G4 is the placebo-subtracted test of the cleaned lottery probe at L38 (Randall 2026-10-03, before any 27B steering run)
 
 Full rules: `analyze/PREREG_ITEM6_STEERING.md`. Vectors frozen with sha256 (`probe/STEERING_FREEZE.json`) before the pod.

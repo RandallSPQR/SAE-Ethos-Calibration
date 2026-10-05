@@ -18,6 +18,7 @@ heldout_acc < gates.g9_probe_heldout_acc_min. Numpy only; sklearn is used if imp
 """
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -166,8 +167,20 @@ def train_task(task, run_dir, pc, gc):
         ho, tr = idx[:n_ho], idx[n_ho:]
         heldout_kind = f"random {pc['heldout_frac']:.0%}"
     key = "Xfirst" if pc.get("position") == "first_answer_token" else "X"
+    # gate rules 2026-10-05.1 (Randall): the layer is chosen ONLY among layers whose CLEANED direction passed the
+    # probe-regime transfer test (2026-10-02.1) for this task; no verdict on file, or no passing layer, is a STOP
+    tv_path = Path(os.environ.get("PROBE_TRANSFER_JSON") or (Path(run_dir) / "probe_agent" / "transfer.json"))
+    if not tv_path.exists():
+        print(f"STOP: {task}: no transfer verdict at {tv_path}; G9 requires the 2026-10-02.1 verdict (rules 2026-10-05.1)")
+        return False
+    tv = json.loads(tv_path.read_text())
+    usable = [int(L) for L in ((tv.get("tasks") or {}).get(task) or {}).get("usable_layers", [])]
+    cands = [int(L) for L in pc["layer_candidates"] if int(L) in usable]
+    if not cands:
+        print(f"STOP: {task}: no candidate layer passed transfer (usable {usable}); nothing for G9 to use")
+        return False
     best = None
-    for L in pc["layer_candidates"]:
+    for L in cands:
         X = z[f"{key}_{L}"].astype(np.float64)
         for C in pc["c_grid"]:
             s = cv_score(X[tr], y[tr], float(C))
@@ -224,7 +237,9 @@ def train_task(task, run_dir, pc, gc):
            "heldout_acc_clean": heldout_clean, "surface_loco": loco, "surface_loco_clean": loco_clean,
            "surface_directions": surface_info, "clean_scale": sc, "clean_bias": bc,
            "n_train": int(len(tr)), "n_heldout": int(len(ho)),
-           "position": key, "steering_vector": f"probe_{task}", "fan2026_reference": base["fan2026_reference"]}
+           "position": key, "steering_vector": f"probe_{task}", "fan2026_reference": base["fan2026_reference"],
+           "transfer_verdict": {"rules": "2026-10-05.1", "source": str(tv_path), "usable_layers": usable,
+                                "chosen_layer_verdict": "PASS" if L in usable else "FAIL"}}
     (d / "probe.json").write_text(json.dumps(rep, indent=2))
     store = Path(run_dir) / "steering_vectors.npz"
     vecs = dict(np.load(store)) if store.exists() else {}

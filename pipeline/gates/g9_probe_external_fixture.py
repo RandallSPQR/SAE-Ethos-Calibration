@@ -45,6 +45,8 @@ def _evaluate(task, base, probe, cal, g, targets):
               min_cells=g.get("g9_cell_min_cells", 6))
     ce = cell_effects(clean, **kw)
     checks = {
+        # rules 2026-10-05.1: the probe's layer must have passed the probe-regime transfer test (2026-10-02.1)
+        "transfer_pass": (probe.get("transfer_verdict") or {}).get("chosen_layer_verdict") == "PASS",
         "heldout_acc_ok": acc >= g["g9_probe_heldout_acc_min"],
         "baseline_ok": base["sp"] is not None and base["method"] != "none",
         "cell_sign_agree": ce["evaluable"] and ce["sign_agree"] >= g["g9_cell_sign_agree_min"],
@@ -121,7 +123,7 @@ def fixture():
     targets = [30, 40, 50, 60, 80, 100]
     fan = {"baseline_sp": 125, "probe_layer": 48, "heldout_acc": 0.82, "mae": 2, "range": [30, 200]}
     base = {"sp": 53.7, "method": "logistic_lapse", "fan2026_reference": fan}
-    probe = {"heldout_acc": 0.986, "heldout_acc_clean": 0.80, "layer": 31}
+    probe = {"heldout_acc": 0.986, "heldout_acc_clean": 0.80, "layer": 31, "transfer_verdict": {"chosen_layer_verdict": "PASS"}}
     good = [-22, -18, -25, -20, -30, -16]
     cal = {"monotone": True, "mae": 3.1, "range_achieved": [30.0, 80.0], "saturated_lambdas": [],
            "dials": {"clean": _dial(good), "raw": _dial([-11, -39, -53, -4, -43, 3])}}
@@ -132,6 +134,8 @@ def fixture():
         "small_effect_caught": ev(cal={**cal, "dials": {"clean": _dial([-6, -2, 2, -4, -8, -5])}}) == "fail",
         "ci_includes_zero_caught": ev(cal={**cal, "dials": {"clean": _dial(good, se=15.0)}}) == "fail",
         "heldout_caught": ev(probe={**probe, "heldout_acc_clean": 0.5}) == "fail",
+        "transfer_fail_caught": ev(probe={**probe, "transfer_verdict": {"chosen_layer_verdict": "FAIL"}}) == "fail",
+        "no_transfer_verdict_caught": ev(probe={k: v for k, v in probe.items() if k != "transfer_verdict"}) == "fail",
         "underpowered_is_not_evaluable": ev(cal={**cal, "dials": {"clean": _dial(good, n=2)}}) == NOT_EVALUABLE,
         "no_interval_is_not_evaluable": ev(cal={**cal, "dials": {"clean": {"curve_by_cell": _dial(good)["curve_by_cell"], "sweep_agents": 12}}}) == NOT_EVALUABLE,
         "pooled_curve_not_gated": ev(cal={**cal, "monotone": False, "mae": 9.0, "range_achieved": None}) == "pass",

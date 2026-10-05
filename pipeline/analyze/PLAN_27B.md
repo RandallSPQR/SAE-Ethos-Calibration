@@ -137,3 +137,23 @@ own pre-registration, which is written after the hand-check passes and before th
     use. Any thresholded probe readout is recalibrated per regime: the agent wrapper moves the behavior itself
     (switching points lottery 88.5 -> 100.2 at safe 50, ultimatum 5.5 -> 17.6), so a native threshold is not an agent
     threshold.
+15. **Item 6 result and the 6b rulings** (Randall, 2026-10-05).
+    - Item 6 is NOT_EVALUABLE, an instrument failure: probe_clean collapsed the option mass at every registered strength
+      (`results/t4_27b_2026-10-05_steering/`). The w/sd diagnosis is post-hoc and descriptive.
+    - **6b magnitude test, replaced POST HOC.** The STOP in 6b step (1) fired under the raw-vs-isotropic rule: the pattern
+      a = S w has |cos| 0.66 with the homogeneous n direction at L38, against an isotropic null of 0.035. The test was
+      replaced after that result because its null is miscalibrated for any on-manifold direction: a covariance-matched
+      PLACEBO also fails it (L38 cov1 -0.33; L46 cov1 -0.88). The replacement is the whitened cosine (shrinkage 0.1)
+      against the 99th percentile of the whitened covariance-matched null (`probe/whitened_check.py`).
+    - Under the replacement the pattern clears the homogeneous n directions (0.012-0.032 vs nulls 0.13-0.29), but not the
+      all-prompt n slope (0.36-0.74 vs 0.19-0.30) or the frame-matched MoD (0.73-0.83 vs 0.18-0.31). So **the pattern is
+      not eligible as the scientific arm** at any site; it is the within-level stimulus direction. probe_clean is at the
+      null on all three (|whitened cos| <= 0.04).
+    - **6b design:**
+      - the G4 instrument vector is the CAA answer-token contrast (D);
+      - a behavioral manipulation check (under steering, the model reports the stake and the probability);
+      - an n-direction steering arm as a comparison;
+      - Fan et al.'s z-space vector for G9 only, descriptive, in SD units, with "lambda units unstated" recorded as a
+        replication deviation;
+      - the pattern with n partialled out is dropped.
+    - G9 enforces the transfer verdict (gate rules 2026-10-05.1). Pod cap for 6b: $8; if over, D only.
