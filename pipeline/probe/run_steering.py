@@ -140,11 +140,18 @@ def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam):
             ft = be.first_token_class(task, ids)
             if y is not None and ft in ("high", "low"):
                 n_par += 1; agree += (ft == ch)
-        cons = agree / max(1, n_par)
+        cons = agree / n_par if n_par else None            # no parseable answers: the first-token property cannot be shown
         cell_ok = 0; detail = {}
         for c in cells:
             ix = [i for i, (it, _) in enumerate(rows) if it["cell"] == c and labs[i] is not None]
             ns = np.array([rows[i][0]["n"] for i in ix], float); ys = np.array([labs[i] for i in ix], float)
+            ex_ix = [i for i, it in enumerate(its) if it["cell"] == c]
+            spe = SE.sp_of([its[i]["n"] for i in ex_ix], np.asarray(P_exact_by_lam[lam])[ex_ix])
+            if len(ix) == 0:
+                # no parseable sampled answer in the cell (the steered model stopped answering): agreement cannot be
+                # shown, so the cell does not agree (2026-10-05 pod: probe_clean at L38 collapsed the option mass)
+                cell_ok += 0; detail[c] = {"sp_sampled": None, "se": None, "sp_exact": spe, "n_parseable": 0, "agree": False}
+                continue
             sps = SE.sp_of(ns, ys)
             rng = np.random.default_rng(SE.BOOT_SEED); b = []
             for _ in range(200):
@@ -153,11 +160,9 @@ def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam):
                 if s is not None:
                     b.append(s)
             se = max(float(np.std(b)) if len(b) > 1 else 0.0, 1.0)
-            ex_ix = [i for i, it in enumerate(its) if it["cell"] == c]
-            spe = SE.sp_of([its[i]["n"] for i in ex_ix], np.asarray(P_exact_by_lam[lam])[ex_ix])
             agree_c = (sps is None and spe is None) or (sps is not None and spe is not None and abs(sps - spe) <= 2 * se)
-            cell_ok += bool(agree_c); detail[c] = {"sp_sampled": sps, "se": se, "sp_exact": spe, "agree": bool(agree_c)}
-        lam_ok = cons >= 0.99 and cell_ok >= len(cells) - 1
+            cell_ok += bool(agree_c); detail[c] = {"sp_sampled": sps, "se": se, "sp_exact": spe, "n_parseable": int(len(ix)), "agree": bool(agree_c)}
+        lam_ok = cons is not None and cons >= 0.99 and cell_ok >= len(cells) - 1
         ok = ok and lam_ok
         rep["by_lambda"][str(lam)] = {"first_token_consistency": cons, "n_parseable": n_par, "n": len(rows),
                                       "cells_agree": cell_ok, "cells": detail, "ok": bool(lam_ok)}
