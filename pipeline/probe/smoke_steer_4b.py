@@ -52,6 +52,11 @@ def main():
     rep("4 HF-hook path == nnsight path at prefill; GPU readout == numpy readout", pc["ok"], json.dumps(pc))
     g = be.generate(msgs[:2], L, v, 0.4, 8)
     rep("5 steered greedy generation (KV cache, hook)", all(len(x) > 0 for x in g), " | ".join(be.decode(x) for x in g))
+    gu = be.generate_uncached(msgs[:2], L, v, 0.1, 8); gc = be.generate(msgs[:2], L, v, 0.1, 8)
+    gu0 = be.generate_uncached(cm0 := __import__("probe.coherence", fromlist=["x"]).coherence_messages()[:2], None, None, 0.0, 8)
+    gc0 = be.generate(cm0, None, None, 0.0, 8)
+    rep("5b KV-cached decode == uncached recompute (steered 0.1 and unsteered)", gu == gc and gu0 == gc0,
+        f"{[be.decode(x) for x in gc]} | {[be.decode(x) for x in gc0]}")
     seeds = [1_000_000 + i for i in range(4)]
     s1 = be.generate(msgs[:4], L, v, 0.0, 6, sample={"seeds": seeds}); s2 = be.generate(msgs[:4], L, v, 0.0, 6, sample={"seeds": seeds})
     rep("6 seeded sampling is reproducible and parses", s1 == s2 and all(parse_choice("lottery", be.decode(x), it["cond"]) is not None for x, it in zip(s1, its[:4])),

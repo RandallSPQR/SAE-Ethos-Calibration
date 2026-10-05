@@ -256,8 +256,11 @@ class TorchBackend:
         return rep
 
     def generate(self, msgs_list, layer, vec, lam, max_new, sample=None):
+        """KV-cached decoding written out (prefill, then one token per step with past_key_values), not hf.generate():
+        transformers 5.x's generate() rejects attention_mask for this class (pod, 2026-10-05). Greedy, or per-row seeded
+        sampling at T 0.8 / top-p 0.95 (replay.hooks.sample_from_logits, seed = seeds[row] * 104729 + step). Steering via
+        the forward hook (prefill norm held fixed in decode). Checked against an uncached recompute in the 4B smoke."""
         import torch
-        from transformers import LogitsProcessor, LogitsProcessorList
         from replay.hooks import _left_pad, sample_from_logits, _stops
         ids = self._ids(msgs_list)
         outs = []
@@ -265,33 +268,54 @@ class TorchBackend:
         stops = set(_stops())
         for i in range(0, len(ids), self.bs):
             chunk = ids[i:i + self.bs]
-            x, mask, _ = _left_pad(self.lm.tokenizer, chunk)
-            procs = LogitsProcessorList()
-            if sample is not None:
-                seeds = sample["seeds"][i:i + self.bs]
-
-                class Seeded(LogitsProcessor):
-                    step = 0
-
-                    def __call__(self, input_ids, scores):
-                        forced = torch.full_like(scores, float("-inf"))
-                        for r in range(scores.shape[0]):
-                            t = sample_from_logits(scores[r].float(), T_SERVED, TOP_P, seeds[r] * 104729 + Seeded.step)
-                            forced[r, t] = 0.0
-                        Seeded.step += 1
-                        return forced
-                procs.append(Seeded())
+            seeds = sample["seeds"][i:i + self.bs] if sample is not None else None
+            x, mask, pos = _left_pad(self.lm.tokenizer, chunk)
+            x, mask, pos = x.to(dev), mask.to(dev), pos.to(dev)
             h = self._hook(layer, vec, lam, mask) if (vec is not None and lam != 0) else None
+            B = x.shape[0]; gen = [[] for _ in range(B)]; done = [False] * B
             try:
                 with torch.no_grad():
-                    g = self.hf.generate(input_ids=x.to(dev), attention_mask=mask.to(dev), max_new_tokens=max_new,
-                                         do_sample=False, logits_processor=procs, pad_token_id=self.lm.tokenizer.pad_token_id)
+                    out = self.hf(input_ids=x, attention_mask=mask, position_ids=pos, use_cache=True)
+                    pkv, lg = out.past_key_values, out.logits[:, -1].float()
+                    cur = pos[:, -1].clone()
+                    for step in range(max_new):
+                        nxt = []
+                        for r in range(B):
+                            t = int(lg[r].argmax()) if seeds is None else sample_from_logits(lg[r], T_SERVED, TOP_P, seeds[r] * 104729 + step)
+                            nxt.append(t)
+                            if not done[r]:
+                                if t in stops:
+                                    done[r] = True
+                                else:
+                                    gen[r].append(t)
+                        if all(done) or step == max_new - 1:
+                            break
+                        mask = torch.cat([mask, torch.ones((B, 1), dtype=mask.dtype, device=dev)], 1)
+                        cur = cur + 1
+                        out = self.hf(input_ids=torch.tensor(nxt, device=dev)[:, None], attention_mask=mask,
+                                      position_ids=cur[:, None], past_key_values=pkv, use_cache=True)
+                        pkv, lg = out.past_key_values, out.logits[:, -1].float()
             finally:
                 if h is not None:
                     h.remove()
-            for row in g[:, x.shape[1]:].tolist():
-                cut = next((j for j, t in enumerate(row) if t in stops), len(row))
-                outs.append(row[:cut])
+            outs += gen
+        return outs
+
+    def generate_uncached(self, msgs_list, layer, vec, lam, max_new):
+        """Greedy reference without a cache: the full sequence re-run every step through _hf_last_logits (whose prefill
+        equals the nnsight path, path_check). Smoke-only: proves the cached loop."""
+        ids = self._ids(msgs_list)
+        outs = []
+        from replay.hooks import _stops
+        stops = set(_stops())
+        for p in ids:
+            seq, g = list(p), []
+            for _ in range(max_new):
+                t = int(self._hf_last_logits([seq], layer, vec, lam)[0].argmax())
+                if t in stops:
+                    break
+                g.append(t); seq.append(t)
+            outs.append(g)
         return outs
 
     def cont_nll(self, msgs_list, conts):
