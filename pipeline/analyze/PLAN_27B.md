@@ -120,7 +120,16 @@ own pre-registration, which is written after the hand-check passes and before th
     never licenses a layer.
 14. **Item 6 steering design** (Randall, 2026-10-03; registered as gate rules 2026-10-03.1 in
     `analyze/PREREG_ITEM6_STEERING.md`; MoD dropped from item 6 by ruling C, deferred to a CAA answer-token vs
-    persona-contrast follow-up). Primary G4/steering site lottery L38 (cleaned transfer 0.839); secondary lottery L30.
+    persona-contrast follow-up).
+    Notes (Randall, 2026-10-05, before the item 6 pod):
+    (a) The out-of-sample AUROC is the held-out safe level 70: probe 0.992 vs raw n 0.889. The pooled 0.996 includes
+        training trials and is in-sample.
+    (b) probe_clean has a small magnitude component: cos 0.095 with the n direction above the switching point (null
+        about 0.035). A G4 pass shows the steering instrument works; it does not show a risk-preference variable.
+    (c) `git show --stat d1a4656` (checked 2026-10-05): renames only (R100 PREREG_ITEM6_STEERING_DRAFT.md ->
+        PREREG_ITEM6_STEERING.md, 0 insertions, 0 deletions). The registration content commit is therefore e400a62.
+    (d) Placebos are 16 at L38 and 4 at each other site, so steering results at L30/40/46 are descriptive, and they are
+        labelled that way in the result tables (probe.steer_analyze). Primary G4/steering site lottery L38 (cleaned transfer 0.839); secondary lottery L30.
     Ultimatum L40/46 exploratory only (20 native rejections, no native held-out level). No lottery steering at L40/46.
     Steering is judged on behavior change minus a norm-matched placebo at the same layer and every strength, never on
     the probe readout; coherence per strength; per-item shift distribution reported. Mean-of-differences (MoD) vectors

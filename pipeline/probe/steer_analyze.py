@@ -87,6 +87,12 @@ def analyze(out_dir, vectors_dir, n_boot=SE.N_BOOT):
     return rep
 
 
+def verdict_label(s, r):
+    """PLAN_27B 14 (d): only the primary site (16 placebos) carries a verdict; every other site (4 placebos) is descriptive."""
+    v = r["verdict"] + (f" ({r['reason']})" if r.get("reason") else "")
+    return f"**{v}**" if s["role"] == "primary" else f"descriptive ({s['n_placebos']} placebos): criteria {v.lower()}"
+
+
 def render(rep):
     f = SE.fmt
     L = [f"# Item 6 steering (gate rules {rep['rules']})", ""]
@@ -101,7 +107,7 @@ def render(rep):
     for site, s in rep["sites"].items():
         if "by_target" not in s:
             L += [f"## {site}: {s.get('status')}", ""]; continue
-        L += [f"## {site} ({s['role']}; {s['n_placebos']} placebos)", ""]
+        L += [f"## {site} ({s['role']}; {s['n_placebos']} placebos" + ("; G4" if s["role"] == "primary" else "; DESCRIPTIVE, gates nothing") + ")", ""]
         nat = s.get("naturalness") or {}
         if nat:
             L += [f"Naturalness: personas valid {nat.get('valid')} (dP {f(nat.get('behavior_shift_mean'), 3)}); null p99 |cos| "
@@ -117,7 +123,7 @@ def render(rep):
                 ci = r.get("pooled_E_ci95") or [None, None]
                 L.append(f"| {tv} | {name} | {f(r.get('lambda_star'), 2)} | " + ", ".join(f"{c.split('/')[0][:5]}/{c.split('/')[-1][:3]} {f(e)}" for c, e in E.items())
                          + f" | {f(r.get('median_E'))} | {f(r.get('pooled_E'))} [{f(ci[0])}, {f(ci[1])}] | {r.get('sign_agree', '-')} | "
-                         f"{r.get('beats_every_placebo', '-')} | {r['verdict']}{' (' + r['reason'] + ')' if r.get('reason') else ''} |")
+                         f"{r.get('beats_every_placebo', '-')} | {verdict_label(s, r)} |")
         L += ["", "Dose curve, pooled sp (served): lambda: target / placebo mean / coherent"]
         for tv, tr in s["by_target"].items():
             ps = tr["served"]["pooled_sp_by_lambda"]
