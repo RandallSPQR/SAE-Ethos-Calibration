@@ -1,5 +1,30 @@
 # Gate rules changelog
 
+## 2026-10-06.1 — item 6b steering: G4 = counterbalanced A/B CAA (D) at lottery L38 in natural-SD units (Randall, draft approved with amendments 1-5, before any 6b output)
+
+Full rules: `analyze/PREREG_ITEM6B_STEERING.md`. G4 is the SOLE confirmatory test; everything else is descriptive.
+- **Vector D:** the counterbalanced A/B CAA.
+  - Built from the 630 training prompts (safe 30/50/100) in an A/B format, with Safe = A on an exact half of each
+    stratum; contrast = risky-letter minus safe-letter answer-token residual at block 38.
+  - The answer-token embedding/unembedding difference is projected out.
+  - Built on the pod by frozen code; its hash is logged before any steered output.
+  - The Safe/Risky-word version D_word is the relabeling cross-check.
+- **Disjointness:** every evaluation prompt is at the held-out safe level 70; the overlap with the training keys is
+  logged and must be 0.
+- **Strength:** k x sd_v, absolute, at every position, k in {+-0.25, 0.5, 1, 2, 4}; sd_v is each vector's natural
+  projection SD on the training split (placebos included).
+- **Null:** 16 covariance-matched placebos (primary), 4 isotropic (secondary).
+- **On-manifold STOP:** D's worst-dimension push of a 1-SD step must not exceed the isotropic range (2.93), else STOP
+  before the sweep.
+- **Eligibility of +-k, fixed before data:** D coherent at both signs; the manipulation check passes at both signs; at
+  least 12/16 covariance-matched placebos keep option mass >= 0.95. k* = the widest eligible k <= 2.
+- **Manipulation check** (N = 108, safe 70): the steered model states the guaranteed amount and the 50 % chance. Pass if
+  the one-sided 95 % paired-bootstrap lower bound of acc(k) - acc(0) is >= -0.05. Floor: acc(0) >= 0.80.
+- **G4 PASS:** the item-6 five criteria at k* against the 16 covariance-matched placebos (median E_c <= -10 tokens; sign
+  in >= 5/6 cells; beats each placebo in >= 5/6; pooled CI excludes 0; monotone over eligible strengths).
+- **Relabeling holds** (descriptive): D_word on A/B evaluation prompts; its placebo-subtracted CI excludes 0 and it is
+  >= 0.5 x G4's pooled E.
+
 ## 2026-10-05.1 — G9 enforces the probe-regime transfer verdict (Randall 2026-10-05, ruling 3 on the item 6b STOP)
 
 - `probe.train` (the G9 path) chooses the probe layer ONLY among layers whose cleaned direction passed the 2026-10-02.1

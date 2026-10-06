@@ -157,3 +157,10 @@ own pre-registration, which is written after the hand-check passes and before th
         replication deviation;
       - the pattern with n partialled out is dropped.
     - G9 enforces the transfer verdict (gate rules 2026-10-05.1). Pod cap for 6b: $8; if over, D only.
+16. **Item 6b registered** (Randall, 2026-10-06; gate rules 2026-10-06.1; `analyze/PREREG_ITEM6B_STEERING.md`).
+    - Amendments to the draft: (1) D = counterbalanced A/B CAA, with the Safe/Risky-word CAA as the relabeling
+      cross-check; (2) manipulation check N >= 100, pass if steered >= unsteered - 0.05 (one-sided 95 % bound);
+      relabeling holds at CI excluding 0 and >= 0.5 x the primary effect; (3) a pod STOP if D's worst-dimension 1-SD push
+      exceeds the isotropic placebo range; (4) D is built on the 630 training prompts only, every evaluation prompt is
+      disjoint (safe 70), and the overlap is logged as 0; (5) the sole confirmatory test is G4 = D at L38 at k*.
+    - Cap: 2.5 h / $7.95.
