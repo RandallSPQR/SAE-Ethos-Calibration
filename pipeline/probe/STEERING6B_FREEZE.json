@@ -1,0 +1,31 @@
+{
+ "rules": "2026-10-06.1",
+ "registered_in_commit": "4b6e129",
+ "vectors_dir": "pipeline/results/t4_27b_2026-10-06_item6b_vectors",
+ "npz_sha256": "0e36751d588b23dcb2708536149db73036f48289ba3c95dc6982e750735ab97d",
+ "vectors": {
+  "n_direction": "637b9b331839d6e8b60dc0623fb3e644ecc459f7d10a58ded730da681eccbb07",
+  "fan": "40ff0f4b72be2a1f45904171ff608a9d8896e0d7c9f7a2d8804e282eb44ccb79",
+  "placebo_cov1": "95f480e4b47a1cffdedf37492acaf38ed2eee4490a0d5e933002337897b23d94",
+  "placebo_cov2": "4ef99c96c5d81177e56bf4c54f7c29c0a3457ab2f130b822bfcaea99c3009fbb",
+  "placebo_cov3": "4cd839944a3d4323742fe5c6c0d9369b19420176026212ac438b911116ece090",
+  "placebo_cov4": "50e9348183a888fd6b21f0134babe3e06c453c50b05875c61f425c66a3b0785a",
+  "placebo_cov5": "4150407c9502f06a2c2e2777638ed0f7fac54430808b63885f8596b27111ec3d",
+  "placebo_cov6": "3634038b1c2006dcd2562be01641ecc24034a5eae8f4bd3df225574ce0d508f9",
+  "placebo_cov7": "7ea4a3046f6f4470001e1a74c594980fafdabc50c364f6929499e76cc193a2e6",
+  "placebo_cov8": "5fc05dc08f72725bfd7b2fb83f1abc682853c2a6797ba089d348e16d0d2a08f1",
+  "placebo_cov9": "87b86464b3209987eadada0226e699ea105cdd166341fc2e7f94471b006e23de",
+  "placebo_cov10": "f7af60e826d288bbe05a0fc130bea3cbeaa5a2052fe79faa74203379264e33c0",
+  "placebo_cov11": "f08af0e5b4332c4e0055fe7fe96138139d7988b5dc7b039b74fbd61b391c819b",
+  "placebo_cov12": "e736c2a6faae52276aa48ee4ea65664ccf214e469f016d8fddba79910c07c2d4",
+  "placebo_cov13": "790e626dacf13d5655cb37467705ca5f42734e4eb4922c3ef3e125d7cbeb3add",
+  "placebo_cov14": "c0809d5b74cad93b9c6ec4dae713d04c9ec01884e4331994bc8fa65a74651ff4",
+  "placebo_cov15": "2cb763bcdc8ee862bd8bc57e9ef1a41d2b005cf84f5a833d7c4eff731651ef5f",
+  "placebo_cov16": "3a12c492e9c40af63eabecdf95de6ada8f85e3b697b744489075076efd6bfc95",
+  "placebo_iso1": "bb0b4fe31e64ed703a0b341e7d2fe5c8105501fc08fcb80a1859640e1f9fa98e",
+  "placebo_iso2": "9346de2f888dc2ebceaa5331f0bb1b3e032f5552cd206a7fcc27975d77b5b8d9",
+  "placebo_iso3": "e08af2c1fc256e1cb5b5818fa9a0a3914cdd0c853f5261fbe68c1cc4a8c466cc",
+  "placebo_iso4": "33e6fb459d43d64d4b43838cf9d0d5343a04d85ba7612a253a727b86090792d9"
+ },
+ "note": "probe.run_steering6b refuses to run unless the npz hashes to npz_sha256; the CAA vectors D and D_word are built on the pod and hashed there"
+}
