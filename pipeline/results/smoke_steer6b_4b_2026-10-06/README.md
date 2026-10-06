@@ -14,3 +14,5 @@ torch 2.8.0: the versions on the pod's replay venv). Mechanics only, at 4B layer
   tokens. The Risky Option has a 50% chance ...").
 A first run failed check 5 because its strength (+-200, 0.5 % of the 4B's ~40k residual norm) on saturated items moved
 nothing; the check was strengthened to +-4000 and judged on log-probs.
+
+Record (Randall, 2026-10-06): smoke check 5 strength raised after the first failure; code under test unchanged.
