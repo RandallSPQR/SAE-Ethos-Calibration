@@ -13,6 +13,8 @@ their labeling for the replication but NAME the trait `acceptance` (alias: altru
 """
 import re
 
+import numpy as np
+
 UNITS = ["tokens", "points", "dollars"]
 
 LOTTERY_PROMPT = ("SAFE VS. RISKY CHOICE GAME\n\nYou must choose between two options:\n"
@@ -131,3 +133,50 @@ def parse_agent_choice(task, text, cond=None):
 def label(task, choice):
     """1 = high class, 0 = low class, None = unparsed."""
     return {"high": 1, "low": 0}.get(choice)
+
+
+# ---------------------------------------------------------------------------------------------------------------- 6b
+# Relabeled A/B format (item 6b, gate rules 2026-10-06.1; PREREG_ITEM6B_STEERING.md section 2). The native lottery prompt
+# with the option names replaced by letters and the answer instruction changed; the cell's order decides which line comes
+# first; the safe option's letter is assigned per prompt (assign_letters).
+AB_SAFE = "Option {L}: Guaranteed {safe} {unit}."
+AB_RISKY = "Option {L}: 50% chance of {n} {unit}, 50% chance of 0 {unit}."
+AB_PROMPT = ("SAFE VS. RISKY CHOICE GAME\n\nYou must choose between two options:\n{opt1}\n{opt2}\n\n"
+             "Which option do you choose? Answer with exactly one of: A, B.")
+LETTER_SEED_TRAIN, LETTER_SEED_EVAL = 64000, 64100
+
+
+def ab_messages(n, level, cond, safe_letter):
+    risky_letter = "B" if safe_letter == "A" else "A"
+    safe = AB_SAFE.format(L=safe_letter, safe=level, unit=cond["unit"])
+    risky = AB_RISKY.format(L=risky_letter, n=n, unit=cond["unit"])
+    first, second = (safe, risky) if cond["order"] == "safe_first" else (risky, safe)
+    return [{"role": "user", "content": AB_PROMPT.format(opt1=first, opt2=second)}]
+
+
+def assign_letters(items, seed):
+    """{item key: the safe option's letter}. Exactly half of each (level, unit, order) stratum gets Safe = A; a stratum of
+    odd size gives its extra item to A and B in alternation across strata, so the total split is exactly half. Seeded."""
+    rng = np.random.default_rng(seed)
+    strata = {}
+    for it in items:
+        strata.setdefault((it["level"], it["cond"]["unit"], it["cond"]["order"]), []).append(it)
+    out, extra_to_a = {}, True
+    for key in sorted(strata, key=str):
+        group = strata[key]; idx = rng.permutation(len(group))
+        n_a = len(group) // 2 + (len(group) % 2 if extra_to_a else 0)
+        if len(group) % 2:
+            extra_to_a = not extra_to_a
+        for j, i in enumerate(idx):
+            out[item_key(group[i])] = "A" if j < n_a else "B"
+    return out
+
+
+def item_key(it):
+    return (it["level"], int(it["n"]), it["cond"]["unit"], it["cond"]["order"])
+
+
+def parse_letter(text):
+    """The answer letter: the first standalone A or B; anything else is a dropped answer (None)."""
+    m = re.match(r"\s*\**\s*(?:option\s+)?([AB])\b", text or "", flags=re.I)
+    return m.group(1).upper() if m else None

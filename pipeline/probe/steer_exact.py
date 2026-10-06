@@ -167,7 +167,7 @@ def monotone_ok(curve, expected_sign=-1, dip_frac=0.10):
     return bool(mono and np.sign(vals[-1] - vals[0]) == np.sign(expected_sign))
 
 
-def g4_verdict(items, P_by, target, placebos, lams, coherent, instrument_ok=True, n_boot=N_BOOT, expected_sign=-1):
+def g4_verdict(items, P_by, target, placebos, lams, coherent, instrument_ok=True, n_boot=N_BOOT, expected_sign=-1, pref=LAMBDA_PREF):
     """items: the reference-level items; P_by: {vec: {lam: P array aligned with items}} (lambda 0 under every vec = the
     unsteered P). coherent: {lam: bool} for the target. Returns the verdict dict (PASS / FAIL / NOT_EVALUABLE)."""
     sps = {v: {l: cell_sps(items, P_by[v][l]) for l in lams} for v in [target] + list(placebos)}
@@ -175,7 +175,7 @@ def g4_verdict(items, P_by, target, placebos, lams, coherent, instrument_ok=True
     res = {"rules": RULES, "target": target, "n_placebos": len(placebos), "cells": cells, "sp": sps}
     if not instrument_ok:
         return {**res, "verdict": "NOT_EVALUABLE", "reason": "an instrument check failed"}
-    ch = choose_lambda(lams, sps, target, placebos, coherent)
+    ch = choose_lambda(lams, sps, target, placebos, coherent, pref=pref)
     if ch is None:
         return {**res, "verdict": "NOT_EVALUABLE", "reason": "no symmetric coherent lambda <= 0.4 with every cell inside the grid"}
     l, lp, lm = ch

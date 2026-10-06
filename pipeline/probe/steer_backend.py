@@ -152,6 +152,7 @@ class TorchBackend:
         self.hi = self.lo = None
         self.hf = getattr(self.lm.model, "_model", None) or self.lm.model
         self.hf_layers = modelcfg.decoder_layers(self.hf)
+        self.absolute = False          # item 6b: strengths are absolute displacements (k x sd_v), not x mean norm
 
     # ---------------------------------------------------------------- helpers
     def _ids(self, msgs_list):
@@ -189,7 +190,7 @@ class TorchBackend:
         parts = []
         for i in range(0, len(ids), self.bs):
             steer = None if (vec is None or lam == 0) else (vec, lam)
-            lg = last_logits_batch(self.lm, ids[i:i + self.bs], layer if steer else None, steer)
+            lg = last_logits_batch(self.lm, ids[i:i + self.bs], layer if steer else None, steer, absolute=self.absolute)
             parts.append(self._readout_torch(lg))
         return {k: (np.concatenate([p[k][0] for p in parts]), np.concatenate([p[k][1] for p in parts])) for k in ("served", "softmax")}
 
@@ -218,6 +219,7 @@ class TorchBackend:
         token excluded) * unit(vec) at real positions and stores the norms; decode steps reuse them."""
         import torch
         state = {}
+        absolute = self.absolute
         v = torch.as_tensor(np.asarray(vec, dtype=np.float32))
 
         def fn(module, args, output):
@@ -229,6 +231,8 @@ class TorchBackend:
                 use = m & ~first
                 norms = hs.float().norm(dim=-1)
                 state["norm"] = ((norms * use).sum(-1) / use.sum(-1).clamp(min=1)).to(hs.dtype)
+                if absolute:
+                    state["norm"] = torch.ones_like(state["norm"])
                 add = (float(lam) * state["norm"])[:, None, None] * unit[None, None, :] * m[:, :, None].to(hs.dtype)
             else:
                 add = (float(lam) * state["norm"])[:, None, None] * unit[None, None, :]
@@ -260,7 +264,8 @@ class TorchBackend:
         ok = True
         for lam in lams:
             a = torch.log_softmax(self._hf_last_logits(ids, layer, vec, lam).cpu(), -1)
-            b = torch.log_softmax(last_logits_batch(self.lm, ids, layer if lam else None, (vec, lam) if lam else None).float().cpu(), -1)
+            b = torch.log_softmax(last_logits_batch(self.lm, ids, layer if lam else None, (vec, lam) if lam else None,
+                                                    absolute=self.absolute).float().cpu(), -1)
             top = b.topk(20, dim=-1).indices
             gap = float((a.gather(1, top) - b.gather(1, top)).abs().max())
             rep["gaps"][str(lam)] = gap; ok = ok and gap <= tol and bool((a.argmax(-1) == b.argmax(-1)).all())
@@ -361,3 +366,44 @@ class TorchBackend:
     def batch_gate(self, task, vec, layer, tol):
         from probe.batch_gate import run_gate
         return run_gate(self.lm, {f"probe_{task}": vec, f"probe_{task}__layer": np.array(layer)}, task, tol)
+
+    # ---------------------------------------------------------------- item 6b
+    def note_k(self, k):
+        """The mock uses the current strength in SD units; the real model needs nothing."""
+
+    def set_ids(self, hi, lo):
+        """Readout ids set explicitly (6b: (A,), (B,) for the relabeled readout; P(risky) is mapped per prompt by the caller)."""
+        self.hi, self.lo = tuple(hi), tuple(lo)
+
+    def letter_ids(self):
+        tok = self.lm.tokenizer
+        a = tok.encode("A", add_special_tokens=False); b = tok.encode("B", add_special_tokens=False)
+        if len(a) != 1 or len(b) != 1 or a == b:
+            raise RuntimeError(f"STOP: 'A' / 'B' are not single distinct tokens: {a} / {b}")
+        return (a[0],), (b[0],)
+
+    def answer_resid(self, msgs_list, answers, layer):
+        """Teacher-forced: block-`layer` residual (fp32) at the FIRST token of the forced assistant answer, per row."""
+        import torch
+        from replay.hooks import _left_pad, resid_post, _val
+        import modelcfg
+        env = modelcfg.decoder_layers(self.lm.model)[int(layer)]
+        tok = self.lm.tokenizer
+        rows = []
+        prompts = self._ids(msgs_list)
+        ans = [tok.encode(a, add_special_tokens=False) for a in answers]
+        for i in range(0, len(prompts), self.bs):
+            full = [p + a for p, a in zip(prompts[i:i + self.bs], ans[i:i + self.bs])]
+            x, mask, pos = _left_pad(tok, full)
+            with torch.no_grad(), self.lm.model.trace({"input_ids": x, "attention_mask": mask, "position_ids": pos}):
+                h = resid_post(env.output).float().save()
+            H = _val(h).cpu().numpy(); T = x.shape[1]
+            for r, a in enumerate(ans[i:i + self.bs]):
+                rows.append(H[r, T - len(a)].astype(np.float64))
+        return np.stack(rows)
+
+    def token_rows(self, ids):
+        """Input-embedding and unembedding rows for token ids, as float64 numpy: ({id: E}, {id: U})."""
+        E = self.hf.get_input_embeddings().weight; U = self.hf.get_output_embeddings().weight
+        return ({i: E[i].detach().float().cpu().numpy().astype(np.float64) for i in ids},
+                {i: U[i].detach().float().cpu().numpy().astype(np.float64) for i in ids})

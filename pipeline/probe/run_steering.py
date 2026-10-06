@@ -38,10 +38,11 @@ AGENTS = 6
 PLACEBO_COHERENCE = ("placebo_iso1", "placebo_iso2", "placebo_cov1", "placebo_cov2")   # placebo coherence: primary site only
 
 
-def items_for(task):
+def items_for(task, level=None):
     if task == "lottery":
+        lvl = 50 if level is None else level
         cells = [(o, u) for o in ("safe_first", "risky_first") for u in UNITS]
-        its = [{"n": n, "cell": f"{o}/{u}", "cond": {"unit": u, "order": o}, "level": 50} for n in TASKS[task]["grid"] for o, u in cells]
+        its = [{"n": n, "cell": f"{o}/{u}", "cond": {"unit": u, "order": o}, "level": lvl} for n in TASKS[task]["grid"] for o, u in cells]
     else:
         its = [{"n": n, "cell": u, "cond": {"unit": u, "order": "safe_first"}, "level": None} for n in TASKS[task]["grid"] for u in UNITS]
     return its
@@ -91,14 +92,14 @@ def load_vectors(vdir, check_freeze=True):
     return {k: z[k] for k in z.files if not k.endswith("__layer")}, man
 
 
-def lambda0_check(task, run_dir, P0, its):
+def lambda0_check(task, run_dir, P0, its, level=None):
     """Same estimator as probe.calibrate.lambda0_checksum (the lapse-aware logistic, psychometric.switching_point): run 2's
     served reference-level labels vs the exact lambda-0 probabilities weighted to run 2's (n, cell) trial counts
     (switching_point_soft). |gap| <= 2 x the served sp's within-grid-point bootstrap SE; the exact side has no sampling
     noise. The PAV crossings of both are reported beside it (descriptive)."""
     from probe.psychometric import switching_point, switching_point_soft
     rows = [json.loads(l) for l in open(Path(run_dir) / "probe" / task / "trials.jsonl") if l.strip()]
-    ref = TASKS[task]["reference_level"]
+    ref = TASKS[task]["reference_level"] if level is None else level
     rows = [r for r in rows if r["level"] == ref and r["label"] is not None]
     cellname = (lambda c: f"{c['order']}/{c['unit']}") if task == "lottery" else (lambda c: c["unit"])
     cnt = {}
@@ -123,7 +124,14 @@ def lambda0_check(task, run_dir, P0, its):
             "pav_exact": SE.sp_of([it["n"] for it in its], P0, w), "pav_served": SE.sp_of(ns, np.array(ys, float))}
 
 
-def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam, lams=AGREE_LAMS):
+def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam, lams=AGREE_LAMS, msg_fn=None, label_fn=None, class_fn=None,
+                      strength_fn=None):
+    """msg_fn(it) -> messages, label_fn(text, it) -> 1/0/None, class_fn(ids, it) -> "high"/"low"/"other" (defaults: the
+    native format); strength_fn(lam) -> the strength passed to the backend (6b: k -> k x sd_v)."""
+    msg_fn = msg_fn or (lambda it: messages(task, it["n"], it["level"], it["cond"]))
+    label_fn = label_fn or (lambda text, it: label(task, parse_choice(task, text, it["cond"])))
+    class_fn = class_fn or (lambda ids, it: be.first_token_class(task, ids))
+    strength_fn = strength_fn or (lambda lam: lam)
     """Steered sampled answers (6 agents per item) vs the exact readout: first token decides the parsed answer in
     >= 99 % of parseable answers, and per cell the sampled sp lies within 2 SE of the exact served sp in >= n-1 cells."""
     cells = sorted({it["cell"] for it in its}); cidx = {c: i for i, c in enumerate(cells)}
@@ -131,15 +139,15 @@ def sampled_agreement(be, task, its, vec, layer, P_exact_by_lam, lams=AGREE_LAMS
     ok = True
     for lam in lams:
         rows = [(it, a) for it in its for a in range(AGENTS)]
-        msgs = [messages(task, it["n"], it["level"], it["cond"]) for it, _ in rows]
+        msgs = [msg_fn(it) for it, _ in rows]
         seeds = [seed_for(cidx[it["cell"]], a, it["n"]) for it, a in rows]
-        outs = be.generate(msgs, layer, vec, lam, 6, sample={"seeds": seeds})
+        outs = be.generate(msgs, layer, vec, strength_fn(lam), 6, sample={"seeds": seeds})
         labs, agree, n_par = [], 0, 0
         for (it, _), ids in zip(rows, outs):
-            ch = parse_choice(task, be.decode(ids), it["cond"]); y = label(task, ch); labs.append(y)
-            ft = be.first_token_class(task, ids)
+            y = label_fn(be.decode(ids), it); labs.append(y)
+            ft = class_fn(ids, it)
             if y is not None and ft in ("high", "low"):
-                n_par += 1; agree += (ft == ch)
+                n_par += 1; agree += (ft == ("high" if y == 1 else "low"))
         cons = agree / n_par if n_par else None            # no parseable answers: the first-token property cannot be shown
         cell_ok = 0; detail = {}
         for c in cells:

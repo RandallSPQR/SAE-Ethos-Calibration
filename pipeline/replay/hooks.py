@@ -267,10 +267,12 @@ def _left_pad(tok, prompt_ids_list):
     return ids, mask, pos
 
 
-def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None):
+def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None, absolute=False):
     """Last-position logits [B, V] (float32) for a batch of prompts, left-padded, with optional activation
     addition at block `layer` on the real tokens of every row. Same transform as the unbatched path; the
-    batch gate (probe.batch_gate) proves equality to the G1 tolerance before this is trusted."""
+    batch gate (probe.batch_gate) proves equality to the G1 tolerance before this is trusted.
+    absolute=True (item 6b, gate rules 2026-10-06.1): the addition is steer[1] * unit(vector), an absolute displacement
+    (the caller passes k x sd_v), instead of steer[1] x the row's mean residual norm x unit(vector)."""
     import torch
     ids, mask, pos = _left_pad(lm.tokenizer, prompt_ids_list)
     block = _layers(lm)[int(layer)] if layer is not None else None
@@ -285,7 +287,8 @@ def last_logits_batch(lm, prompt_ids_list, layer=None, steer=None):
             use = m & ~first
             norms = stream.float().norm(dim=-1)
             mean_norm = ((norms * use).sum(-1) / use.sum(-1).clamp(min=1)).to(stream.dtype)      # [B]
-            add = (float(steer[1]) * mean_norm)[:, None, None] * unit[None, None, :] * m[:, :, None].to(stream.dtype)
+            scale = torch.ones_like(mean_norm) if absolute else mean_norm
+            add = (float(steer[1]) * scale)[:, None, None] * unit[None, None, :] * m[:, :, None].to(stream.dtype)
             _set_block_output(block, stream + add)
         logits = lm.model.output.logits[:, -1].float().save()
     return _val(logits)                      # stays on the GPU; sampling happens there

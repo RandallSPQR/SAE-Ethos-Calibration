@@ -1,0 +1,10 @@
+PASS 0 loaded under the replay pins: {'transformers': '5.17.0', 'nnsight': '0.7.0', 'accelerate': '1.15.0', 'torch': '2.8.0'}; 6s
+PASS 1 'A' / 'B' are single distinct tokens: (236776,) (236799,)
+PASS 2 A/B exact readout at lambda 0: P(A) in [0, 1], A/B mass: P(A) [0.0, 0.0, 1.0, 1.0, 0.057, 0.0] mass [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+PASS 3 sampled A/B answers: first token decides the parsed letter: ['B\n', 'B\n', 'A\n', 'A\n']
+PASS 4 absolute mode: HF-hook path == nnsight path (+-4000): {"0.0": 0.0, "-4000.0": 0.0, "4000.0": 0.0}
+PASS 5 absolute steering moves the log-probs (max |dlogprob| over top-20 > 10 x tol): 34.347
+PASS 6 CAA builds (A/B and word): unit vectors, token directions logged, hashes: D removed 0.000 cos_token [0.003, 0.003] sha 9ae8131c789b; D_word removed 0.005
+PASS 7 token rows: embedding and unembedding rows of A and B: cos(E diff, U diff) 1.000
+PASS 8 manipulation check generates and parses (accuracy reported, not judged on the 4B): [(True, 70), (True, 70), (True, 70)] | 'The guaranteed amount for the Safe Option is 70 tokens. The Risky Option has a 50% chance of winning 10 tokens and a 50%'
+9/9 passed (1077s)

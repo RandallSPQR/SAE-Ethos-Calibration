@@ -46,13 +46,14 @@ REASON_INSTRUCTION = "Explain your choice in two sentences, then give your answe
 _NATIVE_INSTRUCTION = "Answer with exactly one of: Safe Option, Risky Option."
 
 
-def lottery_reasoning_messages():
-    """The 8 lottery prompts: safe 50, n in {30, 60, 90, 120} x order {safe_first, risky_first}, unit tokens; the native
-    answer instruction replaced by REASON_INSTRUCTION (the question line "Which option do you choose?" is kept)."""
+def lottery_reasoning_messages(level=50, ns=(30, 60, 90, 120)):
+    """The 8 lottery prompts: safe `level`, n in `ns` x order {safe_first, risky_first}, unit tokens; the native answer
+    instruction replaced by REASON_INSTRUCTION (the question line "Which option do you choose?" is kept). Item 6: safe 50;
+    item 6b: safe 70, n in {40, 80, 120, 160} (the evaluation level, disjoint from the CAA training prompts)."""
     out = []
-    for n in (30, 60, 90, 120):
+    for n in ns:
         for order in ("safe_first", "risky_first"):
-            safe = LOTTERY_SAFE.format(safe=50, unit="tokens"); risky = LOTTERY_RISKY.format(n=n, unit="tokens")
+            safe = LOTTERY_SAFE.format(safe=level, unit="tokens"); risky = LOTTERY_RISKY.format(n=n, unit="tokens")
             first, second = (safe, risky) if order == "safe_first" else (risky, safe)
             text = LOTTERY_PROMPT.format(opt1="1. " + first, opt2="2. " + second)
             assert _NATIVE_INSTRUCTION in text
@@ -60,8 +61,8 @@ def lottery_reasoning_messages():
     return out
 
 
-def coherence_messages():
-    return [[{"role": "user", "content": t}] for t in NEUTRAL] + lottery_reasoning_messages()
+def coherence_messages(level=50, ns=(30, 60, 90, 120)):
+    return [[{"role": "user", "content": t}] for t in NEUTRAL] + lottery_reasoning_messages(level, ns)
 
 
 def rep4_share(tokens):
