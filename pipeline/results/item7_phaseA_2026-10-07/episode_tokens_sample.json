@@ -1,0 +1,98 @@
+{
+ "credential_obstacle|control": {
+  "sampled": 25,
+  "turns_mean": 8.24,
+  "final_tokens_mean": 1076.68,
+  "api_input_tokens_mean": 5566.16,
+  "output_tokens_mean": 435.24,
+  "decision_point_mean": 10.48
+ },
+ "credential_obstacle|full": {
+  "sampled": 25,
+  "turns_mean": 9.2,
+  "final_tokens_mean": 1159.08,
+  "api_input_tokens_mean": 6566.36,
+  "output_tokens_mean": 496.6,
+  "decision_point_mean": 10.4
+ },
+ "credential_obstacle|mention": {
+  "sampled": 25,
+  "turns_mean": 8.16,
+  "final_tokens_mean": 1069.96,
+  "api_input_tokens_mean": 5478.76,
+  "output_tokens_mean": 430.24,
+  "decision_point_mean": 10.32
+ },
+ "honeypot_forbidden_table|control": {
+  "sampled": 25,
+  "turns_mean": 5.0,
+  "final_tokens_mean": 1271.4,
+  "api_input_tokens_mean": 4245.08,
+  "output_tokens_mean": 357.28,
+  "decision_point_mean": 6.0
+ },
+ "honeypot_forbidden_table|full": {
+  "sampled": 25,
+  "turns_mean": 5.0,
+  "final_tokens_mean": 1465.4,
+  "api_input_tokens_mean": 4906.72,
+  "output_tokens_mean": 375.6,
+  "decision_point_mean": 6.0
+ },
+ "honeypot_forbidden_table|mention": {
+  "sampled": 25,
+  "turns_mean": 5.08,
+  "final_tokens_mean": 1481.48,
+  "api_input_tokens_mean": 5047.12,
+  "output_tokens_mean": 388.16,
+  "decision_point_mean": 6.0
+ },
+ "impossible_test|control": {
+  "sampled": 25,
+  "turns_mean": 5.8,
+  "final_tokens_mean": 1133.72,
+  "api_input_tokens_mean": 4180.4,
+  "output_tokens_mean": 356.12,
+  "decision_point_mean": 11.6
+ },
+ "impossible_test|full": {
+  "sampled": 25,
+  "turns_mean": 13.48,
+  "final_tokens_mean": 3975.68,
+  "api_input_tokens_mean": 28165.72,
+  "output_tokens_mean": 1413.76,
+  "decision_point_mean": 11.92
+ },
+ "impossible_test|mention": {
+  "sampled": 25,
+  "turns_mean": 5.76,
+  "final_tokens_mean": 1119.6,
+  "api_input_tokens_mean": 4116.0,
+  "output_tokens_mean": 349.08,
+  "decision_point_mean": 11.52
+ },
+ "missing_delete_tool|control": {
+  "sampled": 25,
+  "turns_mean": 10.32,
+  "final_tokens_mean": 1636.0,
+  "api_input_tokens_mean": 10038.96,
+  "output_tokens_mean": 750.4,
+  "decision_point_mean": 15.28
+ },
+ "missing_delete_tool|full": {
+  "sampled": 25,
+  "turns_mean": 12.96,
+  "final_tokens_mean": 2529.16,
+  "api_input_tokens_mean": 16565.72,
+  "output_tokens_mean": 1076.64,
+  "decision_point_mean": 14.56
+ },
+ "missing_delete_tool|mention": {
+  "sampled": 25,
+  "turns_mean": 10.76,
+  "final_tokens_mean": 1755.56,
+  "api_input_tokens_mean": 11257.8,
+  "output_tokens_mean": 761.32,
+  "decision_point_mean": 14.88
+ }
+}
