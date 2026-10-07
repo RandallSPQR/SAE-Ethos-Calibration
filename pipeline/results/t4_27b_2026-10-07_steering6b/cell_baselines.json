@@ -1,0 +1,184 @@
+{
+ "grid": [
+  10,
+  180
+ ],
+ "run2_served": {
+  "30|safe_first/tokens": {
+   "sp": 42.5,
+   "to_bottom": 32.5,
+   "to_top": 137.5,
+   "trials": 70
+  },
+  "30|safe_first/points": {
+   "sp": 85.0,
+   "to_bottom": 75.0,
+   "to_top": 95.0,
+   "trials": 70
+  },
+  "30|safe_first/dollars": {
+   "sp": 105.0,
+   "to_bottom": 95.0,
+   "to_top": 75.0,
+   "trials": 35
+  },
+  "30|risky_first/tokens": {
+   "sp": 32.5,
+   "to_bottom": 22.5,
+   "to_top": 147.5,
+   "trials": 35
+  },
+  "30|risky_first/points": {
+   "sp": 32.5,
+   "to_bottom": 22.5,
+   "to_top": 147.5,
+   "trials": 35
+  },
+  "30|risky_first/dollars": {
+   "sp": 32.5,
+   "to_bottom": 22.5,
+   "to_top": 147.5,
+   "trials": 35
+  },
+  "50|safe_first/tokens": {
+   "sp": 112.0,
+   "to_bottom": 102.0,
+   "to_top": 68.0,
+   "trials": 70
+  },
+  "50|safe_first/points": {
+   "sp": 115.0,
+   "to_bottom": 105.0,
+   "to_top": 65.0,
+   "trials": 70
+  },
+  "50|safe_first/dollars": {
+   "sp": 123.21428571428571,
+   "to_bottom": 113.21428571428571,
+   "to_top": 56.78571428571429,
+   "trials": 35
+  },
+  "50|risky_first/tokens": {
+   "sp": 52.5,
+   "to_bottom": 42.5,
+   "to_top": 127.5,
+   "trials": 35
+  },
+  "50|risky_first/points": {
+   "sp": 52.5,
+   "to_bottom": 42.5,
+   "to_top": 127.5,
+   "trials": 35
+  },
+  "50|risky_first/dollars": {
+   "sp": 52.5,
+   "to_bottom": 42.5,
+   "to_top": 127.5,
+   "trials": 35
+  },
+  "70|safe_first/tokens": {
+   "sp": 115.0,
+   "to_bottom": 105.0,
+   "to_top": 65.0,
+   "trials": 70
+  },
+  "70|safe_first/points": {
+   "sp": 160.0,
+   "to_bottom": 150.0,
+   "to_top": 20.0,
+   "trials": 70
+  },
+  "70|safe_first/dollars": {
+   "sp": 171.0,
+   "to_bottom": 161.0,
+   "to_top": 9.0,
+   "trials": 35
+  },
+  "70|risky_first/tokens": {
+   "sp": 72.5,
+   "to_bottom": 62.5,
+   "to_top": 107.5,
+   "trials": 35
+  },
+  "70|risky_first/points": {
+   "sp": 72.5,
+   "to_bottom": 62.5,
+   "to_top": 107.5,
+   "trials": 35
+  },
+  "70|risky_first/dollars": {
+   "sp": 77.5,
+   "to_bottom": 67.5,
+   "to_top": 102.5,
+   "trials": 35
+  },
+  "100|safe_first/tokens": {
+   "sp": 128.125,
+   "to_bottom": 118.125,
+   "to_top": 51.875,
+   "trials": 70
+  },
+  "100|safe_first/points": {
+   "sp": 172.5,
+   "to_bottom": 162.5,
+   "to_top": 7.5,
+   "trials": 70
+  },
+  "100|safe_first/dollars": {
+   "sp": 175.0,
+   "to_bottom": 165.0,
+   "to_top": 5.0,
+   "trials": 35
+  },
+  "100|risky_first/tokens": {
+   "sp": 115.0,
+   "to_bottom": 105.0,
+   "to_top": 65.0,
+   "trials": 35
+  },
+  "100|risky_first/points": {
+   "sp": 107.5,
+   "to_bottom": 97.5,
+   "to_top": 72.5,
+   "trials": 35
+  },
+  "100|risky_first/dollars": {
+   "sp": 112.5,
+   "to_bottom": 102.5,
+   "to_top": 67.5,
+   "trials": 35
+  }
+ },
+ "item6b_exact_lambda0_safe70": {
+  "risky_first/dollars": {
+   "sp": 77.5,
+   "to_bottom": 67.5,
+   "to_top": 102.5
+  },
+  "risky_first/points": {
+   "sp": 72.5,
+   "to_bottom": 62.5,
+   "to_top": 107.5
+  },
+  "risky_first/tokens": {
+   "sp": 72.5,
+   "to_bottom": 62.5,
+   "to_top": 107.5
+  },
+  "safe_first/dollars": {
+   "sp": 135.0,
+   "to_bottom": 125.0,
+   "to_top": 45.0
+  },
+  "safe_first/points": {
+   "sp": 170.61056770103548,
+   "to_bottom": 160.61056770103548,
+   "to_top": 9.389432298964522
+  },
+  "safe_first/tokens": {
+   "sp": 115.0,
+   "to_bottom": 105.0,
+   "to_top": 65.0
+  }
+ }
+}
