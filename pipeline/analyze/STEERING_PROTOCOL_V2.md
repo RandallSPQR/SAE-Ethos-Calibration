@@ -23,6 +23,7 @@ step, then logged and frozen before any steered output. No value is tuned to Gem
 | The top-p readout saturates | item 6b: the served (top-p 0.95) readout returns exact 0 / 1 when an option leaves the nucleus; log-odds then hit the clip | the primary log-odds readout is the untruncated softmax; the served readout is reported (section 4) |
 | A restated-stake check cannot see magnitude | item 6b: steering along the n direction (magnitude by construction) shifted P(risky) by +0.23 at 1 sd while the model still stated the stake as 70 | the manipulation check is a parser floor only (section 7) |
 | The null is strict enough to need a positive control | item 6b, post hoc: the n direction ranked 3/17 among D + 16 covariance-matched placebos at k <= 1 (5/17 at k = 2) and did not exceed their 95th percentile at any k, under either statistic (`results/t4_27b_2026-10-07_steering6b/posthoc_ndirection_rank.json`) | every instantiation runs the n direction through the same rank test; if it fails, a target's non-pass is UNDERPOWERED (section 8) |
+| The task-covariance null is made of the task | 6b post hoc: a placebo's push along the n direction explains R² 0.59 [0.38, 0.82] of the placebos' effects; with it removed the n direction ranks 1/17 | the primary null comes from a generic-text covariance, the secondary from the residual task covariance; the task covariance is descriptive (sections 6, 11) |
 
 ## 2. Prompt sets
 - Vector-construction prompts and evaluation prompts are disjoint by item key; the overlap is computed and logged, and must be 0.
@@ -80,9 +81,28 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
 
 ## 6. Null: a rank test
 
-- **Placebos:** N covariance-matched placebos (x ~ N(0, S) from the vector-construction activations), each scaled by its
-  own sd. **N >= 40, fixed in the instantiating pre-registration**, so that a 95th percentile is defined by at least two
-  order statistics.
+- **Placebos (null change of 2026-10-07, section 11; unregistered).** Each scaled by its own natural sd measured on the
+  TASK activations (the common unit for every vector). **N >= 40 per null, fixed in the instantiating pre-registration**,
+  so that a 95th percentile is defined by at least two order statistics.
+  - **PRIMARY null: generic-text covariance.** x ~ N(0, S_generic), drawn as Xgᵀg. Xg is the centered activations at the
+    same layer and position (the prompt-final position of a single chat-formatted user turn) on a fixed neutral corpus,
+    collected on the calibration pod:
+    - **source:** `databricks/databricks-dolly-15k` at a pinned revision, the `instruction` field only (no context);
+    - **filter:** instructions of 5-60 words that match none of the fixed keyword list (money, dollar, cost, price, pay,
+      invest, bet, gamble, lottery, risk, risky, safe, guarantee, chance, probability, odds, win, lose, offer, accept,
+      reject, token, point, reward, prize);
+    - **selection:** the first 2,000 after a seeded shuffle (seed 95000).
+
+    The same procedure applies to any model.
+  - **SECONDARY null: residual task covariance.** x ~ N(0, S_resid), with S_resid the covariance of the
+    vector-construction activations after regressing out the cell (order x unit dummies), the safe level (dummies), and
+    n and n² within each level.
+  - **DESCRIPTIVE comparison: the task covariance** (the item-6b null). It shows how far the choice moves along the
+    task's own variance directions.
+  - **Diagnostic, reported for every null:** each placebo's n-push of a 1-sd step, sd_p · cos(p, n) / sd_n, in the n
+    direction's own sd. On the 6b data this is median |0.44| for the task covariance and |0.21| for the residual
+    covariance, so the residual null halves the n content without removing it. The generic null's value is measured
+    at collection.
 - **Test:** a vector v passes at the primary k iff
   - T(v, k) has the expected sign, AND
   - |T(v, k)| > the 95th percentile of |T(p, k)| over the N placebos.
@@ -148,13 +168,38 @@ instantiation with coherence and the instrument checks fits well under an hour.
 - Resumable drivers with logged conditions.
 - Offline re-scoring of everything committed.
 
-## 11. Open point, from the positive-control check on the 6b data
-On Gemma-3-27B's lottery at L38, the n direction does not clear the covariance-matched null (rank 3/17 at k <= 1). As written,
-this template would therefore return UNDERPOWERED for any target on this task and model. Before an instantiation,
-the pre-registration has to decide whether to:
-- accept that (a target would have to beat the strongest known direction);
-- change the null's scaling (for example, placebos matched to the target's displacement norm rather than to each
-  placebo's own natural sd); or
-- change the task.
+## 11. The null, decided in stages (2026-10-07)
 
-This draft does not decide it.
+**Stage 1, the evidence (post hoc, descriptive; `results/t4_27b_2026-10-07_steering6b/posthoc_null_contamination.json`).**
+For the 16 task-covariance placebos of 6b, each placebo's push along the n direction (k · sd_p · cos(p, n) / sd_n)
+explains R² = 0.59 of the spread in their ΔP at k = 1 (bootstrap 95 % CI 0.38-0.82); 0.59 at k = 2; Δlog-odds 0.56-0.58.
+The frame-matched MoD explains 0.60-0.66. Whitened cosines explain less (0.17-0.26).
+
+With each placebo's n-predicted part removed, the n direction ranks 1/17 at both k (raw 3/17 and 5/17). The line through
+the placebos predicts the n direction's own effect to within about 20 % (+0.278 predicted vs +0.231 measured, k = 1). A
+random task-covariance direction carries up to ±0.8 sd of n-push at k = 1.
+
+Reading: the 6b null was largely a random mix of the task's own variables, magnitude included. "Random directions shaped
+like this task's activation spread move the choice" stands; "any on-manifold push moves it" is not shown.
+
+**Stage 2, the ruling (Randall).**
+- The null is drawn from a covariance with the task taken out (section 6): primary generic text, secondary the residual
+  task covariance. The task covariance becomes a descriptive comparison.
+- The positive control and the UNDERPOWERED rule stay.
+- Rejected: accepting the null as it was (uninformative), and rescaling placebos to the target's norm (it changes the
+  units after the fact and not what the placebos are made of).
+- Not yet: changing the task.
+
+**Still to see, at collection:**
+- the generic null's n-push distribution;
+- whether the positive control clears it.
+
+If the positive control fails even the generic null, the task change returns to the table.
+
+**Price of the generic-corpus collection.** 2,000 prompts of 5-60 words, one forward each, capturing the prompt-final
+residual at one layer. At the measured 0.048 s per prompt that is about 2 minutes, plus a ~13 MB dataset download, run on
+the calibration pod (model already loaded): about **$0.10-0.20 at $3.18/h**. As a standalone pod, add ~15 minutes of
+preflight and load: about **$1**. The activations are 2,000 × 5,376 fp32 ≈ 43 MB.
+
+**Earlier finding (kept for the record).** On Gemma-3-27B's lottery at L38, the n direction does not clear the
+task-covariance null (rank 3/17 at k <= 1). That is why the null was changed.
