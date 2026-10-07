@@ -177,7 +177,7 @@ def g4_verdict(items, P_by, target, placebos, lams, coherent, instrument_ok=True
         return {**res, "verdict": "NOT_EVALUABLE", "reason": "an instrument check failed"}
     ch = choose_lambda(lams, sps, target, placebos, coherent, pref=pref)
     if ch is None:
-        return {**res, "verdict": "NOT_EVALUABLE", "reason": "no symmetric coherent lambda <= 0.4 with every cell inside the grid"}
+        return {**res, "verdict": "NOT_EVALUABLE", "reason": f"no symmetric eligible strength <= {pref:g} with every cell's sp inside the grid for the target and every placebo"}
     l, lp, lm = ch
     tv, pv, E = effects_at(sps, target, placebos, lp, lm)
     med = float(np.median([E[c] for c in cells]))

@@ -1,0 +1,123 @@
+model profile: gemma-3-27b-it family=gemma3 model=google/gemma-3-27b-it@005ad3404e59 served=bfloat16 replay=float32 (auto) ctx=8192
+name, memory.total [MiB]
+NVIDIA A100-SXM4-80GB, 81920 MiB
+NVIDIA A100-SXM4-80GB, 81920 MiB
+{
+ "RUNPOD_POD_ID": "4acahnxo0yybfc",
+ "runpodctl": "/usr/bin/runpodctl",
+ "RUNPOD_API_KEY_present": true,
+ "daemon_running": true,
+ "config": {
+  "deadline_utc": "2026-10-07T16:31:35+00:00",
+  "started": 1791381699.7719128,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 45,
+  "watch": [],
+  "done_file": null,
+  "note": "27B item 6b steering (gate rules 2026-10-06.1), 573eb4b",
+  "time_scale": 1.0,
+  "last_call": 1791381699.7720413,
+  "last_call_why": "start"
+ },
+ "own_pod_read_v2": 200,
+ "own_pod_read_v1": 403,
+ "terminate_path": "plausible (unproven until the live test)"
+}
+2026-10-07T14:14:55+00:00 WATCH ['/workspace/27b/steering6b'] done_file=/workspace/27b/steering6b/DONE stall=30.0 min
+== 0: weight preflight
+[OK ] google/gemma-scope-2-27b-it@5c58dd4cddd5  files 3/3  by sha256  meta=hub  weight_hash=bf36348749ff3ccb
+[OK ] google/gemma-scope-2-27b-it@5c58dd4cddd5  files 3/3  by sha256  meta=hub  weight_hash=fb0c3869a77afe92
+report: /workspace/hf/preflight/last.json
+== item 6b steering (budget 94 min)
+TF32 matmuls ENABLED (T1_TF32=1)
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/1247 [00:00<?, ?it/s]Loading weights:   0%|          | 1/1247 [00:12<4:17:16, 12.39s/it]Loading weights:   4%|▍         | 55/1247 [00:12<03:16,  6.07it/s] Loading weights:   6%|▌         | 71/1247 [00:16<03:29,  5.62it/s]Loading weights:   6%|▋         | 81/1247 [00:17<03:20,  5.83it/s]Loading weights:   7%|▋         | 86/1247 [00:17<03:00,  6.42it/s]Loading weights:   7%|▋         | 91/1247 [00:17<02:36,  7.39it/s]Loading weights:   8%|▊         | 95/1247 [00:18<02:57,  6.48it/s]Loading weights:   8%|▊         | 104/1247 [00:19<02:23,  7.98it/s]Loading weights:   9%|▊         | 107/1247 [00:20<03:03,  6.22it/s]Loading weights:   9%|▊         | 109/1247 [00:20<02:59,  6.34it/s]Loading weights:   9%|▉         | 117/1247 [00:21<02:19,  8.11it/s]Loading weights:  10%|▉         | 120/1247 [00:22<03:07,  6.02it/s]Loading weights:  10%|▉         | 122/1247 [00:23<03:08,  5.96it/s]Loading weights:  10%|█         | 130/1247 [00:23<02:13,  8.40it/s]Loading weights:  11%|█         | 133/1247 [00:24<03:32,  5.23it/s]Loading weights:  11%|█         | 134/1247 [00:25<03:26,  5.40it/s]Loading weights:  11%|█▏        | 141/1247 [00:25<02:03,  8.93it/s]Loading weights:  11%|█▏        | 143/1247 [00:25<02:17,  8.04it/s]Loading weights:  12%|█▏        | 145/1247 [00:26<02:44,  6.69it/s]Loading weights:  12%|█▏        | 147/1247 [00:27<04:20,  4.23it/s]Loading weights:  12%|█▏        | 148/1247 [00:27<04:10,  4.39it/s]Loading weights:  13%|█▎        | 156/1247 [00:28<02:40,  6.80it/s]Loading weights:  13%|█▎        | 157/1247 [00:28<03:00,  6.06it/s]Loading weights:  13%|█▎        | 159/1247 [00:29<03:57,  4.59it/s]Loading weights:  13%|█▎        | 161/1247 [00:29<04:10,  4.33it/s]Loading weights:  14%|█▎        | 170/1247 [00:30<01:57,  9.14it/s]Loading weights:  14%|█▍        | 172/1247 [00:31<02:50,  6.32it/s]Loading weights:  14%|█▍        | 174/1247 [00:31<02:38,  6.77it/s]Loading weights:  15%|█▍        | 185/1247 [00:33<02:48,  6.29it/s]Loading weights:  15%|█▍        | 186/1247 [00:33<02:49,  6.27it/s]Loading weights:  16%|█▌        | 195/1247 [00:33<02:06,  8.31it/s]Loading weights:  16%|█▌        | 196/1247 [00:34<02:38,  6.64it/s]Loading weights:  16%|█▌        | 198/1247 [00:34<02:58,  5.87it/s]Loading weights:  17%|█▋        | 208/1247 [00:35<01:41, 10.19it/s]Loading weights:  17%|█▋        | 210/1247 [00:35<01:51,  9.26it/s]Loading weights:  17%|█▋        | 212/1247 [00:36<03:01,  5.70it/s]Loading weights:  18%|█▊        | 221/1247 [00:37<01:48,  9.50it/s]Loading weights:  18%|█▊        | 223/1247 [00:37<02:03,  8.28it/s]Loading weights:  18%|█▊        | 225/1247 [00:38<03:03,  5.57it/s]Loading weights:  19%|█▉        | 234/1247 [00:39<02:18,  7.31it/s]Loading weights:  19%|█▉        | 237/1247 [00:40<02:48,  5.99it/s]Loading weights:  19%|█▉        | 239/1247 [00:40<02:42,  6.19it/s]Loading weights:  19%|█▉        | 240/1247 [00:40<02:56,  5.71it/s]Loading weights:  20%|██        | 250/1247 [00:41<02:07,  7.83it/s]Loading weights:  20%|██        | 251/1247 [00:41<02:08,  7.73it/s]Loading weights:  21%|██        | 260/1247 [00:42<01:15, 13.13it/s]Loading weights:  21%|██        | 263/1247 [00:43<02:37,  6.23it/s]Loading weights:  21%|██▏       | 265/1247 [00:43<02:30,  6.51it/s]Loading weights:  22%|██▏       | 273/1247 [00:44<02:09,  7.53it/s]Loading weights:  22%|██▏       | 276/1247 [00:45<02:51,  5.65it/s]Loading weights:  23%|██▎       | 289/1247 [00:47<02:28,  6.47it/s]Loading weights:  23%|██▎       | 291/1247 [00:47<02:18,  6.90it/s]Loading weights:  24%|██▍       | 299/1247 [00:48<01:47,  8.85it/s]Loading weights:  24%|██▍       | 301/1247 [00:48<01:56,  8.10it/s]Loading weights:  24%|██▍       | 302/1247 [00:49<02:55,  5.40it/s]Loading weights:  24%|██▍       | 304/1247 [00:49<02:41,  5.84it/s]Loading weights:  25%|██▌       | 312/1247 [00:49<01:29, 10.50it/s]Loading weights:  25%|██▌       | 314/1247 [00:50<02:00,  7.72it/s]Loading weights:  25%|██▌       | 316/1247 [00:51<02:42,  5.72it/s]Loading weights:  26%|██▌       | 325/1247 [00:51<01:26, 10.69it/s]Loading weights:  26%|██▌       | 327/1247 [00:51<01:33,  9.84it/s]Loading weights:  26%|██▋       | 329/1247 [00:52<02:09,  7.07it/s]Loading weights:  27%|██▋       | 338/1247 [00:53<01:37,  9.29it/s]Loading weights:  27%|██▋       | 341/1247 [00:54<02:11,  6.87it/s]Loading weights:  28%|██▊       | 351/1247 [00:54<01:12, 12.42it/s]Loading weights:  28%|██▊       | 355/1247 [00:55<02:20,  6.37it/s]Loading weights:  29%|██▉       | 364/1247 [00:56<01:32,  9.55it/s]Loading weights:  29%|██▉       | 367/1247 [00:57<02:37,  5.60it/s]Loading weights:  30%|███       | 377/1247 [00:58<01:46,  8.21it/s]Loading weights:  30%|███       | 380/1247 [00:59<02:38,  5.48it/s]Loading weights:  31%|███       | 382/1247 [01:00<02:26,  5.89it/s]Loading weights:  31%|███       | 384/1247 [01:00<02:13,  6.48it/s]Loading weights:  31%|███▏      | 390/1247 [01:00<01:46,  8.05it/s]Loading weights:  32%|███▏      | 393/1247 [01:02<03:31,  4.04it/s]Loading weights:  32%|███▏      | 403/1247 [01:03<02:20,  6.01it/s]Loading weights:  33%|███▎      | 406/1247 [01:03<02:14,  6.27it/s]Loading weights:  33%|███▎      | 408/1247 [01:04<02:04,  6.74it/s]Loading weights:  33%|███▎      | 414/1247 [01:04<01:36,  8.63it/s]Loading weights:  34%|███▎      | 419/1247 [01:05<02:15,  6.12it/s]Loading weights:  34%|███▎      | 420/1247 [01:06<02:16,  6.04it/s]Loading weights:  34%|███▍      | 421/1247 [01:06<02:15,  6.09it/s]Loading weights:  34%|███▍      | 429/1247 [01:06<01:29,  9.16it/s]Loading weights:  35%|███▍      | 432/1247 [01:08<02:36,  5.20it/s]Loading weights:  35%|███▌      | 442/1247 [01:08<01:21,  9.91it/s]Loading weights:  36%|███▌      | 445/1247 [01:10<02:47,  4.78it/s]Loading weights:  36%|███▌      | 447/1247 [01:10<02:36,  5.11it/s]Loading weights:  36%|███▋      | 455/1247 [01:10<01:37,  8.09it/s]Loading weights:  37%|███▋      | 457/1247 [01:11<01:57,  6.70it/s]Loading weights:  37%|███▋      | 459/1247 [01:12<02:39,  4.93it/s]Loading weights:  38%|███▊      | 468/1247 [01:12<01:29,  8.69it/s]Loading weights:  38%|███▊      | 470/1247 [01:13<01:45,  7.36it/s]Loading weights:  38%|███▊      | 472/1247 [01:14<02:22,  5.43it/s]Loading weights:  39%|███▊      | 481/1247 [01:14<01:26,  8.82it/s]Loading weights:  39%|███▊      | 483/1247 [01:14<01:30,  8.47it/s]Loading weights:  39%|███▉      | 485/1247 [01:15<02:01,  6.27it/s]Loading weights:  40%|███▉      | 494/1247 [01:16<01:22,  9.14it/s]Loading weights:  40%|███▉      | 497/1247 [01:17<02:01,  6.16it/s]Loading weights:  40%|████      | 499/1247 [01:17<01:51,  6.71it/s]Loading weights:  40%|████      | 500/1247 [01:17<01:58,  6.32it/s]Loading weights:  41%|████      | 507/1247 [01:18<01:15,  9.81it/s]Loading weights:  41%|████      | 509/1247 [01:18<01:16,  9.67it/s]Loading weights:  41%|████      | 511/1247 [01:19<02:29,  4.93it/s]Loading weights:  42%|████▏     | 520/1247 [01:19<01:10, 10.32it/s]Loading weights:  42%|████▏     | 523/1247 [01:21<02:29,  4.85it/s]Loading weights:  43%|████▎     | 533/1247 [01:21<01:33,  7.67it/s]Loading weights:  43%|████▎     | 536/1247 [01:23<02:07,  5.58it/s]Loading weights:  43%|████▎     | 538/1247 [01:23<01:59,  5.94it/s]Loading weights:  44%|████▍     | 546/1247 [01:24<01:29,  7.83it/s]Loading weights:  44%|████▍     | 549/1247 [01:24<01:50,  6.32it/s]Loading weights:  45%|████▍     | 559/1247 [01:25<01:17,  8.88it/s]Loading weights:  45%|████▌     | 562/1247 [01:26<01:23,  8.25it/s]Loading weights:  45%|████▌     | 564/1247 [01:26<01:35,  7.17it/s]Loading weights:  46%|████▌     | 575/1247 [01:28<01:33,  7.17it/s]Loading weights:  46%|████▌     | 576/1247 [01:28<01:36,  6.98it/s]Loading weights:  47%|████▋     | 585/1247 [01:28<01:01, 10.74it/s]Loading weights:  47%|████▋     | 587/1247 [01:28<01:02, 10.50it/s]Loading weights:  47%|████▋     | 589/1247 [01:30<02:20,  4.68it/s]Loading weights:  48%|████▊     | 599/1247 [01:31<01:28,  7.30it/s]Loading weights:  48%|████▊     | 601/1247 [01:32<01:55,  5.60it/s]Loading weights:  48%|████▊     | 602/1247 [01:32<01:56,  5.55it/s]Loading weights:  49%|████▉     | 612/1247 [01:32<00:56, 11.32it/s]Loading weights:  49%|████▉     | 615/1247 [01:33<01:48,  5.85it/s]Loading weights:  50%|█████     | 624/1247 [01:34<01:20,  7.70it/s]Loading weights:  50%|█████     | 626/1247 [01:34<01:18,  7.94it/s]Loading weights:  50%|█████     | 628/1247 [01:35<01:44,  5.92it/s]Loading weights:  51%|█████     | 630/1247 [01:36<01:56,  5.29it/s]Loading weights:  51%|█████▏    | 640/1247 [01:37<01:17,  7.86it/s]Loading weights:  51%|█████▏    | 642/1247 [01:37<01:11,  8.42it/s]Loading weights:  52%|█████▏    | 648/1247 [01:37<01:00,  9.91it/s]Loading weights:  52%|█████▏    | 653/1247 [01:38<01:25,  6.98it/s]Loading weights:  53%|█████▎    | 655/1247 [01:38<01:19,  7.41it/s]Loading weights:  53%|█████▎    | 657/1247 [01:39<01:11,  8.28it/s]Loading weights:  53%|█████▎    | 663/1247 [01:39<00:45, 12.90it/s]Loading weights:  53%|█████▎    | 666/1247 [01:40<01:30,  6.41it/s]Loading weights:  54%|█████▎    | 668/1247 [01:40<01:23,  6.94it/s]Loading weights:  54%|█████▍    | 676/1247 [01:41<01:00,  9.49it/s]Loading weights:  54%|█████▍    | 678/1247 [01:41<00:55, 10.18it/s]Loading weights:  55%|█████▍    | 680/1247 [01:42<02:01,  4.68it/s]Loading weights:  55%|█████▍    | 682/1247 [01:43<01:52,  5.02it/s]Loading weights:  55%|█████▌    | 689/1247 [01:43<01:02,  8.99it/s]Loading weights:  55%|█████▌    | 692/1247 [01:44<01:39,  5.59it/s]Loading weights:  56%|█████▌    | 694/1247 [01:44<01:27,  6.35it/s]Loading weights:  56%|█████▋    | 702/1247 [01:45<01:10,  7.68it/s]Loading weights:  57%|█████▋    | 705/1247 [01:45<01:15,  7.15it/s]Loading weights:  57%|█████▋    | 707/1247 [01:46<01:35,  5.67it/s]Loading weights:  58%|█████▊    | 718/1247 [01:47<00:55,  9.47it/s]Loading weights:  58%|█████▊    | 720/1247 [01:47<00:52, 10.03it/s]Loading weights:  58%|█████▊    | 728/1247 [01:47<00:42, 12.30it/s]Loading weights:  59%|█████▊    | 731/1247 [01:49<01:17,  6.65it/s]Loading weights:  59%|█████▉    | 733/1247 [01:49<01:10,  7.27it/s]Loading weights:  59%|█████▉    | 741/1247 [01:49<00:53,  9.51it/s]Loading weights:  60%|█████▉    | 744/1247 [01:50<01:19,  6.35it/s]Loading weights:  60%|█████▉    | 746/1247 [01:51<01:10,  7.06it/s]Loading weights:  60%|██████    | 754/1247 [01:51<00:58,  8.47it/s]Loading weights:  61%|██████    | 757/1247 [01:52<01:14,  6.56it/s]Loading weights:  61%|██████    | 759/1247 [01:53<01:24,  5.76it/s]Loading weights:  62%|██████▏   | 767/1247 [01:53<00:46, 10.37it/s]Loading weights:  62%|██████▏   | 770/1247 [01:54<01:03,  7.47it/s]Loading weights:  62%|██████▏   | 773/1247 [01:54<01:10,  6.73it/s]Loading weights:  62%|██████▏   | 775/1247 [01:54<01:03,  7.48it/s]Loading weights:  63%|██████▎   | 783/1247 [01:56<01:17,  5.98it/s]Loading weights:  63%|██████▎   | 785/1247 [01:56<01:10,  6.54it/s]Loading weights:  64%|██████▍   | 796/1247 [01:57<01:02,  7.21it/s]Loading weights:  65%|██████▍   | 809/1247 [01:58<00:34, 12.53it/s]Loading weights:  66%|██████▋   | 827/1247 [01:58<00:18, 22.33it/s]Loading weights:  68%|██████▊   | 851/1247 [01:58<00:10, 38.61it/s]Loading weights:  69%|██████▉   | 861/1247 [01:58<00:08, 43.46it/s]Loading weights:  70%|███████   | 877/1247 [01:58<00:06, 56.34it/s]Loading weights:  72%|███████▏  | 899/1247 [01:58<00:04, 77.58it/s]Loading weights:  73%|███████▎  | 912/1247 [01:58<00:03, 85.97it/s]Loading weights:  75%|███████▍  | 930/1247 [01:59<00:03, 103.55it/s]Loading weights:  76%|███████▌  | 945/1247 [01:59<00:03, 100.21it/s]Loading weights:  77%|███████▋  | 958/1247 [01:59<00:03, 93.88it/s] Loading weights:  79%|███████▊  | 981/1247 [01:59<00:02, 120.02it/s]Loading weights:  80%|████████  | 999/1247 [01:59<00:01, 132.46it/s]Loading weights:  81%|████████▏ | 1015/1247 [01:59<00:01, 131.38it/s]Loading weights:  83%|████████▎ | 1030/1247 [01:59<00:01, 133.91it/s]Loading weights:  84%|████████▍ | 1051/1247 [02:00<00:01, 126.64it/s]Loading weights:  85%|████████▌ | 1065/1247 [02:00<00:01, 127.84it/s]Loading weights:  87%|████████▋ | 1091/1247 [02:00<00:01, 151.12it/s]Loading weights:  89%|████████▉ | 1107/1247 [02:00<00:01, 139.65it/s]Loading weights:  90%|████████▉ | 1122/1247 [02:00<00:00, 137.21it/s]Loading weights:  91%|█████████ | 1136/1247 [02:00<00:00, 127.02it/s]Loading weights:  92%|█████████▏| 1149/1247 [02:00<00:00, 121.19it/s]Loading weights:  93%|█████████▎| 1162/1247 [02:00<00:00, 117.86it/s]Loading weights:  95%|█████████▍| 1181/1247 [02:00<00:00, 136.04it/s]Loading weights:  96%|█████████▌| 1195/1247 [02:01<00:00, 130.51it/s]Loading weights:  98%|█████████▊| 1219/1247 [02:01<00:00, 143.06it/s]Loading weights:  99%|█████████▉| 1234/1247 [02:01<00:00, 143.95it/s]Loading weights: 100%|██████████| 1247/1247 [02:01<00:00, 10.27it/s] 
+ids {'native': [[99510], [39316]], 'letters': [[236776], [236799]], 'pins': {'transformers': '5.17.0', 'nnsight': '0.7.0', 'accelerate': '1.15.0', 'torch': '2.8.0'}}; overlap {'g4': 0, 'manipulation': 0, 'coherence_lottery': 0, 'relabeled': 0} (training 630)
+batch gate [lottery] unsteered: max |dlogprob| over top-20 = 0.04786 (tol 0.05) argmax agree=True
+batch gate [lottery] steered: max |dlogprob| over top-20 = 0.03137 (tol 0.05) argmax agree=True
+batch gate [lottery] steering effect in reference path: max |dlogprob| = 39.762 (must exceed 0.5)
+instrument: batch gate True path rel True abs True
+lambda0 at safe 70: exact 101.1 vs served 100.3 +- 6.1 -> True
+lambda-0 sampled agreement (native, decode loop): True
+lambda-0 sampled agreement (A/B; gates only the cross-check): True
+manipulation check at lambda 0: accuracy 0.991 (floor 0.8)
+CAA built: D sha 1441d647172eb58a sd 507.0 worst-dim push 2.00 (STOP > 2.93); D_word sha 277a83d6bf8abb2e; cos(D, D_word) 0.328
+timing: 0.046 s/prompt, 11.6 s/coherence -> projected 72 min (budget 94.0); plan {'arms': ['D', 'placebo_cov1', 'placebo_cov2', 'placebo_cov3', 'placebo_cov4', 'placebo_cov5', 'placebo_cov6', 'placebo_cov7', 'placebo_cov8', 'placebo_cov9', 'placebo_cov10', 'placebo_cov11', 'placebo_cov12', 'placebo_cov13', 'placebo_cov14', 'placebo_cov15', 'placebo_cov16', 'placebo_iso1', 'placebo_iso2', 'placebo_iso3', 'placebo_iso4', 'n_direction', 'fan'], 'relabel': True}
+swept D (7.0 min)
+swept placebo_cov1 (8.6 min)
+swept placebo_cov2 (10.3 min)
+swept placebo_cov3 (11.9 min)
+swept placebo_cov4 (13.5 min)
+swept placebo_cov5 (15.1 min)
+swept placebo_cov6 (16.7 min)
+swept placebo_cov7 (18.4 min)
+swept placebo_cov8 (20.0 min)
+swept placebo_cov9 (21.6 min)
+swept placebo_cov10 (23.2 min)
+swept placebo_cov11 (24.8 min)
+swept placebo_cov12 (26.5 min)
+swept placebo_cov13 (28.1 min)
+swept placebo_cov14 (29.8 min)
+swept placebo_cov15 (31.4 min)
+swept placebo_cov16 (33.1 min)
+swept placebo_iso1 (34.7 min)
+swept placebo_iso2 (36.3 min)
+swept placebo_iso3 (38.0 min)
+swept placebo_iso4 (39.6 min)
+swept n_direction (41.2 min)
+swept fan (42.9 min)
+coherence D (44.8 min)
+coherence n_direction (46.6 min)
+coherence fan (48.5 min)
+coherence placebo_cov1 (50.4 min)
+coherence placebo_cov2 (52.3 min)
+coherence placebo_cov3 (54.3 min)
+coherence placebo_cov4 (56.2 min)
+manipulation D (59.4 min)
+manipulation n_direction (62.4 min)
+manipulation fan (65.5 min)
+sampled agreement for D at +-1 sd (descriptive): True
+relabeled cross-check swept (75.5 min)
+# Item 6b steering (gate rules 2026-10-06.1)
+
+**G4 (the sole confirmatory test: D at lottery L38, served readout): NOT_EVALUABLE** (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* = None sd; pooled E - [-, -]; median E -; softmax sensitivity NOT_EVALUABLE
+
+- D: sha 1441d647172eb58a, sd_v 507.0, worst-dim push of a 1-sd step 2.00 (STOP > 2.93), low-variance share 0.038, token-direction share removed 0.001
+- D_word: sha 277a83d6bf8abb2e, sd_v 593.9, worst-dim push of a 1-sd step 13.24 (STOP > 2.93), low-variance share 0.036, token-direction share removed 0.002
+- cos(D, D_word) 0.328
+
+Overlap of the training prompts with every evaluation set: {'g4': 0, 'manipulation': 0, 'coherence_lottery': 0, 'relabeled': 0}
+
+## D (G4 (sole confirmatory test))
+
+Eligibility by |k|: 0.25: eligible; 0.5: eligible; 1.0: eligible; 2.0: eligible; 4.0: eligible
+
+- served: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled -
+- softmax: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled -
+- manipulation (acc / mean stated amount / verdict) by k: -4.0: 1.00/70.0/PASS  -2.0: 1.00/70.0/PASS  -1.0: 1.00/70.0/PASS  -0.5: 1.00/70.0/PASS  -0.25: 1.00/70.0/PASS  0.25: 0.99/69.7/PASS  0.5: 0.99/69.7/PASS  1.0: 0.99/69.7/PASS  2.0: 0.99/69.7/PASS  4.0: 1.00/70.0/PASS
+
+## n_direction (descriptive)
+
+Eligibility by |k|: 0.25: eligible; 0.5: eligible; 1.0: eligible; 2.0: eligible; 4.0: eligible
+
+- served: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled - (descriptive)
+- softmax: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled - (descriptive)
+- manipulation (acc / mean stated amount / verdict) by k: -4.0: 1.00/70.0/PASS  -2.0: 1.00/70.0/PASS  -1.0: 1.00/70.0/PASS  -0.5: 1.00/70.0/PASS  -0.25: 1.00/70.0/PASS  0.25: 0.99/69.7/PASS  0.5: 1.00/70.0/PASS  1.0: 1.00/70.0/PASS  2.0: 1.00/70.0/PASS  4.0: 1.00/70.0/PASS
+
+## fan (descriptive)
+
+Eligibility by |k|: 0.25: eligible; 0.5: eligible; 1.0: eligible; 2.0: eligible; 4.0: coherent
+
+- served: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled - (descriptive)
+- softmax: NOT_EVALUABLE (no symmetric coherent lambda <= 0.4 with every cell inside the grid); k* None; median E -; pooled E - [-, -]; vs isotropic pooled - (descriptive)
+- manipulation (acc / mean stated amount / verdict) by k: -4.0: 1.00/70.0/PASS  -2.0: 1.00/70.0/PASS  -1.0: 1.00/70.0/PASS  -0.5: 1.00/70.0/PASS  -0.25: 1.00/70.0/PASS  0.25: 0.99/69.7/PASS  0.5: 0.99/69.7/PASS  1.0: 1.00/70.0/PASS  2.0: 1.00/70.0/PASS  4.0: 0.97/69.2/PASS
+
+## Relabeling cross-check (descriptive)
+
+not evaluable: G4 has no k*
+
+G4 is an instrument gate: a PASS shows steering works in this pipeline, not that D is a risk-preference variable.
+
+== done; DONE written
+== exit 0; DONE written (copy-back window starts)
