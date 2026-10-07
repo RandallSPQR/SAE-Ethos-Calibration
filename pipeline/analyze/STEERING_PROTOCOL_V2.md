@@ -104,6 +104,8 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
     - the low-variance share (|v|² on the 10 % lowest-variance dimensions);
     - the massive-activation loading: |v|² on the dimensions whose mean |activation| on the task evaluation set exceeds
       100 × the median dimension's.
+      The 100× threshold is arbitrary, fixed before any data, and diagnostic only: it gates nothing unless a later,
+      stated reason makes it a rule (Randall, 2026-10-07).
 
     The eligibility count is the number of generic placebos eligible at each ±k (option mass >= 0.95 at both signs),
     reported beside the test. A generic direction can be off the task manifold, so this count shows how much of the
@@ -196,7 +198,9 @@ explains **R² = 0.59 [0.38, 0.82]** (bootstrap 95 % CI) of the spread in their 
 - **Out-of-sample prediction:** the line through the placebos predicts the positive control's own effect, **+0.278
   predicted vs +0.231 measured** (k = 1). The positive control is not among the 16 points that fit the line.
 - **"The stimulus direction":** the n slope and the frame-matched MoD are collinear (cos 0.992 raw, 0.77 whitened, at
-  L38); they are recorded as one direction.
+  L38); they are recorded as one direction **for steering claims only** (raw displacement is the coordinate steering
+  acts in). In whitened space they are not identical (0.77), so "one direction" is not extended to whitened-space
+  arguments (Randall, 2026-10-07).
 - **Whitened cosines** explain less (0.17-0.26).
 - **A random task-covariance direction** carries up to ±0.8 sd of push along the stimulus direction at k = 1.
 - **Illustrative only:** with each placebo's stimulus-predicted part removed, the n direction ranks 1/17 at both k
