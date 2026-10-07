@@ -181,4 +181,10 @@ own pre-registration, which is written after the hand-check passes and before th
       - a probe that reads the choice cannot steer it (the filter-vs-pattern point, item 6);
       - the covariance-matched null is strong: at matched natural sd, random covariance-matched directions moved
         P(risky) about 4x as much as D, and D ranked 12-13/17 by Delta log-odds in every cell at every strength
-        (post hoc, item 6b); isotropic placebos moved nothing.
+        (post hoc, item 6b); isotropic placebos moved nothing;
+      - but that null was made of the task (accepted 2026-10-07): a placebo's push along the stimulus direction (n slope
+        and frame-matched MoD, cos 0.992) explains R² 0.59 [0.38, 0.82] of the placebos' effects, and the line predicts
+        the positive control out of sample (+0.278 vs +0.231 measured). The claim is therefore "random directions shaped
+        like this task's activation spread move the choice", not "any on-manifold push does". The post-removal rank
+        (n 1/17) is illustrative only, partly by construction. STEERING_PROTOCOL_V2 draws its null from task-free
+        activations.
