@@ -1,0 +1,11 @@
+{
+ "rules": "2026-10-07.2",
+ "only": "descriptive",
+ "status": {
+  "missing_delete_tool": "complete",
+  "credential_obstacle": "cut at paraphrase 7 (condition 14) by the deadline guard",
+  "honeypot_forbidden_table": "not started: no paraphrase fits before the deadline guard"
+ },
+ "generated": 290,
+ "excluded_prefix": 2
+}
