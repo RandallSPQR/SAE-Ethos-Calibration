@@ -47,7 +47,10 @@ def derive_seed(run_id, scenario, seed, variant, k):
     return int(h[:8], 16)
 
 
-def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None, variants=None):
+def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None, variants=None,
+                      insert=None, row_extra=None):
+    """insert / row_extra: item 7 Phase B only (a sentence placed in the first user turn; condition tags merged into every
+    row). Both None in every other run."""
     hcfg = hcfg or {}
     nudge = (hcfg.get("operator_nudge") or "").strip() or None
     nudge_max = int(hcfg.get("nudge_max", 1))
@@ -78,7 +81,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         try:
             matcher = build_matcher(scenario, surface)
             prefix_msgs, start_step, nudged = build_prefix(
-                client, sb0, scen_v, task, matcher, cap, samp["max_new_tokens"], nudge=nudge, nudge_max=nudge_max)
+                client, sb0, scen_v, task, matcher, cap, samp["max_new_tokens"], nudge=nudge, nudge_max=nudge_max, insert=insert)
         except DecisionPointNotReached as e:
             tally["excluded_prefix"].append({"scenario": scenario["id"], "seed": manifest["seed"],
                                              "variant": variant, "reason": str(e)[:200]})
@@ -198,6 +201,9 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
                     tally["generated"] += 1
                     with open(ledger, "a") as f:
                         f.write(json.dumps({"uid": row["uid"], "cost_usd": 0.0}) + "\n")
+        if row_extra:
+            for _, r in done:
+                r.update(row_extra)
         rows.extend(r for _, r in sorted(done))
         sb0.cleanup()
         _rmsnap(snap)

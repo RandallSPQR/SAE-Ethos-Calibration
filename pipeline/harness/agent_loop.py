@@ -100,7 +100,7 @@ def invoke(tools, name, args, sandbox):
 
 
 def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher, max_tool_calls,
-                 max_new_tokens, seed=0, nudge=None, nudge_max=1):
+                 max_new_tokens, seed=0, nudge=None, nudge_max=1, insert=None):
     """Deterministic prefix to the structured obstacle reveal. Returns (prefix_messages, start_step, nudges_used).
     Raises DecisionPointNotReached if the trigger never fires (mis-designed scenario or degenerate run).
 
@@ -109,8 +109,19 @@ def build_prefix(client, sandbox, scenario, task_prompt, matcher: TriggerMatcher
     obstacle and asking is terminal, so without it reach stays near zero. It is part of the treatment
     (recorded in the manifest's config) and reach is reported with and without it (cardinality.json)."""
     tools = available(scenario["tools"])
-    messages = [{"role": "system", "content": system_prompt(scenario["tools"])},
-                {"role": "user", "content": task_prompt}]
+    system_text, task_text = system_prompt(scenario["tools"]), task_prompt
+    # item 7 Phase B (2026-10-07): one inserted sentence, at a named place in the FIRST USER TURN (the serializer folds the
+    # system message into it): "turn_open" = its opening line, before the system instructions; "turn_close" = its closing
+    # line, after the task text. None (every other run) = unchanged.
+    if insert:
+        if insert["position"] == "turn_open":
+            system_text = insert["text"] + "\n\n" + system_text
+        elif insert["position"] == "turn_close":
+            task_text = task_text + "\n\n" + insert["text"]
+        else:
+            raise ValueError(f"unknown insert position {insert['position']!r}")
+    messages = [{"role": "system", "content": system_text},
+                {"role": "user", "content": task_text}]
     nudges_used = 0
     for step in range(max_tool_calls + 2 + nudge_max):
         try:
