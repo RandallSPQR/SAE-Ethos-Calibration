@@ -1,6 +1,9 @@
 # Steering protocol v2 — DRAFT (model-agnostic; not registered)
 
-Status: **DRAFT** (2026-10-07; Randall's direction after items 6 and 6b). Pod spending on steering is parked until a candidate
+Status: **DRAFT, approved as the template with four edits** (2026-10-07; Randall): (1) the n-direction positive control and
+the UNDERPOWERED verdict; (2) asymmetric cells excluded like saturated ones, STOP only if more than a third of cells are
+excluded for any reason; (3) the test statistic is the unweighted mean of Delta_c, identical for every vector; (4) a
+monotonicity check before bisection. Still unregistered. Pod spending on steering is parked until a candidate
 variable (e.g. grader-belief, pressure) is designed; that variable's own pre-registration instantiates this protocol and
 fills the values it leaves to per-model calibration. Nothing here has run.
 
@@ -19,6 +22,7 @@ step, then logged and frozen before any steered output. No value is tuned to Gem
 | Some cells are near-steps | item 6b: risky_first cells jump from P 0.03 (n = 70) to 0.98 (n = 75); no grid item fell in [0.1, 0.9] | indifference items placed by bisection over integer n, not on a fixed grid (section 3) |
 | The top-p readout saturates | item 6b: the served (top-p 0.95) readout returns exact 0 / 1 when an option leaves the nucleus; log-odds then hit the clip | the primary log-odds readout is the untruncated softmax; the served readout is reported (section 4) |
 | A restated-stake check cannot see magnitude | item 6b: steering along the n direction (magnitude by construction) shifted P(risky) by +0.23 at 1 sd while the model still stated the stake as 70 | the manipulation check is a parser floor only (section 7) |
+| The null is strict enough to need a positive control | item 6b, post hoc: the n direction ranked 3/17 among D + 16 covariance-matched placebos at k <= 1 (5/17 at k = 2) and did not exceed their 95th percentile at any k, under either statistic (`results/t4_27b_2026-10-07_steering6b/posthoc_ndirection_rank.json`) | every instantiation runs the n direction through the same rank test; if it fails, a target's non-pass is UNDERPOWERED (section 8) |
 
 ## 2. Prompt sets
 - Vector-construction prompts and evaluation prompts are disjoint by item key; the overlap is computed and logged, and must be 0.
@@ -28,6 +32,9 @@ step, then logged and frozen before any steered output. No value is tuned to Gem
 
 For each cell c (the surface factorial, e.g. order x unit) at the evaluation level:
 1. **Outer range.** Integer stimulus n in a declared outer range [n_min, n_max] (for the lottery: [1, 10 x safe]).
+1b. **Monotonicity check (before bisecting).** P(risky) at 12 log-spaced integers over [n_min, n_max]. The cell is
+   monotone iff no step down between successive points exceeds 0.05 AND P(n_max) - P(n_min) >= 0.5. Otherwise it is
+   flagged "non-monotone" and excluded (bisection assumes P rises with n).
 2. **Bisection.** Using the exact untruncated-softmax P(risky) at the registered temperature, find by bisection over
    integers the n at which baseline P = 0.10, 0.25, 0.50, 0.75, 0.90: n10_c, n25_c, n50_c, n75_c, n90_c (the smallest n
    with P >= the target). A deterministic forward per probe; about 8 forwards per target per cell.
@@ -35,11 +42,14 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
    so every cell's grid spans its own baseline P from 0.1 to 0.9.
 4. **Calibrated items.** The cell's primary items are {n25_c, n50_c, n75_c} (the indifference item and its neighbors).
    A near-step cell (n90_c - n10_c < 3) is flagged "step"; its items are {n50_c - 1, n50_c, n50_c + 1}.
-5. **STOP rules.**
-   - A cell whose baseline P never reaches 0.10 or 0.90 inside [n_min, n_max] is "saturated": reported and excluded.
-   - STOP if more than a third of the cells saturate. Also STOP if any non-saturated, non-step cell's switching point
-     falls outside the middle of its own grid: (n50_c - n10_c) / (n90_c - n10_c) outside [0.2, 0.8] (a baseline curve
-     too asymmetric for a symmetric readout).
+5. **Exclusions and the STOP rule.** A cell is flagged, reported and EXCLUDED when it is any of:
+   - **non-monotone** (1b);
+   - **saturated**: its baseline P never reaches 0.10 or 0.90 inside [n_min, n_max];
+   - **asymmetric**: (n50_c - n10_c) / (n90_c - n10_c) outside [0.2, 0.8] (a non-step cell whose switching point sits
+     outside the middle of its own grid).
+
+   **STOP only if more than a third of the cells are excluded for any reason.** The included cells are frozen with the
+   calibration.
 6. **Freeze.** Every calibrated n and grid is logged and hashed before any steered forward.
 
 ## 4. Readout
@@ -47,8 +57,10 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
 - **Primary: the shift in log-odds of the risky choice at the calibrated items.** For vector v at strength k:
   - per cell, Delta_c(v, k) = mean over the cell's calibrated items of [logit P(+k) - logit P(-k)], with untruncated
     softmax P at the registered temperature, clipped to [1e-6, 1 - 1e-6];
-  - pooled: mu(v, k) = the random-effects mean over cells (cells as random effects; DerSimonian-Laird, with the
-    within-cell variance from the item spread), with its 95 % CI.
+  - **test statistic: T(v, k) = the UNWEIGHTED mean of Delta_c(v, k) over the included cells**, computed identically for
+    the target, the positive control and every placebo;
+  - descriptive: the random-effects mean over cells (cells as random effects; DerSimonian-Laird) with the Hartung-Knapp
+    95 % CI.
 - **Served (top-p) readout:** reported beside the primary. It is not used for log-odds, because it saturates at exact
   0 / 1.
 - **Switching points:** descriptive. Per cell, on the calibrated grid; a curve that leaves the grid is CENSORED (reported
@@ -71,11 +83,14 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
 - **Placebos:** N covariance-matched placebos (x ~ N(0, S) from the vector-construction activations), each scaled by its
   own sd. **N >= 40, fixed in the instantiating pre-registration**, so that a 95th percentile is defined by at least two
   order statistics.
-- **Test:** the target passes at the primary k iff
-  - mu(target, k) has the expected sign, AND
-  - |mu(target, k)| > the 95th percentile of |mu(p, k)| over the N placebos.
+- **Test:** a vector v passes at the primary k iff
+  - T(v, k) has the expected sign, AND
+  - |T(v, k)| > the 95th percentile of |T(p, k)| over the N placebos.
 
-  Equivalently, its rank by |mu| among the N + 1 vectors is within the top 5 %.
+  Equivalently, its rank by |T| among the N + 1 vectors is within the top 5 %. With N = 40 the smallest attainable p is
+  1/41 (rank 1 of 41).
+- **Positive control:** the n direction (the within-level slope of the activations on the stimulus; expected sign +)
+  goes through the same test, at the same k, against the same placebos, in every instantiation.
 - **Isotropic placebos:** secondary, reported (on this model they do nothing).
 - **Per-cell ranks:** reported, descriptive.
 
@@ -95,13 +110,16 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
 
 ## 8. Confirmatory test (template; the instantiating pre-registration names the vector and the layer)
 
-**PASS** iff all of:
-- the instrument checks passed;
-- the primary k is eligible;
-- the rank test of section 6 passes at the primary k.
+Verdicts, in this order:
+- **NOT_EVALUABLE:** an instrument check failed, the calibration STOPped, or no k <= 1 is eligible for the target (the
+  primary k is 1 sd, or the largest eligible k below it, section 5).
+  Never because of the grid (section 4).
+- **PASS:** the target passes the rank test of section 6 at the primary k.
+- **UNDERPOWERED:** the target does not pass, AND the positive control does not pass either (or is ineligible) at the
+  same k. The null was not shown to be beatable by a known magnitude direction, so the target's failure is uninformative.
+- **FAIL:** the target does not pass while the positive control does.
 
-**FAIL** otherwise. NOT_EVALUABLE only when an instrument check fails or no k is eligible, never because of the grid
-(section 4). Everything else is descriptive, including:
+Everything else is descriptive, including:
 - the other strengths;
 - the per-cell ranks;
 - the switching points (censored);
@@ -110,11 +128,11 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
 
 ## 9. Cost shape (for pricing an instantiation)
 
-| block | forwards (per vector set of 1 target + N = 40 placebos, 6 cells) |
+| block | forwards (per vector set of 1 target + the positive control + N = 40 placebos, 6 cells) |
 |---|---|
-| calibration (bisection, 5 targets x ~8 probes x 6 cells) | ~240 |
-| primary readout (3 items x 6 cells x 41 vectors x 8 signed strengths) | ~5,900 |
-| descriptive grids (15 x 6 cells x 41 x 8) | ~29,500 (optional; the first to drop on time) |
+| calibration (monotonicity 12 + bisection 5 targets x ~8 probes, x 6 cells) | ~310 |
+| primary readout (3 items x 6 cells x 42 vectors (target, positive control, 40 placebos) x 8 signed strengths) | ~6,050 |
+| descriptive grids (15 x 6 cells x 42 x 8) | ~30,240 (optional; the first to drop on time) |
 
 At the measured 0.048 s per forward on 2 x A100 (fp32 + TF32), the primary readout is about 5 minutes. A full
 instantiation with coherence and the instrument checks fits well under an hour.
@@ -129,3 +147,14 @@ instantiation with coherence and the instrument checks fits well under an hour.
 - The coherence rule.
 - Resumable drivers with logged conditions.
 - Offline re-scoring of everything committed.
+
+## 11. Open point, from the positive-control check on the 6b data
+On Gemma-3-27B's lottery at L38, the n direction does not clear the covariance-matched null (rank 3/17 at k <= 1). As written,
+this template would therefore return UNDERPOWERED for any target on this task and model. Before an instantiation,
+the pre-registration has to decide whether to:
+- accept that (a target would have to beat the strongest known direction);
+- change the null's scaling (for example, placebos matched to the target's displacement norm rather than to each
+  placebo's own natural sd); or
+- change the task.
+
+This draft does not decide it.

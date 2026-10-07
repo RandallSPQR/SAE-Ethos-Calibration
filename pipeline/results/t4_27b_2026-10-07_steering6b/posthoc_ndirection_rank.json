@@ -1,0 +1,97 @@
+{
+ "label": "descriptive, POST HOC (Randall 2026-10-07): how strict is the covariance-matched null? the n-direction (positive control) ranked among the 16 covariance-matched placebos",
+ "statistics": {
+  "dP": "mean over the 210 items of P_served(+k) - P_served(-k)",
+  "dlogodds_unweighted": "unweighted mean over the 6 cells of Delta_c = mean over the cell's items of logit P_softmax(+k) - logit P_softmax(-k) (items as in posthoc_dlogodds_rank.json; clip 1e-6)"
+ },
+ "by_k": {
+  "0.25": {
+   "dP": {
+    "n_direction": 0.051457223869717746,
+    "n_rank_of_17": 3,
+    "D": 0.009783736488665273,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 0.03472199625933135,
+    "placebo_abs_max": 0.06612355109163265,
+    "placebo_abs_p95": 0.060948611272722386,
+    "n_exceeds_p95": false
+   },
+   "dlogodds_unweighted": {
+    "n_direction": 5.135253402921875,
+    "n_rank_of_17": 3,
+    "D": 0.9703338146209717,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 3.569767210218651,
+    "placebo_abs_max": 6.0842320654127375,
+    "placebo_abs_p95": 5.6564837031894255,
+    "n_exceeds_p95": false
+   }
+  },
+  "0.5": {
+   "dP": {
+    "n_direction": 0.11720864851163276,
+    "n_rank_of_17": 3,
+    "D": 0.018947020199650604,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 0.06777072763164962,
+    "placebo_abs_max": 0.15542862633867321,
+    "placebo_abs_p95": 0.1415955426954401,
+    "n_exceeds_p95": false
+   },
+   "dlogodds_unweighted": {
+    "n_direction": 10.114327947338717,
+    "n_rank_of_17": 3,
+    "D": 1.9514642821417933,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 7.056616346041354,
+    "placebo_abs_max": 11.925344083084228,
+    "placebo_abs_p95": 11.091297073506627,
+    "n_exceeds_p95": false
+   }
+  },
+  "1.0": {
+   "dP": {
+    "n_direction": 0.23066563983032762,
+    "n_rank_of_17": 3,
+    "D": 0.03802233807752242,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 0.16148705744194583,
+    "placebo_abs_max": 0.2655386813163204,
+    "placebo_abs_p95": 0.2486466953631953,
+    "n_exceeds_p95": false
+   },
+   "dlogodds_unweighted": {
+    "n_direction": 18.395532091552365,
+    "n_rank_of_17": 3,
+    "D": 3.8934821552700476,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 13.273402796891244,
+    "placebo_abs_max": 20.42817115139527,
+    "placebo_abs_p95": 19.681215344329235,
+    "n_exceeds_p95": false
+   }
+  },
+  "2.0": {
+   "dP": {
+    "n_direction": 0.455792811207946,
+    "n_rank_of_17": 5,
+    "D": 0.07484644602004206,
+    "D_rank_of_17": 14,
+    "placebo_abs_median": 0.3133576753738546,
+    "placebo_abs_max": 0.582287946323063,
+    "placebo_abs_p95": 0.4967996091420258,
+    "n_exceeds_p95": false
+   },
+   "dlogodds_unweighted": {
+    "n_direction": 24.998980211145682,
+    "n_rank_of_17": 5,
+    "D": 7.545251713858714,
+    "D_rank_of_17": 13,
+    "placebo_abs_median": 21.913679993983152,
+    "placebo_abs_max": 25.929375973329144,
+    "placebo_abs_p95": 25.88798027435968,
+    "n_exceeds_p95": false
+   }
+  }
+ }
+}
