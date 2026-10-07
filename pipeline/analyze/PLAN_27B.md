@@ -203,4 +203,8 @@ own pre-registration, which is written after the hand-check passes and before th
         and inference;
       - positions named turn_open and turn_close in the first user turn;
       - 1 × A100, cap $8.
+    - **Rules 2026-10-07.2** (PREREG section 5; registered mid-gate, before any descriptive episode): the 2.0 × overall-mean
+      guard would have skipped every descriptive arm, so a descriptive-only second pass follows the gate on the same pod,
+      with an unseen-scenario estimate from the gate's measured cells (× n/8 × Phase A turns / 13.5) and cuts at paraphrase
+      boundaries. The gate is unchanged.
     - **Phase D:** the readout goes at the act locus, not the decision turn.

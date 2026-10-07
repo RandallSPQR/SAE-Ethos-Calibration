@@ -88,3 +88,33 @@ locator's act/report span), with frozen act-vs-compliant continuation pairs, **n
   at T3's measured per-cell times, with impossible_test cells about twice the T3 average. The deadline guard keeps the
   run inside the cap.
 - **Close-out:** terminate on DONE or STOP, confirm 0 pods, report STOP B with the cost.
+
+## 5. Amendment, rules 2026-10-07.2: a descriptive-only second pass (Randall's go, 2026-10-07 ~20:00 UTC)
+
+**Registered while the gate was running (6 of 16 conditions done), before any descriptive episode existed.** It does not touch
+the gate: the gate run, its rows (tagged 2026-10-07.1), its analysis and its verdict rule are unchanged.
+
+**Why.** Under 2026-10-07.1, a descriptive arm with no measured cell was projected at 2.0 × the mean of all cells so far
+(~340 s from the gate's ~172 s), times 32 cells: ~3 h per arm. With the gate ending around 21:45 UTC and the guard closing at
+22:39, all three arms would be skipped. That projection ignores what Phase A measured: descriptive cells run 5
+continuations, not 8, and these scenarios run fewer turns per episode (13.0, 9.2 and 5.0 against 13.5).
+
+**The change** (`harness/run_item7b.py --only descriptive`, `calibrate/run_item7b_desc.sh`):
+1. **A second pass on the same pod**, started when the gate run writes its DONE. It runs the three descriptive arms only, in
+   a new run directory, with the same frozen paraphrases (sha `768525a0…`), seeds, n, positions and arm interleaving.
+   Rows are tagged rules 2026-10-07.2. vLLM is served again (the gate script stops it); the gate's rendered seeds are reused.
+2. **Time estimate for a scenario not yet measured:** (the gate's mean cell seconds) × (n / 8) × (Phase A mean turns / 13.5).
+   At the gate's 172 s that is ~104 s per cell for missing_delete, ~73 s for credential and ~40 s for honeypot. After a
+   scenario's first cell, its own measured mean replaces the estimate.
+3. **Cut at a paraphrase boundary, not skipped whole.** A paraphrase (both positions × both arms: 4 cells) starts only if it
+   is projected to end before the deadline minus 30 minutes. This keeps every paraphrase counterbalanced over position and
+   every condition balanced over arms. Arms run in the registered order (missing_delete, credential, honeypot); time left
+   after one arm stops goes to the next, so a short arm can run after a longer one did not fit.
+4. **Unchanged:** the deadline (2026-10-07T23:09:40Z; self-stop and Mac watchdog), the 30-minute margin, the cap ($7.95),
+   the readout, the analysis (`analyze/item7b_text_effect.py`, run on this pass's directory) and the descriptive rule (a CI
+   excluding 0 in the registered direction makes a Phase D candidate). An arm that ends with fewer paraphrases has fewer
+   clusters: its t df is min(G_seed, G_paraphrase) − 1, and it is reported with its achieved power.
+
+**Expected, at the gate's measured speed:** about 46 minutes of episode time (vLLM back up ~21:53, guard closes 22:39).
+That is about 6 of 8 paraphrases of missing_delete (~60 per arm), then perhaps one paraphrase of honeypot; credential is
+likely not reached. Pod end ~22:45 UTC, ≈ $7.3 in total.

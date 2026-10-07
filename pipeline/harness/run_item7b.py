@@ -16,6 +16,16 @@ credential_obstacle and honeypot_forbidden_table full are descriptive (1 seed x 
 descriptive arms are dropped last-first (honeypot, credential, missing_delete); the gate is never skipped, only cut short
 at the deadline guard.
 
+Rules 2026-10-07.2 (descriptive-only second pass; PREREG section 5), registered before any descriptive episode:
+  --only descriptive   runs the three descriptive arms only, in a new run directory, with the same paraphrases, seeds, n
+                       and order; rows are tagged rules 2026-10-07.2.
+  --prior-progress F   the gate run's item7b_progress.jsonl. A scenario with no measured cell is estimated at
+                       (gate mean cell seconds) x (n / 8) x (Phase A mean turns of the scenario / 13.5), replacing
+                       2.0 x the overall mean. A scenario's own measured mean replaces the estimate after its first cell.
+  In this pass a descriptive arm is cut at a paraphrase boundary (both positions of a paraphrase, both arms), not skipped
+  whole: a paraphrase starts only if its 4 cells are projected to end before deadline - margin. Arms run in the registered
+  order, so time left after missing_delete goes to credential, then honeypot.
+
   python -m harness.run_item7b --build ../scenarios/build_t3 --runs-root <dir> [--deadline 2026-10-08T12:00:00Z]
       [--margin-min 30] [--require-pinned] [--mock --allow-unsafe] [--max-conditions K]   (K: mock / smoke only)
   python -m harness.run_item7b --check-lengths      (tokenizer-dependent pair-length check, +-2 tokens)
@@ -33,6 +43,10 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 SCEN = ROOT.parent / "scenarios"
 RULES = "2026-10-07.1"
+RULES_DESC = "2026-10-07.2"
+# Phase A (analyze/ITEM7_PHASE_A.md), full variant: mean turns per episode; the unseen-scenario time estimate scales by these
+PHASE_A_TURNS = {"impossible_test": 13.5, "missing_delete_tool": 13.0, "credential_obstacle": 9.2,
+                 "honeypot_forbidden_table": 5.0}
 PARAPHRASES = ROOT / "config" / "item7b_paraphrases.yaml"
 FREEZE = ROOT / "harness" / "ITEM7B_FREEZE.json"
 POSITIONS = ("turn_open", "turn_close")
@@ -72,6 +86,12 @@ def seed_dir(build, scenario, seed):
     return hits[0]
 
 
+def prior_cell_estimate(entry, gate_secs, gate_n=8):
+    """Rules 2026-10-07.2: seconds per (condition, arm, seed) cell for a scenario not yet measured in this pass."""
+    base = sum(gate_secs) / len(gate_secs)
+    return base * (entry["n"] / gate_n) * (PHASE_A_TURNS[entry["scenario"]] / PHASE_A_TURNS["impossible_test"])
+
+
 def check_lengths(tok, p, max_diff=2):
     rows = []
     for i, (g, n) in enumerate(zip(p["grader"], p["neutral"])):
@@ -89,6 +109,9 @@ def main():
     ap.add_argument("--margin-min", type=float, default=30.0)
     ap.add_argument("--max-conditions", type=int, default=None, help="mock / smoke only")
     ap.add_argument("--check-lengths", action="store_true")
+    ap.add_argument("--only", choices=["all", "descriptive"], default="all",
+                    help="descriptive: the 2026-10-07.2 second pass (needs --prior-progress)")
+    ap.add_argument("--prior-progress", default=None, help="the gate run's item7b_progress.jsonl (rules 2026-10-07.2)")
     a = ap.parse_args()
     p, psha = paraphrases()
     if FREEZE.exists() and json.loads(FREEZE.read_text())["paraphrases_sha256"] != psha:
@@ -103,6 +126,16 @@ def main():
         raise SystemExit(0 if all(r["ok"] for r in rows) else 1)
     if not a.mock and not FREEZE.exists():
         raise SystemExit("STOP: harness/ITEM7B_FREEZE.json missing: paraphrases are not frozen")
+    second = a.only == "descriptive"
+    rules = RULES_DESC if second else RULES
+    gate_secs = []
+    if second:
+        if not a.prior_progress:
+            raise SystemExit("STOP: --only descriptive needs --prior-progress (the gate run's item7b_progress.jsonl)")
+        gate_secs = [json.loads(l)["seconds"] for l in open(a.prior_progress) if l.strip()
+                     and json.loads(l)["scenario"] == PLAN[0]["scenario"]]
+        if not gate_secs:
+            raise SystemExit("STOP: the prior progress file has no gate cells")
 
     from resample.target_client import TargetClient
     from harness import confine
@@ -123,7 +156,9 @@ def main():
     if confinement is not None:
         iso["hardened"] = (hardened or []) + confine.harden([rp.root])
     manifest["isolation"] = iso
-    manifest["item7b"] = {"rules": RULES, "paraphrases_sha256": psha, "plan": PLAN, "positions": POSITIONS}
+    manifest["item7b"] = {"rules": rules, "paraphrases_sha256": psha, "plan": PLAN, "positions": POSITIONS, "only": a.only,
+                          "prior_gate_cells": len(gate_secs),
+                          "prior_gate_mean_cell_s": (sum(gate_secs) / len(gate_secs)) if gate_secs else None}
     rp.manifest.write_text(json.dumps(manifest, indent=2))
     if a.require_pinned:
         assert_pinned(manifest)
@@ -134,29 +169,40 @@ def main():
     log = rp.root / "item7b_progress.jsonl"
     secs = {}                                 # scenario -> list of seconds per (condition, arm, seed) cell
 
-    def guard(scen, cells_left):
+    def per_cell(entry):
+        scen = entry["scenario"]
+        if secs.get(scen):
+            return sum(secs[scen]) / len(secs[scen])
+        if second:
+            return prior_cell_estimate(entry, gate_secs)
+        return (2.0 * (sum(sum(v) for v in secs.values()) / max(1, sum(len(v) for v in secs.values()))) if secs else 180.0)
+
+    def guard(entry, cells_left):
         if deadline is None:
             return True
-        per = (sum(secs[scen]) / len(secs[scen])) if secs.get(scen) else (
-            2.0 * (sum(sum(v) for v in secs.values()) / max(1, sum(len(v) for v in secs.values()))) if secs else 180.0)
-        return time.time() + per * cells_left <= deadline - 60 * a.margin_min
+        return time.time() + per_cell(entry) * cells_left <= deadline - 60 * a.margin_min
 
     status = {}
-    for entry in PLAN:
+    for entry in (PLAN[1:] if second else PLAN):
         scen = entry["scenario"]
         spec = yaml.safe_load((SCEN / "arm_a" / scen / "scenario.yaml").read_text())
         check_scenario(spec)
         conds = conditions(entry)[: a.max_conditions] if a.max_conditions else conditions(entry)
         planned_cells = len(conds) * 2 * len(conds[0][3])
-        if entry["role"] == "descriptive" and not guard(scen, planned_cells):
+        if entry["role"] == "descriptive" and not second and not guard(entry, planned_cells):
             status[scen] = "skipped: projected time exceeds the deadline guard"
             print(f"[item7b] {scen}: SKIPPED (time guard)", flush=True)
             continue
         done_cells = 0
         for j, i, pos, seeds in conds:
-            if entry["role"] == "gate" and not guard(scen, 2 * len(seeds)):
+            if entry["role"] == "gate" and not guard(entry, 2 * len(seeds)):
                 status[scen] = f"cut at condition {j} by the deadline guard"
                 print(f"[item7b] {scen}: CUT at condition {j} (time guard)", flush=True)
+                break
+            if second and pos == POSITIONS[0] and not guard(entry, 2 * 2 * len(seeds)):
+                status[scen] = (f"cut at paraphrase {i} (condition {j}) by the deadline guard" if done_cells
+                                else "not started: no paraphrase fits before the deadline guard")
+                print(f"[item7b] {scen}: CUT at paraphrase {i} (time guard; est {per_cell(entry):.0f} s/cell)", flush=True)
                 break
             for arm in ("grader", "neutral"):
                 sentence = p[arm][i]
@@ -165,7 +211,7 @@ def main():
                     sm = json.loads((sd / "manifest.json").read_text())
                     tag = f"{arm}_p{i}_{pos}_s{s:03d}"
                     out_dir = rp.generation / scen / tag
-                    extra = {"item7b": {"rules": RULES, "arm": arm, "paraphrase": i, "position": pos, "condition": j,
+                    extra = {"item7b": {"rules": rules, "arm": arm, "paraphrase": i, "position": pos, "condition": j,
                                         "sentence": sentence, "role": entry["role"], "direction": entry["direction"]}}
                     t0 = time.time()
                     run_scenario_seed(client, spec, sd, sm, samp, entry["n"], str(out_dir), ledger, run_id, tally, hcfg=hcfg,
@@ -177,7 +223,7 @@ def main():
             print(f"[item7b] {scen} condition {j} done ({done_cells} cells)", flush=True)
         status.setdefault(scen, "complete")
     _write_cardinality(tally, run_id, rp.cardinality)
-    (rp.root / "item7b_status.json").write_text(json.dumps({"status": status, "generated": tally["generated"],
+    (rp.root / "item7b_status.json").write_text(json.dumps({"rules": rules, "only": a.only, "status": status, "generated": tally["generated"],
                                                             "excluded_prefix": len(tally["excluded_prefix"])}, indent=1))
     print(f"[item7b] {tally['generated']} continuations; status {status} -> {rp.root}", flush=True)
 
