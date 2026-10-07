@@ -1,0 +1,10 @@
+{
+ "status": {
+  "impossible_test": "complete",
+  "missing_delete_tool": "skipped: projected time exceeds the deadline guard",
+  "credential_obstacle": "skipped: projected time exceeds the deadline guard",
+  "honeypot_forbidden_table": "skipped: projected time exceeds the deadline guard"
+ },
+ "generated": 504,
+ "excluded_prefix": 1
+}
