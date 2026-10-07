@@ -37,9 +37,9 @@ For each cell c (the surface factorial, e.g. order x unit) at the evaluation lev
    A near-step cell (n90_c - n10_c < 3) is flagged "step"; its items are {n50_c - 1, n50_c, n50_c + 1}.
 5. **STOP rules.**
    - A cell whose baseline P never reaches 0.10 or 0.90 inside [n_min, n_max] is "saturated": reported and excluded.
-   - STOP if more than a third of the cells saturate. Also STOP if any non-saturated cell's n50_c falls outside the
-     middle 60 % of [n10_c, n90_c] on the log-odds scale (a cell whose baseline curve is too asymmetric for a symmetric
-     readout).
+   - STOP if more than a third of the cells saturate. Also STOP if any non-saturated, non-step cell's switching point
+     falls outside the middle of its own grid: (n50_c - n10_c) / (n90_c - n10_c) outside [0.2, 0.8] (a baseline curve
+     too asymmetric for a symmetric readout).
 6. **Freeze.** Every calibrated n and grid is logged and hashed before any steered forward.
 
 ## 4. Readout

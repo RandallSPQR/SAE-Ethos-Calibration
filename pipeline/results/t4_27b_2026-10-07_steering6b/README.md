@@ -41,3 +41,20 @@ every placebo) would not have been met. The n-direction arm moves the choice whi
 accuracy 0.99-1.00), so the shift is not a misreading of the stake.
 
 Cost: item 6 ~$7.4 + item 6b $5.11 = **~$12.5** (item 6 cap $11.13 and item 6b cap $7.95 each held).
+
+## Post-hoc additions (Randall, 2026-10-07; descriptive, no gate)
+- **Per-cell baselines and distance from the grid edges** (`cell_baselines.json`). The edge failure was predictable from
+  run 2: at safe 70 its served per-cell switching points put safe_first/dollars at 171 and safe_first/points at 160 (9 and
+  20 from the top of 10-180). The exact lambda-0 readout here: safe_first/points 170.6 (9), safe_first/dollars 135 (45),
+  safe_first/tokens 115 (65); risky_first cells 72.5-77.5 (62-68 from the bottom).
+- **D's Delta log-odds rank among the 16 covariance-matched placebos, per cell** (`posthoc_dlogodds_rank.json`; POST HOC).
+  Items: per cell, those with lambda-0 untruncated-softmax P(risky) in [0.1, 0.9], else the two nearest log-odds 0.
+  Statistic: mean logit P(+k) - logit P(-k). D ranks 12/17 in the three risky_first cells and 13/17 in the three
+  safe_first cells at every k (0.25, 0.5, 1, 2). Its Delta is about a quarter to a third of the placebos' median |Delta|,
+  and far below their 95th percentile: at 1 sd, D +3.2 to +4.4 vs the placebo median 10.6-15.6 and p95 16.2-27.6.
+  - A first pass on the served (top-p) readout was discarded: top-p returns exact 0/1 when an option leaves the
+    nucleus, so log-odds hit the clip (18.42 = 2 x 9.21 everywhere).
+  - The risky_first cells are near-steps (P 0.03 at n = 70, 0.98 at n = 75), so no grid item fell in [0.1, 0.9]. Both
+    findings feed STEERING_PROTOCOL_V2.
+- **Manipulation check limit:** it passed for the n-direction arm (0.99-1.00, stake stated as 70) while that arm moved
+  P(risky) by +0.23 at 1 sd. It cannot detect magnitude and is a parser floor only.

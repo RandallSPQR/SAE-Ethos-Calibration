@@ -164,3 +164,21 @@ own pre-registration, which is written after the hand-check passes and before th
       exceeds the isotropic placebo range; (4) D is built on the 630 training prompts only, every evaluation prompt is
       disjoint (safe 70), and the overlap is logged as 0; (5) the sole confirmatory test is G4 = D at L38 at k*.
     - Cap: 2.5 h / $7.95.
+17. **Item 6b closed NOT_EVALUABLE; pod spending on steering parked** (Randall, 2026-10-07). No steering pod until a candidate
+    variable (e.g. grader-belief, pressure) is designed; it will instantiate `analyze/STEERING_PROTOCOL_V2.md` (draft).
+    Items 6 and 6b cost ~$12.5.
+    - **The grid-edge failure was predictable from run 2.** Run 2's served lambda-0 per-cell switching points at safe 70
+      already put safe_first/dollars at 171 and safe_first/points at 160: 9 and 20 tokens from the top of the 10-180 grid.
+      At safe 100 they were 175 and 172, 5 and 8 from the top. 6b's exact lambda-0 readout agrees: safe_first/points 170.6,
+      9 from the top. The two sources swap which unit is highest, because run 2 has 1-2 trials per (n, cell). Nothing in
+      the 6b design checked each cell's distance from the edge before the pod. The rule "every cell inside the grid for
+      the target and all 16 placebos" was also fragile: one placebo pushing one cell off-grid made the gate unevaluable.
+      Per-cell table: `results/t4_27b_2026-10-07_steering6b/cell_baselines.json`.
+    - **The stated-stake manipulation check cannot detect magnitude.** It passed for the n-direction arm (accuracy
+      0.99-1.00, stated amount 70) while that arm, magnitude by construction, shifted P(risky) by +0.23 at 1 sd. The model
+      copies the stake from the prompt. This is a limit of the check, not a pass; it stays as a parser floor only.
+    - **Methods findings for the write-up:**
+      - a probe that reads the choice cannot steer it (the filter-vs-pattern point, item 6);
+      - the covariance-matched null is strong: at matched natural sd, random covariance-matched directions moved
+        P(risky) about 4x as much as D, and D ranked 12-13/17 by Delta log-odds in every cell at every strength
+        (post hoc, item 6b); isotropic placebos moved nothing.
