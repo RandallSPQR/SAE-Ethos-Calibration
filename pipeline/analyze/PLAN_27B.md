@@ -207,4 +207,10 @@ own pre-registration, which is written after the hand-check passes and before th
       guard would have skipped every descriptive arm, so a descriptive-only second pass follows the gate on the same pod,
       with an unseen-scenario estimate from the gate's measured cells (× n/8 × Phase A turns / 13.5) and cuts at paraphrase
       boundaries. The gate is unchanged.
+    - **Closed at Phase B (STOP B accepted, 2026-10-07):** the gate FAILs on a well-powered null (+0.04 log-odds
+      [−0.51, 0.59]; power 0.98 / 0.92 at ±0.15); Phases C–E are not run. Claim, narrowly: an explicit grader sentence
+      changes neither transgression nor verbalized eval-awareness (1/255) in these episodes; it does not show that a
+      grading belief has no effect. Honeypot: not run (time). Analysis fixes 2026-10-07.3 (degenerate CI → prefix-clustered;
+      stemmed echo split, one label inference → echo; descriptive header). Pod cost ≈ $7.16. No pods until the next item is
+      designed.
     - **Phase D:** the readout goes at the act locus, not the decision turn.
