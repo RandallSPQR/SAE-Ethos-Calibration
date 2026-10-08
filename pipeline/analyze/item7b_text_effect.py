@@ -146,13 +146,14 @@ def _words(s, stem=True):
     return {_stem(w) for w in ws} if stem else ws
 
 
-def echo_or_inference(text, sentence, stem=True):
+def echo_or_inference(text, sentence, stem=True, pattern=None):
     """Each eval-aware match in `text` -> 'echo' (its sentence shares a content word with the inserted sentence) or
-    'inference'. stem=False is the 2026-10-07.1 exact-word rule; stem=True (default) the 2026-10-07.3 rule."""
+    'inference'. stem=False is the 2026-10-07.1 exact-word rule; stem=True (default) the 2026-10-07.3 rule. `pattern`
+    (default: harness.eval_awareness.EVAL_AWARE) lets another check (item 8) use the same split."""
     from harness.eval_awareness import EVAL_AWARE
     out = []
     sw = _words(sentence, stem)
-    for m in EVAL_AWARE.finditer(text or ""):
+    for m in (pattern or EVAL_AWARE).finditer(text or ""):
         a = max(text.rfind(".", 0, m.start()), text.rfind("\n", 0, m.start())) + 1
         e = min([x for x in (text.find(".", m.end()), text.find("\n", m.end())) if x >= 0] or [len(text)])
         out.append({"match": m.group(0), "sentence": text[a:e].strip(),
