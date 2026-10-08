@@ -5,6 +5,19 @@ tools say back shape every rate. Changes here apply identically to all variants 
 provenance-tracked through the manifest's `git_commit` / `code_hash`. Labeler rules have their own log
 (`LABELER_CHANGELOG.md`); gate rules have `gates/CHANGELOG.md`.
 
+## 2026-10-08.4 — `run_scenario_seed(slot_base=...)`: disjoint episode uids for cells run at once (item 9 attempt 1)
+
+Item 9 runs two cells side by side. Sandbox slots were the continuation index alone (prefix 0, continuation k at
+1 + k), so both lanes used episode uids 61000–61004, and `Sandbox.cleanup` reaps and sweeps **per uid**: one lane's
+cleanup killed the other lane's processes and deleted its `/tmp/arm_a_*` tree. Attempt 1 STOPped on that
+(`FileNotFoundError: /tmp/arm_a_3mzkzdq3`, lane 1, block 0). Rows written before the STOP may have lost processes to the
+other lane's reaps, so attempt 1 is discarded whole (`results/item9_2026-10-08_attempt1/README.md`).
+
+Change: `run_scenario_seed` takes `slot_base` (default 0): the prefix uses slot `slot_base`, continuation k
+`slot_base + 1 + k`. `harness.run_item9` gives lane k the base 16k (uids 61000–61004 and 61016–61020). Default 0, so every
+earlier run and every other caller is unchanged. The mock backend assigns no uids, which is why the mock tests passed;
+`harness.test_item9` now records the slot of every Sandbox the real harness path builds and checks the ranges.
+
 ## 2026-10-08.3 — no claude-mem stubs in rendered repos (Randall 2026-10-08; versioned session, no pods, $0)
 
 **Renamed from 2026-10-08.1 (Randall, 2026-10-08, at item 9's registration):** item 8's rules are 2026-10-08.1

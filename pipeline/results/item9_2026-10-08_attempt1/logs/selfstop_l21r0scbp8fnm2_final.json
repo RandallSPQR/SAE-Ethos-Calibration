@@ -1,0 +1,30 @@
+{
+ "pod": "l21r0scbp8fnm2",
+ "at": "2026-09-30T13:50:30+00:00",
+ "why": "run done (/workspace/27b/t3/g3_fresh/DONE) and the 2.0-min copy-back window passed",
+ "config": {
+  "deadline_utc": "2026-09-30T15:06:50+00:00",
+  "started": 1790776110.4862163,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 2.0,
+  "watch": [
+   "/workspace/27b/t3/g3_fresh"
+  ],
+  "done_file": "/workspace/27b/t3/g3_fresh/DONE",
+  "note": "G3 fresh copied back",
+  "time_scale": 1.0,
+  "last_call": 1790776110.4865823,
+  "last_call_why": "start"
+ },
+ "attempts": [
+  {
+   "runpodctl": 1,
+   "out": "Runpod config file not found, please run `runpodctl config` to create it\nAPI key not found\nError: API key not found\n"
+  },
+  {
+   "https://api.runpod.io/v2/pods/l21r0scbp8fnm2": 204
+  }
+ ],
+ "ok": true
+}

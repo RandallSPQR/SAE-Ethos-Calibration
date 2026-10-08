@@ -1,0 +1,27 @@
+{
+ "pod": "o7nletg11eogbp",
+ "at": "2026-10-05T17:27:36+00:00",
+ "why": "stalled: no new file under ['/workspace/27b/steering'] for 31 min (limit 30)",
+ "config": {
+  "deadline_utc": "2026-10-05T20:18:30+00:00",
+  "started": 1791218916.320054,
+  "startup_min": 45,
+  "stall_min": 30.0,
+  "after_done_min": 45,
+  "watch": [
+   "/workspace/27b/steering"
+  ],
+  "done_file": "/workspace/27b/steering/DONE",
+  "note": "27B item 6 steering (gate rules 2026-10-03.1), 5c46982",
+  "time_scale": 1.0,
+  "last_call": 1791219075.68619,
+  "last_call_why": "watch"
+ },
+ "attempts": [
+  {
+   "runpodctl": 0,
+   "out": "Runpod config file not found, please run `runpodctl config` to create it\npod \"o7nletg11eogbp\" removed\n"
+  }
+ ],
+ "ok": true
+}

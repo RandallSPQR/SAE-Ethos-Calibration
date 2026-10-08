@@ -1,0 +1,146 @@
+{
+  "run_id": "run_bd2a20d6b862",
+  "git_commit": "29a2223240fbc085b44335141ddb0bc562dd8780",
+  "code_hash": "27f6add3a6e29c19",
+  "scenario_commit": "29a2223240fbc085b44335141ddb0bc562dd8780",
+  "model": {
+    "hf_id": "google/gemma-3-27b-it",
+    "base_hf_id": "google/gemma-3-27b-pt",
+    "revision": "005ad3404e59d6023443cb575daa05336842228a",
+    "weight_hash": "34f745e7c6ef5b7b",
+    "dtype": "bfloat16",
+    "served_dtype": "bfloat16",
+    "family": "gemma3",
+    "stop_token_ids": [
+      106,
+      1
+    ]
+  },
+  "profile": {
+    "name": "gemma-3-27b-it",
+    "file": "models_gemma-3-27b-it.yaml",
+    "replay": {
+      "dtype": "float32",
+      "device_map": "auto",
+      "attn_implementation": "eager",
+      "layers_path": "model.language_model.layers",
+      "identity_ref": "hf_hidden_states",
+      "hf_auto_class": "AutoModelForImageTextToText",
+      "pins": {
+        "transformers": "5.17.0",
+        "nnsight": "0.7.0",
+        "accelerate": "1.15.0",
+        "torch": "2.8.0"
+      },
+      "nnsight_class": "VisionLanguageModel"
+    },
+    "sae_role": "primary",
+    "sae_secondary": {
+      "release": "gemma-scope-2-27b-it-res",
+      "sae_id": "layer_53_width_16k_l0_medium",
+      "layer": 53,
+      "revision": "5c58dd4cddd52cef653059d85e12a86bf6222a28",
+      "params_sha256": "a3492cd5ec2d00f3aa36e4fdb9d3e61d1137453c9228c5af964e5114f3c5e62b",
+      "weights_hash": "fb0c3869a77afe92"
+    }
+  },
+  "tokenizer": {
+    "revision": "005ad3404e59d6023443cb575daa05336842228a",
+    "chat_template_hash": "7de1c58e208eda46",
+    "chat_template_hash_pinned": "7de1c58e208eda46"
+  },
+  "sae": {
+    "release": "gemma-scope-2-27b-it-res",
+    "id": "layer_40_width_16k_l0_medium",
+    "revision": "5c58dd4cddd52cef653059d85e12a86bf6222a28",
+    "hook": "blocks.40.hook_resid_post",
+    "layer": 40,
+    "weights_hash": "bf36348749ff3ccb",
+    "published": {
+      "l0": 60,
+      "fvu": null,
+      "tol": 0.15,
+      "dataset": "monology/pile-uncopyrighted",
+      "context_size": 1024
+    }
+  },
+  "oracle": {
+    "id": null,
+    "dropped": "no activation oracle exists for Gemma-3-27B-IT; G5 is dropped (the 9B's oracle failed on real spans: paired 0.33)"
+  },
+  "software": {
+    "python": "3.12.3",
+    "torch": "2.8.0+cu128",
+    "vllm": "0.11.0",
+    "nnsight": "0.7.0",
+    "sae_lens": "6.51.1",
+    "transformers": "5.17.0"
+  },
+  "config": {
+    "run_yaml_hash": "6b3fe5f186fd3d5c",
+    "models_yaml_hash": "74d99a850162e8b8",
+    "sampling": {
+      "continuations_per_seed": 20,
+      "temperature": 0.8,
+      "top_p": 0.95,
+      "max_new_tokens": 600
+    }
+  },
+  "isolation_declared": {
+    "network_disabled": false,
+    "isolated_mount": false,
+    "no_host_credentials": false,
+    "non_root_uid": false,
+    "resource_limits": false,
+    "process_timeout": false,
+    "controlled_env": false
+  },
+  "gate_rules_version": "2026-10-06.1",
+  "unverified": [
+    "sae.published.fvu"
+  ],
+  "isolation": {
+    "isolated": true,
+    "mechanism": "seccomp_uid",
+    "canaries": "10/10",
+    "landlock_abi": 4,
+    "bpf_selftest": true,
+    "tried": {
+      "seccomp_uid": {
+        "network_connect_fails": true,
+        "parent_level_file_unreadable": true,
+        "secrets_absent": true,
+        "disk_secrets_unreadable": true,
+        "fork_bomb_hits_limit": true,
+        "overtime_is_killed": true,
+        "episode_dir_writable": true,
+        "imports_available": true,
+        "trivial_test_green": true,
+        "no_survivors": true
+      }
+    },
+    "hardened": [
+      "../scenarios/build_item9",
+      "/workspace/hf",
+      "run_ledger.jsonl",
+      "/workspace/hf/token",
+      "/workspace/27b/item9/runs/run_bd2a20d6b862",
+      "/workspace/hf/token"
+    ]
+  },
+  "item9": {
+    "rules": "2026-10-08.2",
+    "paraphrases_sha256": "945772d5663052883a9fca991961d0fcfc252a57cf481527616d17ab00e75962",
+    "arms": [
+      "neutral",
+      "pc",
+      "grader",
+      "pressure"
+    ],
+    "position": "turn_close",
+    "scenario": "impossible_test",
+    "n": 4,
+    "lanes": 2,
+    "block": 8
+  }
+}

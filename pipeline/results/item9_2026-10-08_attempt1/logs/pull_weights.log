@@ -1,0 +1,8 @@
+HF user: RandallSPQR
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files:   9%|▉         | 1/11 [00:00<00:03,  2.58it/s]Fetching 11 files:  18%|█▊        | 2/11 [00:00<00:02,  4.44it/s]Fetching 11 files:  45%|████▌     | 5/11 [00:00<00:00,  6.49it/s]Fetching 11 files:  55%|█████▍    | 6/11 [00:03<00:04,  1.20it/s]Fetching 11 files:  64%|██████▎   | 7/11 [00:09<00:08,  2.13s/it]Fetching 11 files:  73%|███████▎  | 8/11 [00:29<00:21,  7.19s/it]Fetching 11 files:  82%|████████▏ | 9/11 [00:32<00:11,  5.88s/it]Fetching 11 files:  91%|█████████ | 10/11 [00:32<00:04,  4.34s/it]Fetching 11 files: 100%|██████████| 11/11 [00:33<00:00,  3.15s/it]Fetching 11 files: 100%|██████████| 11/11 [00:33<00:00,  3.02s/it]
+gemma-2-9b-it -> /workspace/hf/hub/models--google--gemma-2-9b-it/snapshots/11c9b309abf73637e4b6f9a3fa1e92e615547819
+Fetching 1 files:   0%|          | 0/1 [00:00<?, ?it/s]Fetching 1 files: 100%|██████████| 1/1 [00:04<00:00,  4.23s/it]Fetching 1 files: 100%|██████████| 1/1 [00:04<00:00,  4.23s/it]
+sae -> /workspace/hf/hub/models--google--gemma-scope-9b-it-res/snapshots/e86af97a5b6fbbccca28ab654f2fda1b0768f770
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  20%|██        | 1/5 [00:00<00:02,  1.91it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  3.49it/s]Fetching 5 files: 100%|██████████| 5/5 [00:06<00:00,  1.48s/it]Fetching 5 files: 100%|██████████| 5/5 [00:06<00:00,  1.30s/it]
+oracle -> /workspace/hf/hub/models--adamkarvonen--checkpoints_latentqa_cls_past_lens_addition_gemma-2-9b-it/snapshots/44b5056006a4e14b9bb6fa99a98cf6e2bc86fcdf
+PULL_OK

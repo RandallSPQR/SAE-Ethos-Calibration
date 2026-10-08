@@ -99,3 +99,12 @@ from 0.65:
 - **Cap:** self-stop and Mac watchdog at **8.0 h → $12.72**. The guard closes 30 minutes before, so blocks up to ~30 %
   slower than estimated still complete; slower than that, the run is cut at a block boundary and reports what it has.
 - **Close-out:** terminate on DONE or STOP, confirm 0 pods, report STOP 2 with the cost.
+
+## 7. Attempt 1 (2026-10-08, 18:18–19:06 UTC, ≈ $1.43): STOP, discarded; bug fix, design unchanged
+
+Attempt 1 STOPped in block 0: the two lanes shared episode uids, so one lane's sandbox cleanup killed the other's
+processes and deleted its `/tmp` tree (harness change 2026-10-08.4). Its 68 rows may carry outcomes damaged by the other
+lane's reaps, so **attempt 1 is discarded whole and enters no analysis.** The pod's automatic analysis ran on those
+68 rows before the pod was terminated; it is kept in `results/item9_2026-10-08_attempt1/` for the record only. The fix
+gives each lane its own uid range; the registered design, lists, analysis and verdicts are unchanged. A relaunch is a
+fresh run of the same registration (rules 2026-10-08.2) on Randall's go.

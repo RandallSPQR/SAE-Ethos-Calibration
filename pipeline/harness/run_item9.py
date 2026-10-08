@@ -12,7 +12,9 @@ harness.run_harness does. 80 x 4 = 320 per arm, 1,280 in all.
 
 Throughput: the harness runs a cell's continuations concurrently (run.yaml harness.concurrency 8), so a 4-continuation
 cell costs nearly what an 8-continuation cell does. Two cells therefore run side by side ("lanes"), keeping 8 sequences
-on vLLM as in items 7 and 8. Each lane writes its own directory and keeps its own tally (merged at the end).
+on vLLM as in items 7 and 8. Each lane writes its own directory, keeps its own tally (merged at the end) and uses its own
+range of sandbox slots, hence episode uids (lane_slot_base): sandbox cleanup reaps and sweeps per uid, so lanes sharing
+uids kill each other's processes and delete each other's /tmp trees (attempt 1 STOPped on exactly that).
 
 Deadline guard: the run proceeds in blocks of 8 conditions (each block holds every paraphrase once and every arm in every
 condition: 32 cells). A block starts only if it is projected to end before deadline - margin; the projection is the mean
@@ -42,6 +44,11 @@ POSITION = "turn_close"
 ARMS = ("neutral", "pc", "grader", "pressure")
 SCENARIO, N = "impossible_test", 4
 N_CONDITIONS, N_SEEDS, N_PARA, BLOCK, LANES = 80, 40, 8, 8, 2
+SLOT_STRIDE = 16               # lane k uses sandbox slots 16k .. 16k + N (prefix + N continuations); N + 1 <= 16
+
+
+def lane_slot_base(lane):
+    return lane * SLOT_STRIDE
 # item 8: ~151 s per 8-continuation cell (all arms); a 4-continuation cell at ~0.8 of that, two lanes in parallel
 PRIOR_BLOCK_S = BLOCK * len(ARMS) * 0.8 * 151.0 / LANES
 
@@ -166,7 +173,7 @@ def main():
         t0 = time.time()
         run_scenario_seed(client, spec, sd, sm, samp, N, str(rp.generation / SCENARIO / f"lane{lane}" / tag), ledger,
                           run_id, tallies[lane], hcfg=hcfg, variants={"full"},
-                          insert={"text": p[arm][i], "position": POSITION}, row_extra=extra)
+                          insert={"text": p[arm][i], "position": POSITION}, row_extra=extra, slot_base=lane_slot_base(lane))
         with log_lock, open(log, "a") as fh:
             fh.write(json.dumps({"tag": tag, "lane": lane, "seconds": time.time() - t0, "t": time.time()}) + "\n")
 

@@ -77,6 +77,40 @@ def run():
     st2 = [json.loads(f.read_text()) for f in rr2.glob("*/item9_status.json")]
     res[f"deadline guard: 10 usable minutes < the prior block estimate ({R.PRIOR_BLOCK_S:.0f} s): cut before block 0"] = (
         o2.returncode == 0 and st2 and st2[0]["status"].startswith("cut before block 0") and st2[0]["cells"] == 0)
+    # lanes must not share episode uids (attempt 1): record the slot of every Sandbox the real harness path builds
+    import harness.run_harness as RH
+    real, slots = RH.Sandbox, collections.defaultdict(set)
+
+    class Rec(real):
+        def __init__(self, *args, slot=0, **kw):
+            slots[threading.current_thread().name].add(slot); super().__init__(*args, slot=slot, **kw)
+    import threading
+    RH.Sandbox = Rec
+    try:
+        argv = sys.argv
+        sys.argv = ["run_item9", "--mock", "--allow-unsafe", "--build", str(SCEN / "build"), "--runs-root",
+                    str(Path(tempfile.mkdtemp())), "--max-blocks", "1"]
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            R.main()
+    finally:
+        RH.Sandbox, sys.argv = real, argv
+    used = set().union(*slots.values()) if slots else set()
+    res["lanes use disjoint sandbox slots: the mock block's prefixes used exactly slot 0 (lane 0) and 16 (lane 1)"] = (
+        used == {0, 16} and [R.lane_slot_base(k) for k in range(R.LANES)] == [0, 16] and R.SLOT_STRIDE >= R.N + 1)
+    # continuations too (the mock model never passes the prefix; the scripted agent does): slot_base 16, n 4 -> 16..20
+    slots.clear(); RH.Sandbox = Rec
+    try:
+        out = Path(tempfile.mkdtemp())
+        RH.run_scenario_seed(Capture(), spec, seed_dir, manifest, run_cfg["sampling"], 4, str(out), str(out / "l.jsonl"), "t9s",
+                             {"generated": 0, "excluded_prefix": [], "reach": {}}, hcfg={"concurrency": 4}, variants={"full"},
+                             insert={"text": p["pc"][0], "position": R.POSITION}, row_extra={"item9": {"arm": "pc"}},
+                             slot_base=R.lane_slot_base(1))
+    finally:
+        RH.Sandbox = real
+    used = set().union(*slots.values()) if slots else set()
+    res["slot_base reaches prefix and continuations: lane 1 with 4 continuations uses slots 16-20 only"] = (
+        used == {16, 17, 18, 19, 20})
     t = R.merge_tallies([{"generated": 3, "excluded_prefix": [1], "reach": {"a": {"attempted": 2, "reached": 1, "reached_no_nudge": 1}}},
                          {"generated": 4, "excluded_prefix": [], "reach": {"a": {"attempted": 1, "reached": 1, "reached_no_nudge": 0}}}])
     res["lane tallies merge"] = t["generated"] == 7 and len(t["excluded_prefix"]) == 1 and t["reach"]["a"] == {

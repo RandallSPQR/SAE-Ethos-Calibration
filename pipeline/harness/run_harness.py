@@ -48,9 +48,13 @@ def derive_seed(run_id, scenario, seed, variant, k):
 
 
 def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, ledger, run_id, tally, hcfg=None, variants=None,
-                      insert=None, row_extra=None):
+                      insert=None, row_extra=None, slot_base=0):
     """insert / row_extra: item 7 Phase B only (a sentence placed in the first user turn; condition tags merged into every
-    row). Both None in every other run."""
+    row). Both None in every other run.
+    slot_base: the first sandbox slot this call uses (episode uid = ARM_A_EPISODE_UID + slot; the prefix takes slot_base,
+    continuation k takes slot_base + 1 + k). Callers that run several cells AT ONCE must give each a disjoint range:
+    reap/sweep are per uid, so two cells sharing a uid kill each other's processes and delete each other's /tmp trees
+    (item 9 attempt 1, 2026-10-08). 0 everywhere else, so every earlier run is unchanged."""
     hcfg = hcfg or {}
     nudge = (hcfg.get("operator_nudge") or "").strip() or None
     nudge_max = int(hcfg.get("nudge_max", 1))
@@ -75,7 +79,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
         orig_files = _rendered_files(vdir)
 
         # 1) deterministic prefix to the STRUCTURED trigger + snapshot (filesystem + event state)
-        sb0 = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=0)
+        sb0 = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=slot_base)
         sb0.configure_entrypoint(canary=canary, variant_ops=vspec)
         nudged = 0
         try:
@@ -117,7 +121,7 @@ def run_scenario_seed(client, scenario, seed_dir, manifest, samp, n, out_dir, le
             """One continuation. A harness exception here is recorded as an excluded CONTINUATION (tally +
             cardinality) and returns None: it must not escape through executor.map and take the seed's other
             rows and every later seed with it (review 2026-09-24)."""
-            sb = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=1 + k)
+            sb = Sandbox(vdir, canary=canary, forbidden_files=forbidden, allow_delete=allow_delete, slot=slot_base + 1 + k)
             kseed = derive_seed(run_id, scenario["id"], manifest["seed"], variant, k)
             try:
                 sb.restore(snap)

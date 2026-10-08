@@ -1,0 +1,31 @@
+{
+ "pod": "mv51cqg1q1bap2",
+ "at": "2026-09-30T03:29:25+00:00",
+ "why": "run done (/workspace/27b/cal/runs/run_bb664336cb2d/DONE) and the 2.0-min copy-back window passed",
+ "config": {
+  "deadline_utc": "2026-09-30T08:19:21+00:00",
+  "started": 1790738904.98491,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 2.0,
+  "watch": [
+   "/workspace/27b/cal/runs/run_bb664336cb2d",
+   "/workspace/27b/ladder"
+  ],
+  "done_file": "/workspace/27b/cal/runs/run_bb664336cb2d/DONE",
+  "note": "replay done; copied back",
+  "time_scale": 1.0,
+  "last_call": 1790738904.9856458,
+  "last_call_why": "start"
+ },
+ "attempts": [
+  {
+   "runpodctl": 1,
+   "out": "Runpod config file not found, please run `runpodctl config` to create it\nAPI key not found\nError: API key not found\n"
+  },
+  {
+   "https://api.runpod.io/v2/pods/mv51cqg1q1bap2": 204
+  }
+ ],
+ "ok": true
+}

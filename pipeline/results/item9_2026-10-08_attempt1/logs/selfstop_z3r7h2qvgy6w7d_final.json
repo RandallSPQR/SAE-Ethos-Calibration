@@ -1,0 +1,31 @@
+{
+ "pod": "z3r7h2qvgy6w7d",
+ "at": "2026-09-29T22:31:04+00:00",
+ "why": "run done (/workspace/27b/ladder/DONE) and the 2.0-min copy-back window passed",
+ "config": {
+  "deadline_utc": "2026-09-30T01:25:00+00:00",
+  "started": 1790720944.1891024,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 2.0,
+  "watch": [
+   "/workspace/27b/ladder",
+   "/workspace/hf/hub"
+  ],
+  "done_file": "/workspace/27b/ladder/DONE",
+  "note": "27B serving ladder z3r7h2qvgy6w7d: live self-terminate test",
+  "time_scale": 1.0,
+  "last_call": 1790720944.1894763,
+  "last_call_why": "start"
+ },
+ "attempts": [
+  {
+   "runpodctl": 1,
+   "out": "API key not found\nError: API key not found\n"
+  },
+  {
+   "https://api.runpod.io/v2/pods/z3r7h2qvgy6w7d": 204
+  }
+ ],
+ "ok": true
+}

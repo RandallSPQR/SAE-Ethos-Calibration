@@ -1,0 +1,34 @@
+TF32 matmuls ENABLED (T1_TF32=1)
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 502, in <module>
+    main()
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 498, in main
+    stage_nnsight(a.out, a.gates)
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 174, in stage_nnsight
+    lm = load_target("target")
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/pipeline/replay/modelload.py", line 59, in load_target
+    lm = LanguageModel(hf_id, **kw)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 78, in __init__
+    super().__init__(*args, automodel=automodel, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/transformers.py", line 49, in __init__
+    super().__init__(*args, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/huggingface.py", line 53, in __init__
+    super().__init__(repo_id, *args, revision=revision, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/mixins/meta.py", line 53, in __init__
+    super().__init__(*args, rename=rename, **kwargs)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/mixins/loadable.py", line 32, in __init__
+    model = self._load(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 149, in _load
+    self._check_is_text_only(repo_id)
+  File "/workspace/venv/lib/python3.12/site-packages/nnsight/modeling/language.py", line 110, in _check_is_text_only
+    raise ValueError(
+ValueError: 'google/gemma-3-27b-it' (gemma3) is registered with AutoModelForImageTextToText — it's a multimodal model so LanguageModel(...) can't load it. Use VisionLanguageModel instead:
+
+    from nnsight import VisionLanguageModel
+    model = VisionLanguageModel('google/gemma-3-27b-it', ...)

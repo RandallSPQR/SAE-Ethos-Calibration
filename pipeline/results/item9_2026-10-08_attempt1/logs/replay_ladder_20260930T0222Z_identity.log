@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 502, in <module>
+    main()
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 496, in main
+    stage_identity(a.out)
+  File "/workspace/pipeline/calibrate/t1_ladder.py", line 375, in stage_identity
+    z = np.load(feat / "identity_input.npz")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/lib/_npyio_impl.py", line 459, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/27b/ladder/t1/features/identity_input.npz'

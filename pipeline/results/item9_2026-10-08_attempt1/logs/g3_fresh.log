@@ -1,0 +1,10 @@
+2026-09-30T13:39:33+00:00 WATCH ['/workspace/27b/t3/g3_fresh'] done_file=/workspace/27b/t3/g3_fresh/DONE stall=45.0 min
+  replayed 150 (1.44 s/continuation)
+instrument checks on 48 real spans ...
+replay complete: 160/160 continuations -> features=/workspace/27b/t3/g3_fresh/features, replayed metadata -> /workspace/27b/t3/g3_fresh/replay
+[PASS] G2_sae_health: rules=2026-09-30.5, chosen_hook=blocks.40.hook_resid_post, var_explained=0.908, l0=59.3, published_l0=60, matches_published=True, decoy_ve_worst_gap=0.004, decoy_margin_min=0.1, decoys_rejected=True, decoy_rejected_by={'layers.40.hidden_states_only': 've', 'layers.40.mlp_output': 've', 'layers.40.attn_output': 've', 'layers.40.input_resid': 'identity (min cos 0.9901)'}, identity_ok=True, jumprelu_ok=True, health_ok=True, ve_scale_sensitivity={'x0.8': {'ve': 0.876, 'l0': 45.1}, 'x1.2': {'ve': 0.856, 'l0': 86.6}}, ve_detects_scale=False, identity_min_cos=0.9999953508377075, identity_max_norm_rel=0.0022271592170000076, identity_dtype=torch.float32, per_doc_l0_median=59.6, per_doc_l0_range=[54.1, 65.4], fvu_unpublished=True
+[FAIL] G3_feature_known_answer: rules=2026-09-30.5, construction=two_anchor, threshold=0.8, json_structure={'feature': 342, 'auroc': 0.947, 'ok': True}, code={'feature': 7437, 'auroc': 0.639, 'ok': False}
+
+full: 1/2 gates passed.
+BLOCKED by: G3_feature_known_answer
+== g3 fresh done

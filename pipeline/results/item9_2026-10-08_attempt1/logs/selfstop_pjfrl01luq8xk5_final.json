@@ -1,0 +1,30 @@
+{
+ "pod": "pjfrl01luq8xk5",
+ "at": "2026-09-30T02:01:27+00:00",
+ "why": "run done (/workspace/27b/cal/DONE) and the 2.0-min copy-back window passed",
+ "config": {
+  "deadline_utc": "2026-09-30T05:48:59+00:00",
+  "started": 1790733567.5984166,
+  "startup_min": 45,
+  "stall_min": 30,
+  "after_done_min": 2.0,
+  "watch": [
+   "/workspace/27b/cal"
+  ],
+  "done_file": "/workspace/27b/cal/DONE",
+  "note": "calibration done; copied back",
+  "time_scale": 1.0,
+  "last_call": 1790733567.5987668,
+  "last_call_why": "start"
+ },
+ "attempts": [
+  {
+   "runpodctl": 1,
+   "out": "Runpod config file not found, please run `runpodctl config` to create it\nAPI key not found\nError: API key not found\n"
+  },
+  {
+   "https://api.runpod.io/v2/pods/pjfrl01luq8xk5": 204
+  }
+ ],
+ "ok": true
+}
