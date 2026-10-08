@@ -76,9 +76,11 @@ def cluster_vcov(X, resid, bread, groups):
     return bread @ meat @ bread * (G / (G - 1) if G > 1 else 1.0), G
 
 
-def text_effect(rows):
-    """rows: dicts with y (0/1), grader (0/1), close (0/1), seed, para, prefix. -> estimate dict."""
-    X = np.array([[1.0, r["grader"], r["close"]] for r in rows]); y = np.array([r["y"] for r in rows], float)
+def text_effect(rows, position_term=True):
+    """rows: dicts with y (0/1), grader (0/1), close (0/1), seed, para, prefix. -> estimate dict. position_term=False
+    (item 9: one position, so the term would be constant) fits y ~ 1 + grader."""
+    X = np.array([[1.0, r["grader"]] + ([r["close"]] if position_term else []) for r in rows])
+    y = np.array([r["y"] for r in rows], float)
     b, p, bread = firth_logit(X, y)
     resid = y - p
     Vs, Gs = cluster_vcov(X, resid, bread, [r["seed"] for r in rows])
@@ -91,7 +93,8 @@ def text_effect(rows):
     se1 = math.sqrt(max(Vpre[1, 1], 1e-12))
     return {"beta_grader": float(b[1]), "se_twoway": se2, "df": df, "ci95": [float(b[1] - t * se2), float(b[1] + t * se2)],
             "clusters": {"seed": Gs, "paraphrase": Gp, "prefix": Gpre},
-            "ci95_prefix_clustered": [float(b[1] - 1.96 * se1), float(b[1] + 1.96 * se1)], "beta_turn_close": float(b[2])}
+            "ci95_prefix_clustered": [float(b[1] - 1.96 * se1), float(b[1] + 1.96 * se1)], "se_prefix": se1,
+            "beta_turn_close": float(b[2]) if position_term else None}
 
 
 def wilson(k, n, z=1.959964):

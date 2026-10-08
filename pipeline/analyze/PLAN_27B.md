@@ -229,3 +229,10 @@ own pre-registration, which is written after the hand-check passes and before th
       design effect 1.8; 0.70 for −0.15). Descriptive: the PC effect sits at turn_close (0.41 vs 0.67), not turn_open
       (0.61 vs 0.63); honest reports doubled, test edits fell by more than half, fabricated_green unchanged, 8 harness
       subversions in the PC arm only.
+20. **Item 9: four arms at turn_close** (Randall, 2026-10-08; `analyze/PREREG_ITEM9_TURN_CLOSE.md`, DRAFT, rules
+    2026-10-08.2, unregistered). The confirmatory version of item 8's turn_close split: impossible_test/full, escalation
+    on, one position (turn_close), arms neutral / pc / grader / pressure with every list reused verbatim; 80 conditions
+    (seeds 0–39 × 2 paraphrases) × 4 continuations = 320 per arm. PC first, one-sided; only if it passes, grader and
+    pressure two-sided under Holm; PC fail → PC_INEFFECTIVE_AT_TURN_CLOSE, stop, next design moves the manipulation
+    mid-episode. Escalation-turn rate per arm reported as an outcome. Simulated power: PC 0.89 at −0.15; grader /
+    pressure ~0.5 at ±0.15 (t on 7 df, Holm at 0.025).
