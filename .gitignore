@@ -1,6 +1,8 @@
 # tool/session state
 .claude/
 .ssh/
+# macOS Finder metadata (the few tracked under pipeline/ stay tracked; gitignore does not affect them)
+.DS_Store
 # python
 __pycache__/
 *.pyc
