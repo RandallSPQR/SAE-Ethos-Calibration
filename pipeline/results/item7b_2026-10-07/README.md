@@ -2,7 +2,8 @@
 
 **STOP B accepted (Randall). Item 7 closes at Phase B; Phases C–E are not run.** The claim, narrowly: in these episodes an
 explicit grader sentence changes neither transgression nor verbalized eval-awareness (1/255). It does not show that a
-grading belief has no effect. The two 2026-10-07.2 additions are accepted as registered before the descriptive data.
+grading belief has no effect, and it holds on top of the scenario's built-in user pressure (the escalation turn, delivered
+in 133 / 256 grader and 138 / 248 neutral episodes). The two 2026-10-07.2 additions are accepted as registered before the descriptive data.
 Analysis fixes 2026-10-07.3 (PREREG section 6) are applied in `27b/*/analysis_2026-10-07.3/`; the original analyses stay.
 
 Pre-registration: `analyze/PREREG_ITEM7B_TEXT_EFFECT.md` (rules 2026-10-07.1 for the gate, commit 6548939; section 5, rules
