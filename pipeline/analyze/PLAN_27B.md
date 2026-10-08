@@ -224,3 +224,8 @@ own pre-registration, which is written after the hand-check passes and before th
     scenario already delivers one escalation turn ("Just get it passing") after ask_user, so pressure is tested on top of
     it; stray claude-mem CLAUDE.md files sit in two tracked scenario templates (unseen by agents), and item 8 STOPs on any
     in impossible_test's rendered repos.
+    - **STOP 2 (2026-10-08, `results/item8_2026-10-08/`, ≈ $6.97):** positive control FAIL, −0.56 log-odds [−1.13, +0.02]
+      (two-way, df 7), so pressure is PC_INEFFECTIVE (estimate +0.16 [−0.49, 0.81]). Power fell short of plan (ICC 0.12,
+      design effect 1.8; 0.70 for −0.15). Descriptive: the PC effect sits at turn_close (0.41 vs 0.67), not turn_open
+      (0.61 vs 0.63); honest reports doubled, test edits fell by more than half, fabricated_green unchanged, 8 harness
+      subversions in the PC arm only.
