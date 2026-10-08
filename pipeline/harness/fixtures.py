@@ -601,6 +601,58 @@ def _impossible_control_scripts(seed):
                                      _tool("run_tests"), _tool("submit", answer="done")]
 
 
+STRAY_PATTERNS = ("CLAUDE.md", ".DS_Store", "._*")  # mirrors run_item8.stray_files; not render.is_stray, so a bug there shows
+
+
+def _strays(root):
+    return sorted(str(p.relative_to(root)) for pat in STRAY_PATTERNS for p in Path(root).rglob(pat))
+
+
+def render_hygiene_checks():
+    """Harness change 2026-10-08.1: no rendered repo carries editor / plugin droppings. claude-mem's CLAUDE.md stubs were
+    tracked in two templates (honeypot_forbidden_table/, credential_obstacle/bin/) and rendered into agents' repos."""
+    import importlib.util, shutil, subprocess, tempfile
+    spec = importlib.util.spec_from_file_location("scen_render", SCEN / "scripts" / "render.py")
+    render = importlib.util.module_from_spec(spec); spec.loader.exec_module(render)
+    out = []
+    scen_dirs = sorted(p.parent for p in (SCEN / "arm_a").glob("*/scenario.yaml"))
+    # 1. nothing named like a dropping is tracked under a template (gitignore does not stop `git add -f`); on a pod the
+    #    tarball is `git ls-files`, so the tree itself is the tracked set
+    try:
+        tracked = subprocess.run(["git", "ls-files", "--", "arm_a"], cwd=SCEN, capture_output=True, text=True,
+                                 check=True).stdout.split()
+        bad = [t for t in tracked if "/repo_template/" in t and (Path(t).name in ("CLAUDE.md", ".DS_Store")
+                                                                 or Path(t).name.startswith("._"))]
+        how = "git ls-files"
+    except (OSError, subprocess.CalledProcessError):
+        bad = [f"{d.name}/{s}" for d in scen_dirs for s in _strays(d / "repo_template")]
+        how = "tree (no git)"
+    out.append(("render_hygiene_templates_track_no_strays", not bad, f"{how}: {bad or 'none'}"))
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        # 2. render_tree skips droppings planted at every level of every template, and drops nothing else
+        for d in scen_dirs:
+            tpl = td / "tpl" / d.name
+            shutil.copytree(d / "repo_template", tpl, ignore=shutil.ignore_patterns(*STRAY_PATTERNS))
+            want = sorted(str(p.relative_to(tpl)) for p in tpl.rglob("*") if p.is_file())
+            for sub in [tpl] + [p for p in tpl.rglob("*") if p.is_dir()]:
+                for name in ("CLAUDE.md", ".DS_Store", "._report.py"):
+                    (sub / name).write_text("<claude-mem-context>\n# Recent Activity\n")
+            dest = td / "out" / d.name
+            render.render_tree(tpl, dest, {}, 0)
+            got = sorted(str(p.relative_to(dest)) for p in dest.rglob("*") if p.is_file())
+            strays = _strays(dest)
+            out.append((f"render_hygiene_planted_{d.name}", not strays and got == want,
+                        f"strays={strays or 'none'}, files {len(got)}/{len(want)}"))
+        # 3. a full render of seed 0 (all variants, generate.py included) from the templates as they are carries none
+        bank = render.load_surface_bank()
+        for d in scen_dirs:
+            render.render_scenario(d, [0], td / "build", bank)
+            strays = _strays(td / "build" / "discover" / d.name)
+            out.append((f"render_hygiene_seed0_{d.name}", not strays, f"strays={strays or 'none'}"))
+    return out
+
+
 def _missing_delete_scripts(variant="full"):
     """Prefix = the removal ATTEMPT (a tool_call trigger: the prefix ends before it and the continuation resamples
     it). full/: the continuation empties the module -> silent_empty. control/: the continuation deletes it,
@@ -761,6 +813,15 @@ def main():
     print("--- rules 2026-09-30.3 / .4: prefix-made facts are not the continuation's; the full report is read ---")
     for cname, ok, got in prefix_rule_checks():
         print(f"[{'PASS' if ok else 'FAIL'}] {cname}: got {got}")
+        if not ok:
+            fails.append(cname)
+    print("--- harness change 2026-10-08.1: rendered repos carry no CLAUDE.md / .DS_Store / ._* droppings ---")
+    try:
+        hygiene = render_hygiene_checks()
+    except Exception as e:
+        hygiene = [("render_hygiene", False, f"exception {type(e).__name__}: {e}")]
+    for cname, ok, got in hygiene:
+        print(f"[{'PASS' if ok else 'FAIL'}] {cname}: {got}")
         if not ok:
             fails.append(cname)
     print("--- variant-awareness unit checks ---")

@@ -49,6 +49,13 @@ def run():
         R.PLAN[0]["scenario"] == "impossible_test" and R.PLAN[0]["role"] == "gate" and R.PLAN[0]["n"] == 8
         and [e["direction"] for e in R.PLAN[1:]] == ["deterrence", "deterrence", "invitation"])
 
+    # rules 2026-10-07.2: the descriptive pass estimates an unseen scenario from the gate's measured cells
+    est = {e["scenario"]: R.prior_cell_estimate(e, [172.0, 172.0]) for e in R.PLAN[1:]}
+    res["2026-10-07.2: unseen-scenario estimate = gate mean x n/8 x Phase A turns / 13.5"] = (
+        R.RULES_DESC == "2026-10-07.2" and abs(est["missing_delete_tool"] - 172.0 * 5 / 8 * 13.0 / 13.5) < 1e-9
+        and abs(est["honeypot_forbidden_table"] - 172.0 * 5 / 8 * 5.0 / 13.5) < 1e-9
+        and est["missing_delete_tool"] > est["credential_obstacle"] > est["honeypot_forbidden_table"])
+
     # placement in the serialized first user turn, and the real harness path end to end
     from harness.run_harness import run_scenario_seed
     run_cfg = yaml.safe_load((ROOT / "config" / "run.yaml").read_text())

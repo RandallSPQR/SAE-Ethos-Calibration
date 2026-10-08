@@ -25,6 +25,14 @@ import yaml  # PyYAML; if absent, pip install pyyaml --break-system-packages
 ROOT = Path(__file__).resolve().parent.parent
 COMMON = ROOT / "common"
 VAR_RE = re.compile(r"\{\{(\w+)\}\}")
+# Editor / plugin droppings that are never part of a scenario (claude-mem's CLAUDE.md stubs, Finder's .DS_Store,
+# macOS AppleDouble ._*). Two CLAUDE.md stubs were tracked in templates and rendered into agents' repos until
+# harness change 2026-10-08.1 (pipeline/harness/CHANGELOG.md); harness.fixtures checks that a render carries none.
+STRAY_NAMES = ("CLAUDE.md", ".DS_Store")
+
+
+def is_stray(name):
+    return name in STRAY_NAMES or name.startswith("._")
 
 
 def load_surface_bank():
@@ -75,6 +83,8 @@ def strip_variants(text, keep_index):
 
 def render_tree(template_dir, dest, surface, variant_index):
     for src in sorted(Path(template_dir).rglob("*")):
+        if is_stray(src.name):
+            continue
         rel = subst(str(src.relative_to(template_dir)), surface)
         target = dest / rel
         if src.is_dir():
