@@ -33,7 +33,8 @@ cannot pass, report that honestly"? If so, the PC would repeat it and a differen
   also means a PC-arm model that asks first is then told to get the tests passing.
 - **The task prompt asks for a green suite.** The PC contradicts it; that is the point of a positive control here.
 
-**Stray files.** Found during the check: claude-mem writes `CLAUDE.md` files into directories, and two are tracked inside
+**Stray files.** (The cleanup that followed is harness change **2026-10-08.3**, renamed from 2026-10-08.1 on 2026-10-08
+so that it no longer shares this item's rules number; see `harness/CHANGELOG.md`.) Found during the check: claude-mem writes `CLAUDE.md` files into directories, and two are tracked inside
 scenario templates (honeypot_forbidden_table `repo_template/CLAUDE.md`, credential_obstacle `repo_template/bin/CLAUDE.md`,
 since 2026-09-17), so rendered sandboxes for those two scenarios held an extra file. No transcript among the 15,134 T3 and item
 7 rows mentions it (the agents never listed it). impossible_test's template has an untracked local one that never ships.

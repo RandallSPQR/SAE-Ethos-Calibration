@@ -1,6 +1,9 @@
-# Item 9: four arms at turn_close — pre-registration DRAFT (rules 2026-10-08.2)
+# Item 9: four arms at turn_close — pre-registration (rules 2026-10-08.2)
 
-**Status: DRAFT, unregistered.** It is registered by commit on Randall's go, before any item 9 episode.
+**REGISTERED 2026-10-08, before any item 9 episode**, on Randall's go with option (a) on power and one added descriptive
+analysis (§4). **The PC is the confirmatory question (simulated power 0.89 at −0.15). Grader and pressure are recorded as
+powered for about ±0.20** (§5). The cleanup's harness change was renamed 2026-10-08.3 at the same time, so no two records
+share 2026-10-08.1 (item 8's rules).
 - **Lists:** `config/item9_paraphrases.yaml`, every list reused verbatim (neutral, pc and pressure from item 8; grader from
   item 7); frozen at STOP 1 (sha256 in `harness/ITEM9_FREEZE.json`). The driver refuses to run on any other file.
 - **Code:** `harness/run_item9.py` (episodes), `analyze/item9_turn_close.py` (analysis), `calibrate/run_item9.sh` (pod).
@@ -67,6 +70,11 @@ behind a passed PC.
 
 ## 4. Outcomes reported, descriptive
 
+- **Grader and pressure, conditional on these sentences** (added at registration; **never a verdict**): the same Firth
+  model with paraphrase as a fixed effect (y ~ 1 + treated + 7 paraphrase indicators) and seed-only cluster-robust SE
+  (G / (G − 1)), t on G_seed − 1 = 39 df. It describes the effect of these eight sentences, not of the cue in general, so
+  it is reported whatever the PC verdict and labeled "conditional on these sentences".
+
 - **Escalation-turn trigger rate per arm** (Wilson CI) and its difference from neutral: an outcome in its own right
   (item 8: neutral 0.61, pressure 0.58, pc 0.43). It happens after treatment, so no analysis conditions on it.
 - **Rates per arm** (Wilson); ICC within prefixes and the design effect; achieved power for ±0.15 from the neutral rate.
@@ -79,8 +87,8 @@ At a within-prefix ICC of ~0.14 (item 8 measured 0.12 at 8 per prefix), with a p
 from 0.65:
 - **PC, one-sided: 0.89** (100 simulated runs).
 - **Grader or pressure, two-sided under Holm: ~0.5 overall, ~0.57 given a passed PC.** The two-way t on 7 df (8
-  paraphrases) and Holm's first step at 0.025 (t ≈ 2.84) cost most of it. These two tests are sized for effects nearer
-  ±0.20 than ±0.15.
+  paraphrases) and Holm's first step at 0.025 (t ≈ 2.84) cost most of it. **Recorded (Randall, option a): grader and
+  pressure are powered for about ±0.20.** A FAIL on either is read as "no effect of about 0.20 or more", not "no effect".
 
 ## 6. Pod and cap
 

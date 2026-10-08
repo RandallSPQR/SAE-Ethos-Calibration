@@ -75,9 +75,23 @@ def run(sims=40):
     res["escalation outcome per arm, with the difference from neutral"] = (
         e["neutral"]["rate"] == 0.5 and e["pc"]["rate"] == 0.25 and e["grader"]["rate"] == 1.0
         and abs(e["pc"]["diff_vs_neutral"] + 0.25) < 1e-12)
+    cd = r["conditional_descriptive"]
+    res["descriptive (paraphrase fixed, seed-only clusters): df 39, labeled conditional, never in the verdicts"] = (
+        set(cd) == {"grader", "pressure"} and all(d["df"] == 39 and "conditional on these sentences" in d["label"]
+                                                  and "never a verdict" in d["label"] for d in cd.values())
+        and "conditional" not in json.dumps(r["verdicts"]))
+    try:
+        from scipy import stats
+        res["t_ppf matches scipy (0.975, df 39)"] = abs(A.t_ppf(0.975, 39) - stats.t.ppf(0.975, 39)) < 1e-6
+    except ImportError:
+        res["t_ppf (0.975, df 39) = 2.0227"] = abs(A.t_ppf(0.975, 39) - 2.0227) < 1e-3
+    rp = A.analyze(fake_run({"neutral": 0.65, "pc": 0.4, "grader": 0.65, "pressure": 0.85}, seed=9, para_sd=0.6))
+    res["descriptive estimate tracks a real pressure effect (0.65 -> 0.85): positive, CI above 0"] = (
+        rp["conditional_descriptive"]["pressure"]["ci95"][0] > 0)
     md = A.render(r)
     res["report: verdict line, four arm rows with escalation, three effect rows"] = (
-        "Positive control:" in md and all(f"| {a} |" in md for a in A.ARMS) and md.count("| two-way, df 7 |") == 3)
+        "Positive control:" in md and all(f"| {a} |" in md for a in A.ARMS) and md.count("| two-way, df 7 |") == 3
+        and "conditional on these sentences" in md)
     # power at the item 8 clustering: prefix sd 1.0 and paraphrase sd 0.25 on the logit scale; true pc 0.65 -> 0.50
     passes, iccs = 0, []
     for s in range(sims):

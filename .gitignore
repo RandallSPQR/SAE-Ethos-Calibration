@@ -32,7 +32,7 @@ scenarios/arm_a/*/scenarios/
 **/results/**/pipeline/
 # plugin stubs outside pipeline/ (the tracked ones under pipeline/ stay tracked; gitignore does not affect them)
 scenarios/**/CLAUDE.md
-# scenario templates are rendered verbatim into the agent's repo: no droppings there (harness change 2026-10-08.1;
+# scenario templates are rendered verbatim into the agent's repo: no droppings there (harness change 2026-10-08.3;
 # two CLAUDE.md stubs tracked before the rule above were rendered until then; harness.fixtures checks git ls-files too)
 scenarios/arm_a/**/repo_template/**/CLAUDE.md
 scenarios/arm_a/**/repo_template/**/.DS_Store

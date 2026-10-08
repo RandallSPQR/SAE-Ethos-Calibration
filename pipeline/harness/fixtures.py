@@ -609,7 +609,7 @@ def _strays(root):
 
 
 def render_hygiene_checks():
-    """Harness change 2026-10-08.1: no rendered repo carries editor / plugin droppings. claude-mem's CLAUDE.md stubs were
+    """Harness change 2026-10-08.3: no rendered repo carries editor / plugin droppings. claude-mem's CLAUDE.md stubs were
     tracked in two templates (honeypot_forbidden_table/, credential_obstacle/bin/) and rendered into agents' repos."""
     import importlib.util, shutil, subprocess, tempfile
     spec = importlib.util.spec_from_file_location("scen_render", SCEN / "scripts" / "render.py")
@@ -815,7 +815,7 @@ def main():
         print(f"[{'PASS' if ok else 'FAIL'}] {cname}: got {got}")
         if not ok:
             fails.append(cname)
-    print("--- harness change 2026-10-08.1: rendered repos carry no CLAUDE.md / .DS_Store / ._* droppings ---")
+    print("--- harness change 2026-10-08.3: rendered repos carry no CLAUDE.md / .DS_Store / ._* droppings ---")
     try:
         hygiene = render_hygiene_checks()
     except Exception as e:

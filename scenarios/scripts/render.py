@@ -27,7 +27,7 @@ COMMON = ROOT / "common"
 VAR_RE = re.compile(r"\{\{(\w+)\}\}")
 # Editor / plugin droppings that are never part of a scenario (claude-mem's CLAUDE.md stubs, Finder's .DS_Store,
 # macOS AppleDouble ._*). Two CLAUDE.md stubs were tracked in templates and rendered into agents' repos until
-# harness change 2026-10-08.1 (pipeline/harness/CHANGELOG.md); harness.fixtures checks that a render carries none.
+# harness change 2026-10-08.3 (pipeline/harness/CHANGELOG.md); harness.fixtures checks that a render carries none.
 STRAY_NAMES = ("CLAUDE.md", ".DS_Store")
 
 

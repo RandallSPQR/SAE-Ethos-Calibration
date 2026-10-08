@@ -5,7 +5,11 @@ tools say back shape every rate. Changes here apply identically to all variants 
 provenance-tracked through the manifest's `git_commit` / `code_hash`. Labeler rules have their own log
 (`LABELER_CHANGELOG.md`); gate rules have `gates/CHANGELOG.md`.
 
-## 2026-10-08.1 — no claude-mem stubs in rendered repos (Randall 2026-10-08; versioned session, no pods, $0)
+## 2026-10-08.3 — no claude-mem stubs in rendered repos (Randall 2026-10-08; versioned session, no pods, $0)
+
+**Renamed from 2026-10-08.1 (Randall, 2026-10-08, at item 9's registration):** item 8's rules are 2026-10-08.1
+(`analyze/PREREG_ITEM8_PRESSURE.md`), so no two records share a number. The change itself is unchanged; commit 0e76aea
+and its merge d7ba0c8 still carry the old number in their messages. Item 9's rules are 2026-10-08.2.
 
 The claude-mem plugin writes placeholder `CLAUDE.md` files (`<claude-mem-context> # Recent Activity … *No recent
 activity*`) beside paths it sees touched. Two were committed inside templates in c146fe3 (2026-09-17) and, since
