@@ -108,3 +108,9 @@ lane's reaps, so **attempt 1 is discarded whole and enters no analysis.** The po
 68 rows before the pod was terminated; it is kept in `results/item9_2026-10-08_attempt1/` for the record only. The fix
 gives each lane its own uid range; the registered design, lists, analysis and verdicts are unchanged. A relaunch is a
 fresh run of the same registration (rules 2026-10-08.2) on Randall's go.
+
+**Attempt 2, first start (2026-10-08 23:25–23:28 UTC, ≈ $0.11): aborted before any episode, by the operator's tooling.**
+The run went into the same out directory as attempt 1, whose DONE file was still on the network volume; the watcher saw it
+before the pod script removed it, and the pod was terminated 3.6 minutes after creation with no episode generated. Fixed in
+`tools/runpod_watch/watch_run.sh` (a DONE older than the watcher's start is ignored); the relaunch writes to a fresh
+directory (`/workspace/27b/item9_run2`). Same registration, same go and the same $12.72 cap for attempt 2.
