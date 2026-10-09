@@ -113,3 +113,7 @@ grader[i] and neutral[i] share a cluster.
 Block 0 completed (36 cells); block 1 STOPped after 24 cells on `Disk quota exceeded` (network volume, 150 GB quota).
 No verdict is read from attempt 1 (`results/item10_2026-10-09_attempt1/`). The relaunch, and whether block 0 is kept,
 are decided by Randall before any further item 10 data.
+
+**Decision (Randall, 2026-10-09, before any further item 10 data):** the network volume was resized from 150 GB to
+200 GB (≈ +$3.50 / month), and item 10 relaunches **fresh and full** (all 11 blocks; attempt 1's block 0 is not used), in a
+fresh out directory (`/workspace/27b/item10_run2`), with its own cap of 9.5 h ≈ $17.0 at $1.79/h.
