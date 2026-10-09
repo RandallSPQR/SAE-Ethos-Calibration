@@ -5,15 +5,17 @@ ONE sentence at the closing line of the first user turn (turn_close), impossible
 (escalation turn on). Lists: 16 NEW grader and 16 NEW neutral sentences (config/item10_paraphrases.yaml), matched by
 index i; plus item 8's positive-control list as a run-level position check.
 
-Blocks b = 0..6, each holding all 16 paraphrase indices once: condition c = 16 b + i (i = 0..15), seed (16 b + i) mod 56,
-grader[i] and neutral[i] on that seed in an order alternating with c. The 112 (seed, i) pairs are distinct (16 x delta is
-never 0 mod 56 for delta < 7), and every seed 0..55 carries 2 paraphrases. Each block also holds 4 PC cells: pc[(4 b + m)
-mod 8] on seed (16 b + 4 m + 2) mod 56, m = 0..3, one after every 4 conditions. 4 continuations per fresh greedy prefix,
-at the T3 settings, as harness.run_harness does. Per arm: grader 112 x 4 = 448, neutral 448, pc 28 x 4 = 112.
+Blocks b = 0..10, each holding all 16 paraphrase indices once: condition c = 16 b + i (i = 0..15), seed (16 b + i) mod 88,
+grader[i] and neutral[i] on that seed in an order alternating with c. The 176 (seed, i) pairs are distinct (16 x delta is
+never 0 mod 88 for delta < 11), and every seed 0..87 carries 2 paraphrases. Blocks 0..6 also hold 4 PC cells each:
+pc[(4 b + m) mod 8] on seed (16 b + 4 m + 2) mod 88, m = 0..3, one after every 4 conditions; blocks 7..10 are grader and
+neutral only (Randall, at registration: the PC stays at 112). 4 continuations per fresh greedy prefix, at the T3 settings,
+as harness.run_harness does. Per arm: grader 176 x 4 = 704, neutral 704, pc 28 x 4 = 112.
 
 Two lanes run cells side by side, each on its own directory, tally and range of sandbox slots (episode uids; harness
-change 2026-10-08.4). Deadline guard: a block (36 cells) starts only if it is projected to end before deadline - margin;
-the projection is this run's mean block time, or item 9's measured cell time (2,318 s per 32 cells) before the first.
+change 2026-10-08.4). Deadline guard: a block (36 or 32 cells) starts only if it is projected to end before deadline -
+margin; the projection is this run's mean seconds per cell times the block's cells, or item 9's measured cell time (2,318 s
+per 32 cells) before the first block.
 
   python -m harness.run_item10 --build ../scenarios/build_item10 --runs-root <dir> [--deadline ...] [--margin-min 30]
       [--require-pinned] [--mock --allow-unsafe] [--max-blocks K]
@@ -39,9 +41,9 @@ PARAPHRASES = ROOT / "config" / "item10_paraphrases.yaml"
 FREEZE = ROOT / "harness" / "ITEM10_FREEZE.json"
 POSITION = "turn_close"
 SCENARIO, N, LANES = "impossible_test", 4, 2
-N_PARA, N_BLOCKS, N_SEEDS, PC_PER_BLOCK, N_PC = 16, 7, 56, 4, 8
-CELLS_PER_BLOCK = 2 * N_PARA + PC_PER_BLOCK
-PRIOR_BLOCK_S = CELLS_PER_BLOCK * 2318.0 / 32          # item 9: 32 cells (4 continuations, 2 lanes) per 2,318 s
+N_PARA, N_BLOCKS, N_SEEDS, PC_PER_BLOCK, PC_BLOCKS, N_PC = 16, 11, 88, 4, 7, 8
+PRIOR_CELL_S = 2318.0 / 32                             # item 9: 32 cells (4 continuations, 2 lanes) per 2,318 s
+PRIOR_BLOCK_S = (2 * N_PARA + PC_PER_BLOCK) * PRIOR_CELL_S
 
 
 def paraphrases():
@@ -61,7 +63,7 @@ def blocks():
             seed = c % N_SEEDS
             order = ("grader", "neutral") if c % 2 == 0 else ("neutral", "grader")
             cells += [(f"c{c:03d}", seed, arm, i) for arm in order]
-            if i % 4 == 3:
+            if i % 4 == 3 and b < PC_BLOCKS:
                 m = i // 4
                 cells.append((f"pc{b}{m}", (16 * b + 4 * m + 2) % N_SEEDS, "pc", (4 * b + m) % N_PC))
         out.append(cells)
@@ -123,7 +125,7 @@ def main():
         iso["hardened"] = (hardened or []) + confine.harden([rp.root])
     manifest["isolation"] = iso
     manifest["item10"] = {"rules": RULES, "paraphrases_sha256": psha, "position": POSITION, "scenario": SCENARIO, "n": N,
-                          "lanes": LANES, "blocks": N_BLOCKS, "cells_per_block": CELLS_PER_BLOCK}
+                          "lanes": LANES, "blocks": N_BLOCKS, "pc_blocks": PC_BLOCKS, "seeds": N_SEEDS}
     rp.manifest.write_text(json.dumps(manifest, indent=2))
     if a.require_pinned:
         assert_pinned(manifest)
@@ -158,7 +160,7 @@ def main():
     bl = blocks()[: a.max_blocks] if a.max_blocks else blocks()
     status, block_secs, done_cells = "complete", [], 0
     for b, cells in enumerate(bl):
-        per = (sum(block_secs) / len(block_secs)) if block_secs else PRIOR_BLOCK_S
+        per = len(cells) * ((sum(block_secs) / done_cells) if done_cells else PRIOR_CELL_S)
         if deadline is not None and time.time() + per > deadline - 60 * a.margin_min:
             status = f"cut before block {b} by the deadline guard"
             print(f"[item10] CUT before block {b} (time guard; est {per:.0f} s/block)", flush=True)

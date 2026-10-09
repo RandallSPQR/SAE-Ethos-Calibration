@@ -42,14 +42,14 @@ def run():
     bl = R.blocks()
     main = [c for b in bl for c in b if c[2] != "pc"]
     pairs = {(c[1], c[3]) for c in main if c[2] == "grader"}
-    res["design: 7 blocks of 36 cells; 112 distinct (seed, i) pairs; seeds 0-55 x 2; each block holds every i once per arm"] = (
-        len(bl) == 7 and all(len(b) == 36 for b in bl) and len(pairs) == 112
-        and collections.Counter(s for s, _ in pairs) == {s: 2 for s in range(56)}
+    res["design: 11 blocks (7 x 36 cells, then 4 x 32); 176 distinct (seed, i) pairs; seeds 0-87 x 2; every i once per arm per block"] = (
+        len(bl) == 11 and [len(b) for b in bl] == [36] * 7 + [32] * 4 and len(pairs) == 176
+        and collections.Counter(s for s, _ in pairs) == {s: 2 for s in range(88)}
         and all(sorted(c[3] for c in b if c[2] == a) == list(range(16)) for b in bl for a in ("grader", "neutral")))
     pcs = [c for b in bl for c in b if c[2] == "pc"]
-    res["pc: 4 cells per block, 28 in all, every pc sentence 3-4 times, seeds in 0-55"] = (
-        len(pcs) == 28 and all(sum(c[2] == "pc" for c in b) == 4 for b in bl)
-        and set(collections.Counter(c[3] for c in pcs).values()) <= {3, 4} and all(0 <= c[1] < 56 for c in pcs))
+    res["pc: 4 cells in each of blocks 0-6, none after; 28 in all, every pc sentence 3-4 times, seeds in 0-87"] = (
+        len(pcs) == 28 and [sum(c[2] == "pc" for c in b) for b in bl] == [4] * 7 + [0] * 4
+        and set(collections.Counter(c[3] for c in pcs).values()) <= {3, 4} and all(0 <= c[1] < 88 for c in pcs))
     from harness.run_harness import run_scenario_seed
     run_cfg = yaml.safe_load((ROOT / "config" / "run.yaml").read_text())
     spec = yaml.safe_load((SCEN / "arm_a" / "impossible_test" / "scenario.yaml").read_text())

@@ -2,7 +2,7 @@
 # ITEM 10 POD (grader vs neutral at turn_close; analyze/PREREG_ITEM10_GRADER.md, rules 2026-10-09.1). One A100 80 GB,
 # Gemma-3-27B-IT served bf16 by vLLM from the profile, the T3 harness. Same order as calibrate/run_item9.sh: self-stop
 # registered first, isolation probe, weight preflight, tokenizer facts + template agreement, the paraphrase length check with
-# the served tokenizer, vLLM, render impossible_test seeds 0-55, harness.run_item10 (stray-file preflight, deadline guard),
+# the served tokenizer, vLLM, render impossible_test seeds 0-87, harness.run_item10 (stray-file preflight, deadline guard),
 # the analysis; DONE starts the copy-back window.
 #   MODEL_PROFILE=gemma-3-27b-it bash calibrate/run_item10.sh <out_dir> <deadline UTC ISO, e.g. 2026-10-08T03:00:00Z>
 set -uo pipefail
@@ -38,7 +38,7 @@ gpu_free || true
 echo "== 1: vLLM ($TARGET_HF_ID, $TARGET_SERVED_DTYPE)"
 vllm_serve "${LOG}_vllm.log" || { touch "$OUT/DONE"; exit 3; }
 rm -rf ../scenarios/build_item10
-(cd ../scenarios && python scripts/render.py --arm a --scenario impossible_test --seeds 0-55 --out build_item10) | tail -2
+(cd ../scenarios && python scripts/render.py --arm a --scenario impossible_test --seeds 0-87 --out build_item10) | tail -2
 echo "== 2: item 10 episodes (deadline $DEADLINE)"
 python -m harness.run_item10 --build ../scenarios/build_item10 --runs-root "$OUT/runs" --require-pinned --deadline "$DEADLINE" 2>&1 | tee "${LOG}_harness.log"
 kill "$VPID" 2>/dev/null; sleep 5; gpu_free || true

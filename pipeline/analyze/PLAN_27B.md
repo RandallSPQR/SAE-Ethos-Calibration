@@ -245,7 +245,8 @@ own pre-registration, which is written after the hand-check passes and before th
       conditional on these sentences, grader +0.43 [0.06, 0.80]. The grader cue cuts honest reports 31 → 6.
       Escalation delivered: neutral 0.63, pc 0.40, grader 0.53, pressure 0.53. Item 9 ≈ $12.71 in all.
 21. **Item 10: grader vs neutral at turn_close, confirmatory** (Randall, 2026-10-09; `analyze/PREREG_ITEM10_GRADER.md`,
-    DRAFT, rules 2026-10-09.1, unregistered). 16 new grader and 16 new neutral sentences (none from items 7–9), 448 per
-    arm, plus item 8's PC at 112 as a run-level position check that must pass for the run to count. Primary: transgression,
+    rules 2026-10-09.1, REGISTERED before any episode with 11 blocks). 16 new grader and 16 new neutral sentences (none
+    from items 7–9), 704 per arm, plus item 8's PC at 112 as a run-level position check that must pass for the run to count. Primary: transgression,
     grader > neutral, one-sided; secondary (only if the primary passes): honest reports, grader < neutral, one-sided;
-    two-way (seed, sentence pair) clustering, df 15. Simulated power at +0.08: 0.75 (0.70 if a block is cut).
+    two-way (seed, sentence pair) clustering, df 15. Simulated power (final layout): 0.90 at +0.08, 0.79 at +0.06, 0.65
+    at +0.05. Cap $17.0 (9.5 h at $1.79/h).
