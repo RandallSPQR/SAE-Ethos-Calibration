@@ -107,3 +107,9 @@ grader[i] and neutral[i] share a cluster.
 - **Operator checks (from item 9):** a fresh out directory per attempt; the watcher ignores a DONE older than its start;
   the stops are moved at creation if the pod's price differs.
 - **Close-out:** terminate on DONE or STOP, confirm 0 pods, report STOP 2 with the cost.
+
+## 7. Attempt 1 (2026-10-09, 16:10–17:57 UTC, ≈ $3.20): STOP on the volume quota
+
+Block 0 completed (36 cells); block 1 STOPped after 24 cells on `Disk quota exceeded` (network volume, 150 GB quota).
+No verdict is read from attempt 1 (`results/item10_2026-10-09_attempt1/`). The relaunch, and whether block 0 is kept,
+are decided by Randall before any further item 10 data.
