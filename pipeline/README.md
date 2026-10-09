@@ -81,7 +81,7 @@ testable now. The T1 order and the "code feature discriminates code vs prose" fi
 
 ```
 pipeline/
-  README.md  pyproject.toml  Makefile
+  README.md  Makefile   (the package metadata is ../pyproject.toml)
   config/    models.yaml  run.yaml
   contracts/ transcript.schema.md  feature_store.schema.md   # the two data contracts everything shares
   harness/   sandbox.py tools.py protocol.py agent_loop.py labeler.py run_harness.py  # REAL Arm-A instrument

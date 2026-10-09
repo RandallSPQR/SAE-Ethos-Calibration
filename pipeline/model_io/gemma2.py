@@ -18,6 +18,14 @@ the mapping is auditable. apply_to_tokenizer() wraps it with the model's special
 GEMMA_TURN = "<start_of_turn>{role}\n{content}<end_of_turn>\n"
 END_OF_TURN = "<end_of_turn>"
 TURN_SUFFIX = END_OF_TURN + "\n"      # what closes a model turn in the serialized string (replay's span excludes it)
+FAMILY = "gemma2"
+GENERATION_PROMPT = "<start_of_turn>model\n"   # what opens the model's turn (the string a generation prompt ends with)
+
+
+def user_turn(text):
+    """One user turn in this family's markup (no <bos>, no generation prompt): for single-turn prompts built outside
+    serialize_messages (replay/oracle.py)."""
+    return GEMMA_TURN.format(role="user", content=text)
 
 
 def to_gemma_turns(messages):

@@ -5,6 +5,10 @@ is read, so every 9B path, hash and manifest is unchanged. Everything that used 
 (the serializer module, stop token ids, the turn suffix, the decoder-layer path, hook names keyed on layer 31, the
 replay dtype/device map/attention, Neuronpedia ids) is read here from the profile, and the parts that a tokenizer
 or a loaded model can contradict are CHECKED against them on the box (check_tokenizer, decoder_layers), never trusted.
+
+MODEL_PROFILE_FILE (an absolute path) takes precedence over MODEL_PROFILE: a package outside this repo ships its own
+profile (for example a Llama-3.1-8B one, with `family:` naming an adapter it registers in model_io), and nothing in
+config/ changes. Unset, behavior is exactly as before.
 """
 from __future__ import annotations
 
@@ -23,10 +27,16 @@ _LEGACY = {"family": "gemma2", "stop_token_ids": [107, 1], "layers_path": "model
 
 
 def profile() -> str | None:
+    f = os.environ.get("MODEL_PROFILE_FILE")
+    if f:
+        return Path(f).stem.removeprefix("models_")
     return os.environ.get("MODEL_PROFILE") or None
 
 
 def models_path() -> Path:
+    f = os.environ.get("MODEL_PROFILE_FILE")
+    if f:
+        return Path(f).expanduser().resolve()
     p = profile()
     return CFG / (f"models_{p}.yaml" if p else "models.yaml")
 
@@ -62,7 +72,8 @@ def _resolved(path: str, role: str) -> dict:
 def models() -> dict:
     f = models_path()
     if not f.exists():
-        raise FileNotFoundError(f"MODEL_PROFILE={profile()!r} names {f.name}, which does not exist")
+        raise FileNotFoundError(f"model profile {f} does not exist (MODEL_PROFILE={os.environ.get('MODEL_PROFILE')!r}, "
+                                f"MODEL_PROFILE_FILE={os.environ.get('MODEL_PROFILE_FILE')!r})")
     return _resolved(str(f), sae_role())
 
 

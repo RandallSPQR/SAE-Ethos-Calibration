@@ -17,7 +17,18 @@ import yaml
 
 CFG = Path(__file__).resolve().parent.parent / "config"
 
-PATCH_PROMPT = "<start_of_turn>user\nDescribe in one short sentence what the text around the word \" X\" is about.<end_of_turn>\n<start_of_turn>model\nThe text is about"
+def _patch_prompt():
+    """The SelfIE patch prompt in the profile family's markup (byte-identical to the former Gemma literal for gemma2/3)."""
+    import modelcfg
+    ser = modelcfg.serializer()
+    return ser.user_turn("Describe in one short sentence what the text around the word \" X\" is about.") + \
+        ser.GENERATION_PROMPT + "The text is about"
+
+
+def __getattr__(name):                                 # PATCH_PROMPT stays importable, now built by the family adapter
+    if name == "PATCH_PROMPT":
+        return _patch_prompt()
+    raise AttributeError(name)
 HEDGES = ("unclear", "nothing", "cannot", "can't", "unknown", "empty", "no text", "not sure", "no information",
           "unable", "placeholder", "missing", "blank", "not possible", "does not", "doesn't")
 
@@ -81,7 +92,9 @@ def _karvonen_prompt(oracle, k, src_layer):
     special = c.get("special_token", " ?")
     prefix = c.get("prefix_template", "Layer: {layer}\n{placeholders} \n").format(
         layer=src_layer, placeholders=special * k)
-    text = f"<start_of_turn>user\n{prefix}{c.get('question', 'What is the text about?')}<end_of_turn>\n<start_of_turn>model\n"
+    import modelcfg
+    ser = modelcfg.serializer()
+    text = ser.user_turn(f"{prefix}{c.get('question', 'What is the text about?')}") + ser.GENERATION_PROMPT
     ids = tok(text, add_special_tokens=True)["input_ids"]
     sid = tok(special, add_special_tokens=False)["input_ids"][-1]
     pos = [i for i, t in enumerate(ids) if t == sid]
@@ -136,7 +149,7 @@ def _explain_karvonen(oracle, vecs, max_new_tokens=24, src_layer=None):
 
 # ---------------------------------------------------------------- patchscopes backend
 def _patch_ids(tok):
-    ids = tok(PATCH_PROMPT, add_special_tokens=True)["input_ids"]
+    ids = tok(_patch_prompt(), add_special_tokens=True)["input_ids"]
     x_id = tok(" X", add_special_tokens=False)["input_ids"][-1]
     pos = max(i for i, t in enumerate(ids) if t == x_id)
     return ids, pos

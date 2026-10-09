@@ -37,8 +37,9 @@ def _read_file_positions(lm, messages, cap=256):
     offset tokenization does not reproduce the prefix ids (then nothing is claimed)."""
     import re
     global _RF
-    _RF = _RF or re.compile(r"Tool result from read_file:\n(.*?)(?=<end_of_turn>|\n\nTool result from )", re.S)
     import modelcfg
+    _RF = _RF or re.compile(r"Tool result from read_file:\n(.*?)(?=" + re.escape(modelcfg.serializer().END_OF_TURN)
+                            + r"|\n\nTool result from )", re.S)
     text = modelcfg.serializer().serialize_messages(messages, add_generation_prompt=True)
     enc = lm.tokenizer(text, add_special_tokens=True, return_offsets_mapping=True)
     if list(enc["input_ids"]) != list(_prefix_ids(lm, messages)):
@@ -60,7 +61,7 @@ def _prefix_ids(lm, messages):
     if TEMPLATE_DEFECT != "drop_model_newline":
         raise ValueError(f"unknown REPLAY_TEMPLATE_DEFECT {TEMPLATE_DEFECT!r}")
     text = ser.serialize_messages(messages, add_generation_prompt=True)
-    assert text.endswith("<start_of_turn>model\n")
+    assert text.endswith(ser.GENERATION_PROMPT)
     return lm.tokenizer(text[:-1], add_special_tokens=True)["input_ids"]
 
 

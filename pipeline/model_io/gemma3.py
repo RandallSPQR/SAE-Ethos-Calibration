@@ -7,7 +7,7 @@ serializer hash and in the manifest. Token ids are NOT assumed equal to Gemma-2'
 profile states stop_token_ids and modelcfg.check_tokenizer verifies them against the tokenizer on the box, and
 modelcfg.template_agreement compares this serializer's output with the tokenizer's own template (recorded, read at G0).
 """
-from model_io.gemma2 import to_gemma_turns as _gemma2_turns, GEMMA_TURN
+from model_io.gemma2 import to_gemma_turns as _gemma2_turns, GEMMA_TURN, GENERATION_PROMPT, user_turn   # noqa: F401
 
 END_OF_TURN = "<end_of_turn>"
 TURN_SUFFIX = END_OF_TURN + "\n"
