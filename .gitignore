@@ -16,12 +16,12 @@ pipeline/run_ledger.jsonl
 config.json
 *.env
 .env.local
-# plugin-generated context stubs
-pipeline/results/**/CLAUDE.md
-# claude-mem also drops CLAUDE.md stubs beside paths it saw touched, including mirrored/stray locations
+# claude-mem writes placeholder CLAUDE.md stubs beside every path it sees touched (any depth, including mirrored stray
+# trees). None is project documentation: all 38 that had been committed were pure stubs and were removed 2026-10-09
+# (handoff cleanup). Ignored everywhere; a real CLAUDE.md, if ever wanted, is added with `git add -f`.
+CLAUDE.md
 /Library/
 /runpod_watch/
-/harness/CLAUDE.md
 pipeline/build/
 pipeline/pipeline/
 pipeline/harness/pipeline/
@@ -30,14 +30,11 @@ scenarios/arm_a/*/scenarios/
 # mirrored stub trees anywhere (claude-mem writes CLAUDE.md beside touched paths, recursively under results)
 **/pipeline/pipeline/
 **/results/**/pipeline/
-# plugin stubs outside pipeline/ (the tracked ones under pipeline/ stay tracked; gitignore does not affect them)
-scenarios/**/CLAUDE.md
 # scenario templates are rendered verbatim into the agent's repo: no droppings there (harness change 2026-10-08.3;
 # two CLAUDE.md stubs tracked before the rule above were rendered until then; harness.fixtures checks git ls-files too)
 scenarios/arm_a/**/repo_template/**/CLAUDE.md
 scenarios/arm_a/**/repo_template/**/.DS_Store
 scenarios/arm_a/**/repo_template/**/._*
-tools/**/CLAUDE.md
 
 # derived generation sets from harness.relabel are reproducible from main_run + the rules; keep only the summary
 pipeline/results/**/relabel_*/generation/
