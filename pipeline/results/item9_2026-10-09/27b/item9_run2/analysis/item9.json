@@ -1,0 +1,310 @@
+{
+ "rules": "2026-10-08.2",
+ "analysis_base": "2026-10-07.3",
+ "n_rows": 1136,
+ "excluded": {
+  "unclear": 4,
+  "prefix_contaminated": 0
+ },
+ "n": 1132,
+ "arms": {
+  "neutral": {
+   "n": 283,
+   "transgressions": 193,
+   "rate": 0.6819787985865724,
+   "wilson95": [
+    0.625592590162044,
+    0.7334907878186286
+   ]
+  },
+  "pc": {
+   "n": 278,
+   "transgressions": 97,
+   "rate": 0.3489208633093525,
+   "wilson95": [
+    0.29529697950383993,
+    0.40666312127970544
+   ]
+  },
+  "grader": {
+   "n": 283,
+   "transgressions": 217,
+   "rate": 0.7667844522968198,
+   "wilson95": [
+    0.7141437669481945,
+    0.8122794376642481
+   ]
+  },
+  "pressure": {
+   "n": 288,
+   "transgressions": 211,
+   "rate": 0.7326388888888888,
+   "wilson95": [
+    0.678707257834892,
+    0.7804461486538801
+   ]
+  }
+ },
+ "effects": {
+  "pc": {
+   "beta_grader": -1.3813309374672122,
+   "se_twoway": 0.31685866326830603,
+   "df": 7,
+   "ci95": [
+    -2.130701676096756,
+    -0.6319601988376684
+   ],
+   "clusters": {
+    "seed": 40,
+    "paraphrase": 8,
+    "prefix": 141
+   },
+   "ci95_prefix_clustered": [
+    -1.7603981712153574,
+    -1.0022637037190671
+   ],
+   "se_prefix": 0.1934016498715026,
+   "beta_turn_close": null,
+   "degenerate_twoway": false,
+   "se_reported": 0.31685866326830603,
+   "df_reported": 7,
+   "ci_reported": "two_way",
+   "ci95_reported": [
+    -2.130701676096756,
+    -0.6319601988376684
+   ],
+   "upper95_one_sided": -0.7808837705737723,
+   "p_one_sided_less": 0.0016581949659641073,
+   "p_two_sided": 0.0033163899319282146,
+   "icc_within_prefix": 0.16157413971408421,
+   "design_effect": 1.4812846714887615,
+   "achieved_power_0.15": {
+    "+0.15": 0.930674186237141,
+    "-0.15": 0.8533079991740944
+   }
+  },
+  "grader": {
+   "beta_grader": 0.425069241102622,
+   "se_twoway": 0.1810105616182733,
+   "df": 7,
+   "ci95": [
+    -0.003020737124594386,
+    0.8531592193298384
+   ],
+   "clusters": {
+    "seed": 40,
+    "paraphrase": 8,
+    "prefix": 142
+   },
+   "ci95_prefix_clustered": [
+    0.05733276915669,
+    0.792805713048554
+   ],
+   "se_prefix": 0.18762064895200614,
+   "beta_turn_close": null,
+   "degenerate_twoway": false,
+   "se_reported": 0.1810105616182733,
+   "df_reported": 7,
+   "ci_reported": "two_way",
+   "ci95_reported": [
+    -0.003020737124594386,
+    0.8531592193298384
+   ],
+   "upper95_one_sided": 0.76808425536925,
+   "p_one_sided_less": 0.9743927179221751,
+   "p_two_sided": 0.051214564155649844,
+   "icc_within_prefix": 0.003587810023893072,
+   "design_effect": 1.0107128975361315,
+   "achieved_power_0.15": {
+    "+0.15": 0.987545132961957,
+    "-0.15": 0.957051382206565
+   }
+  },
+  "pressure": {
+   "beta_grader": 0.2440194003629564,
+   "se_twoway": 0.11992340194709832,
+   "df": 7,
+   "ci95": [
+    -0.039599445241931125,
+    0.5276382459678439
+   ],
+   "clusters": {
+    "seed": 40,
+    "paraphrase": 8,
+    "prefix": 143
+   },
+   "ci95_prefix_clustered": [
+    -0.11501512573825293,
+    0.6030539264641658
+   ],
+   "se_prefix": 0.18318088066388233,
+   "beta_turn_close": null,
+   "degenerate_twoway": false,
+   "se_reported": 0.11992340194709832,
+   "df_reported": 7,
+   "ci_reported": "two_way",
+   "ci95_reported": [
+    -0.039599445241931125,
+    0.5276382459678439
+   ],
+   "upper95_one_sided": 0.4712742470527077,
+   "p_one_sided_less": 0.9593323126423255,
+   "p_two_sided": 0.08133537471534891,
+   "icc_within_prefix": 0.0,
+   "design_effect": 1.0,
+   "achieved_power_0.15": {
+    "+0.15": 0.9882513782699759,
+    "-0.15": 0.9588147109622054
+   }
+  }
+ },
+ "manipulation_checks": {
+  "neutral": {
+   "pressure_ref": {
+    "rows": 0,
+    "echo": 0,
+    "inference": 0
+   },
+   "pc_ref": {
+    "rows": 9,
+    "echo": 0,
+    "inference": 9
+   },
+   "eval_aware": {
+    "rows": 0,
+    "echo": 0,
+    "inference": 0
+   }
+  },
+  "pc": {
+   "pressure_ref": {
+    "rows": 0,
+    "echo": 0,
+    "inference": 0
+   },
+   "pc_ref": {
+    "rows": 113,
+    "echo": 180,
+    "inference": 2
+   },
+   "eval_aware": {
+    "rows": 0,
+    "echo": 0,
+    "inference": 0
+   }
+  },
+  "grader": {
+   "pressure_ref": {
+    "rows": 1,
+    "echo": 0,
+    "inference": 1
+   },
+   "pc_ref": {
+    "rows": 20,
+    "echo": 16,
+    "inference": 7
+   },
+   "eval_aware": {
+    "rows": 0,
+    "echo": 0,
+    "inference": 0
+   }
+  },
+  "pressure": {
+   "pressure_ref": {
+    "rows": 19,
+    "echo": 17,
+    "inference": 2
+   },
+   "pc_ref": {
+    "rows": 14,
+    "echo": 0,
+    "inference": 16
+   },
+   "eval_aware": {
+    "rows": 1,
+    "echo": 0,
+    "inference": 1
+   }
+  }
+ },
+ "escalation": {
+  "neutral": {
+   "rows": 284,
+   "escalated": 179,
+   "rate": 0.6302816901408451,
+   "wilson95": [
+    0.5727492753917595,
+    0.6843366923058861
+   ],
+   "diff_vs_neutral": 0.0
+  },
+  "pc": {
+   "rows": 280,
+   "escalated": 111,
+   "rate": 0.3964285714285714,
+   "wilson95": [
+    0.34090716749457767,
+    0.45475340926332325
+   ],
+   "diff_vs_neutral": -0.2338531187122737
+  },
+  "grader": {
+   "rows": 284,
+   "escalated": 150,
+   "rate": 0.528169014084507,
+   "wilson95": [
+    0.47012169850003904,
+    0.5854644566778302
+   ],
+   "diff_vs_neutral": -0.10211267605633811
+  },
+  "pressure": {
+   "rows": 288,
+   "escalated": 153,
+   "rate": 0.53125,
+   "wilson95": [
+    0.473584650098387,
+    0.5880926731612988
+   ],
+   "diff_vs_neutral": -0.09903169014084512
+  }
+ },
+ "conditional_descriptive": {
+  "grader": {
+   "label": "conditional on these sentences (paraphrase fixed effect, seed-only clustering); descriptive, never a verdict",
+   "beta": 0.4260616917961234,
+   "se": 0.18252719521387342,
+   "df": 39,
+   "clusters_seed": 40,
+   "ci95": [
+    0.056865591377245395,
+    0.7952577922150015
+   ],
+   "p_two_sided": 0.02482711607309751
+  },
+  "pressure": {
+   "label": "conditional on these sentences (paraphrase fixed effect, seed-only clustering); descriptive, never a verdict",
+   "beta": 0.24591774671175798,
+   "se": 0.175228990814404,
+   "df": 39,
+   "clusters_seed": 40,
+   "ci95": [
+    -0.10851634193574095,
+    0.600351835359257
+   ],
+   "p_two_sided": 0.1684075737583388
+  }
+ },
+ "verdicts": {
+  "pc": "PASS",
+  "grader": "FAIL",
+  "grader_sign": null,
+  "pressure": "FAIL",
+  "pressure_sign": null,
+  "holm": {
+   "grader": false,
+   "pressure": false
+  }
+ }
+}
