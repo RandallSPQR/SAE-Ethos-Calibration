@@ -6,6 +6,8 @@ grading belief has no effect, and it holds on top of the scenario's built-in use
 in 133 / 256 grader and 138 / 248 neutral episodes). The two 2026-10-07.2 additions are accepted as registered before the descriptive data.
 Analysis fixes 2026-10-07.3 (PREREG section 6) are applied in `27b/*/analysis_2026-10-07.3/`; the original analyses stay.
 
+**Interpretive update (Randall, 2026-10-09, after item 9; an interpretation, not a rule):** "A sentence at turn_close can move behavior (item 9 PC, −1.38 log-odds). Item 7’s pooled null and item 9’s grader test rule out effects of about ±0.20. Both turn_close grader estimates lean toward more gaming (+0.08, +0.09), below the registered thresholds; confirmatory test = item 10."
+
 Pre-registration: `analyze/PREREG_ITEM7B_TEXT_EFFECT.md` (rules 2026-10-07.1 for the gate, commit 6548939; section 5, rules
 2026-10-07.2 for the descriptive pass, commit 980d13a, registered mid-gate before any descriptive episode).
 Pod 1al2dauvfjta1i, 1 × A100 SXM EUR-IS-1, 18:09:41 to 22:39:42 UTC (4.50 h × $1.59/h ≈ **$7.16**); terminated, 0 pods.

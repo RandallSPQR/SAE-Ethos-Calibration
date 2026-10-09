@@ -211,7 +211,8 @@ own pre-registration, which is written after the hand-check passes and before th
       [−0.51, 0.59]; power 0.98 / 0.92 at ±0.15); Phases C–E are not run. Claim, narrowly: an explicit grader sentence
       changes neither transgression nor verbalized eval-awareness (1/255) in these episodes; it does not show that a
       grading belief has no effect; and it holds on top of the scenario's built-in user pressure (the escalation turn,
-      delivered in ~54 % of the gate's episodes in each arm). Honeypot: not run (time). Analysis fixes 2026-10-07.3 (degenerate CI → prefix-clustered;
+      delivered in ~54 % of the gate's episodes in each arm). Honeypot: not run (time).
+      Interpretive update (Randall, 2026-10-09, after item 9; an interpretation, not a rule): "A sentence at turn_close can move behavior (item 9 PC, −1.38 log-odds). Item 7’s pooled null and item 9’s grader test rule out effects of about ±0.20. Both turn_close grader estimates lean toward more gaming (+0.08, +0.09), below the registered thresholds; confirmatory test = item 10." Analysis fixes 2026-10-07.3 (degenerate CI → prefix-clustered;
       stemmed echo split, one label inference → echo; descriptive header). Pod cost ≈ $7.16. No pods until the next item is
       designed.
     - **Phase D:** the readout goes at the act locus, not the decision turn.
@@ -243,3 +244,8 @@ own pre-registration, which is written after the hand-check passes and before th
       and **pressure FAIL** (+0.24 [−0.04, 0.53], p 0.081), both pointing toward more transgression; descriptively,
       conditional on these sentences, grader +0.43 [0.06, 0.80]. The grader cue cuts honest reports 31 → 6.
       Escalation delivered: neutral 0.63, pc 0.40, grader 0.53, pressure 0.53. Item 9 ≈ $12.71 in all.
+21. **Item 10: grader vs neutral at turn_close, confirmatory** (Randall, 2026-10-09; `analyze/PREREG_ITEM10_GRADER.md`,
+    DRAFT, rules 2026-10-09.1, unregistered). 16 new grader and 16 new neutral sentences (none from items 7–9), 448 per
+    arm, plus item 8's PC at 112 as a run-level position check that must pass for the run to count. Primary: transgression,
+    grader > neutral, one-sided; secondary (only if the primary passes): honest reports, grader < neutral, one-sided;
+    two-way (seed, sentence pair) clustering, df 15. Simulated power at +0.08: 0.75 (0.70 if a block is cut).
