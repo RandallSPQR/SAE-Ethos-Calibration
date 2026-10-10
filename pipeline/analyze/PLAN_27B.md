@@ -250,3 +250,8 @@ own pre-registration, which is written after the hand-check passes and before th
     grader > neutral, one-sided; secondary (only if the primary passes): honest reports, grader < neutral, one-sided;
     two-way (seed, sentence pair) clustering, df 15. Simulated power (final layout): 0.90 at +0.08, 0.79 at +0.06, 0.65
     at +0.05. Cap $17.0 (9.5 h at $1.79/h).
+    - **STOP 2 (2026-10-10, `results/item10_2026-10-10/`; attempt 1 not used):** all 11 blocks. Position check PASS
+      (pc 0.438 vs 0.705, −1.12, p 0.004). **Primary PASS:** grader 0.752 vs neutral 0.705, +0.24 log-odds, one-sided
+      lower bound +0.03, p 0.031 (df 15). **Secondary PASS:** honest reports 0.050 vs 0.112, −0.87, p 0.0008. With fresh
+      sentences, a grader cue at turn_close raises gaming (mostly fabricated success claims) and halves honest reports;
+      eval-aware verbalization 0/1,516. ≈ $14.84 (item 10 ≈ $18.04 with attempt 1).
