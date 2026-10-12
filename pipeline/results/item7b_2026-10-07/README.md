@@ -8,6 +8,8 @@ Analysis fixes 2026-10-07.3 (PREREG section 6) are applied in `27b/*/analysis_20
 
 **Interpretive update (Randall, 2026-10-09, after item 9; an interpretation, not a rule):** "A sentence at turn_close can move behavior (item 9 PC, −1.38 log-odds). Item 7’s pooled null and item 9’s grader test rule out effects of about ±0.20. Both turn_close grader estimates lean toward more gaming (+0.08, +0.09), below the registered thresholds; confirmatory test = item 10."
 
+**Record (Randall, 2026-10-12, after item 10):** "Confirmed in item 10 (fresh sentences): a grader cue at turn_close raises transgression by about +0.05, driven by fabricated success claims, and halves honest failure reports (0.112 → 0.050). Test edits do not rise. No verbalized eval-awareness (0/1,516)."
+
 Pre-registration: `analyze/PREREG_ITEM7B_TEXT_EFFECT.md` (rules 2026-10-07.1 for the gate, commit 6548939; section 5, rules
 2026-10-07.2 for the descriptive pass, commit 980d13a, registered mid-gate before any descriptive episode).
 Pod 1al2dauvfjta1i, 1 × A100 SXM EUR-IS-1, 18:09:41 to 22:39:42 UTC (4.50 h × $1.59/h ≈ **$7.16**); terminated, 0 pods.

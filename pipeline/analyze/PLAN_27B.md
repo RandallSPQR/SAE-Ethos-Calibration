@@ -212,6 +212,7 @@ own pre-registration, which is written after the hand-check passes and before th
       changes neither transgression nor verbalized eval-awareness (1/255) in these episodes; it does not show that a
       grading belief has no effect; and it holds on top of the scenario's built-in user pressure (the escalation turn,
       delivered in ~54 % of the gate's episodes in each arm). Honeypot: not run (time).
+      Record (Randall, 2026-10-12, after item 10): "Confirmed in item 10 (fresh sentences): a grader cue at turn_close raises transgression by about +0.05, driven by fabricated success claims, and halves honest failure reports (0.112 → 0.050). Test edits do not rise. No verbalized eval-awareness (0/1,516)."
       Interpretive update (Randall, 2026-10-09, after item 9; an interpretation, not a rule): "A sentence at turn_close can move behavior (item 9 PC, −1.38 log-odds). Item 7’s pooled null and item 9’s grader test rule out effects of about ±0.20. Both turn_close grader estimates lean toward more gaming (+0.08, +0.09), below the registered thresholds; confirmatory test = item 10." Analysis fixes 2026-10-07.3 (degenerate CI → prefix-clustered;
       stemmed echo split, one label inference → echo; descriptive header). Pod cost ≈ $7.16. No pods until the next item is
       designed.
