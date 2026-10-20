@@ -1,3 +1,31 @@
+# sae-ethos-pipeline v1.1.0 — Llama-3.1-8B probe subpackage (2026-10-20)
+
+**Additive.** v1.1.0 adds new files and changes no existing behaviour. A study pinned to v1.0.0 is unaffected until it
+chooses to upgrade.
+
+- **`llama8b_it_base_probe`** (`pipeline/llama8b_it_base_probe/`, README there): readout scoring, hidden-state capture,
+  run manifests, statistics and scoped RunPod tooling for Llama-3.1-8B base and Instruct. It was extracted from the
+  trust-geometry study (`p0-gates` @ `620b3da`), and its capture output is byte-identical to the study's `capture_v2`
+  (parity harness in that repo). Import it by its top-level name after `import sae_ethos_pipeline`.
+- **Llama adapters as plug-ins:** the `sae_ethos_pipeline.model_io` entry points `llama3` and `llama3_base` in this
+  `pyproject.toml`. The built-in `FAMILIES` stay `gemma2` and `gemma3`.
+- **Profiles:** `config/models_llama-3.1-8b.yaml` and `config/models_llama-3.1-8b-it.yaml`
+  (`MODEL_PROFILE=llama-3.1-8b[-it]`).
+- **Console scripts:** `llama-probe-capture`, `llama-probe-manifest`, `llama-probe-fetch-tokenizers`,
+  `llama-probe-pods` (RunPod key from `$RUNPOD_API_KEY` only; launchd tick through `direnv exec`), and
+  `llama-probe-run MODULE`.
+- **Changed existing files:**
+  - `pyproject.toml` and `__init__.py`: the version, the new packages, entry points and scripts.
+  - `.gitignore`: the Llama tokenizer fixtures.
+  - `model_io/test_registry.py`: its "unknown family" probe now uses `no_such_family`, because `llama3` is a real
+    plug-in once 1.1.0 is installed.
+- **Tests (CPU):**
+  - `pytest pipeline/llama8b_it_base_probe/tests pipeline/llama8b_it_base_probe/example`: 102 pass.
+  - `model_io.test_registry`: 6/6. `model_io.test_gemma3`: 12/12.
+  - `test_modelcfg`: 22/24. The two `model_env_*` checks fail identically on v1.0.0 `main` when run from a venv. The
+    test's `python` shim symlinks the venv interpreter, which then loses the venv's site-packages. This is
+    pre-existing and unrelated to this release.
+
 # sae-ethos-pipeline v1.0.0 — code release (2026-10-09)
 
 The `pipeline/` directory of SAE-Ethos-Calibration as an installable Python package, so another repository can depend on a

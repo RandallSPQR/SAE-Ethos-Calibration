@@ -15,7 +15,7 @@ names for one file would load it twice.
 import sys
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 ROOT = Path(__file__).resolve().parent
 CONFIG = ROOT / "config"
 

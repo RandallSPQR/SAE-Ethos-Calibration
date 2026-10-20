@@ -23,6 +23,8 @@ CLAUDE.md
 /Library/
 /runpod_watch/
 pipeline/build/
+# Llama tokenizer files (Llama 3.1 Community License; fetched and OID-verified by llama-probe-fetch-tokenizers)
+pipeline/llama8b_it_base_probe/model_io/fixtures/tokenizers/
 pipeline/pipeline/
 pipeline/harness/pipeline/
 pipeline/scenarios/

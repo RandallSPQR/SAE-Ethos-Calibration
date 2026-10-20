@@ -29,7 +29,7 @@ def run():
     res["built-ins: gemma2 and gemma3 resolve and satisfy the adapter interface"] = all(
         model_io.check_adapter(model_io.get(f)) for f in ("gemma2", "gemma3"))
     try:
-        model_io.get("llama3"); unknown = False
+        model_io.get("no_such_family"); unknown = False      # llama3 is a real plug-in since 1.1.0
     except KeyError as e:
         unknown = "register" in str(e)
     res["an unknown family raises KeyError naming the two ways to add one"] = unknown

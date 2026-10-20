@@ -1,0 +1,89 @@
+# Model profile: Llama-3.1-8B BASE. Selected with MODEL_PROFILE=llama-3.1-8b, or MODEL_PROFILE_FILE=
+# (llama8b_it_base_probe.profile_path("llama-3.1-8b")). Family llama3_base: plain-text prompts, no chat template.
+# This profile has no SAE; llama8b_it_base_probe.manifest records the SAE as dropped (sae_ethos_pipeline's provenance
+# requires an `sae` block). Extra artifacts a project uses on this model (a latent prior, steering vectors) go into the
+# run manifest with their file hashes through manifest.build(artifacts=...), not into this file. Values read from
+# primary sources on 2026-10-09; weight hash pinned on a pod 2026-10-10. Extracted unchanged in value from the
+# trust-geometry study (p0-gates @ 620b3da); study-only blocks removed.
+
+family: llama3_base
+
+roles:
+  auditor: "anthropic/claude-sonnet-4-6"
+  judge:   "anthropic/claude-opus-4-6"
+  target:  "openai-api/local/llama-3.1-8b"
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "llama-3.1-8b"
+
+target_model:
+  hf_id: "meta-llama/Llama-3.1-8B"           # LlamaForCausalLM, 32 layers, d 4096; gated (manual approval)
+  base_hf_id: "meta-llama/Llama-3.1-8B"
+  revision: "d04e592bb4f6aa9cfee91e2e20afa771667e1d4b"        # main, lastModified 2024-10-16
+  weight_hash: "ac5be7e65a45c454"            # PINNED 2026-10-10 by calibrate/preflight_weights --hash (pod dfyi1gao2mbylq, 11/11 files sha256)
+  chat_template_hash: null                   # the base tokenizer_config.json has no chat_template
+  dtype: "bfloat16"
+  # base tokenizer: bos <|begin_of_text|> 128000, eos_token <|end_of_text|> 128001 (generation_config eos 128001)
+  stop_token_ids: [128001]
+
+serve:
+  dtype: "bfloat16"
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  extra_args: "--no-enable-prefix-caching"
+  attention_backend: null
+
+replay:
+  dtype: "float32"
+  device_map: "cuda"
+  attn_implementation: "eager"
+  layers_path: "model.layers"
+  identity_ref: "hf_hidden_states"
+  hf_auto_class: "AutoModelForCausalLM"
+  pins: {transformers: "5.17.0", nnsight: "0.7.0", accelerate: "1.15.0", torch: "2.8.0"}
+
+oracle:
+  hf_id: null
+  dropped: "no activation oracle in this profile; G5 is dropped"
+
+calibration:
+  g0_max_tokens: 32
+  g1_max_tokens: 96
+
+probe:
+  layer_candidates: [15, 19, 28]
+
+# ---- probe hooks (read by projects, ignored by modelcfg). HARD-CODED from primary sources; never computed.
+# Convention as in models_llama-3.1-8b-it.yaml: 0-based index; resid_post(i) = model.model.layers[i].output on HF
+# (= hidden_states[i + 1]); on vLLM out[0] + out[1].
+hooks:
+  resid_l15:
+    layer: 15
+    point: resid_post
+    hf: "model.model.layers[15].output"
+    hf_hidden_states_index: 16
+    vllm: "model.model.layers[15].output[0] + output[1]"
+    exclude_bos: true
+    verified_by: >-
+      PRIMARY: HF config.yaml tracedict_config {layer_prefix: model.layers, layers: [15], retain: output};
+      glp_save.py (vLLM) `out[0] + out[1]` of model.layers.15 output; glp/script_delta_lm.py edits model.layers.{layer}
+      output[0] at positions 1: (BOS skipped)
+  resid_l28:
+    layer: 28
+    point: resid_post
+    hf: "model.model.layers[28].output"
+    hf_hidden_states_index: 29
+    vllm: "model.model.layers[28].output[0] + output[1]"
+    position: last_token
+    verified_by: >-
+      PRIMARY: causalab@1b6f43a5 (branch manifold_steering) runners/age/age_8b_pipeline.yaml layers: [28];
+      build_residual_stream_targets(target_output=True) -> pyvene "block_output": ("layers[%s]", CONST_OUTPUT_HOOK)
+  resid_l19:
+    layer: 19
+    point: resid_post
+    hf: "model.model.layers[19].output"
+    hf_hidden_states_index: 20
+    vllm: "model.model.layers[19].output[0] + output[1]"
+    note: "the Goodfire SAE is Instruct-trained; on the base model this layer is a geometry layer only, no SAE"

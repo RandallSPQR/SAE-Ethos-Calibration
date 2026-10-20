@@ -10,8 +10,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sae-ethos-pipeline"
-version = "1.0.0"
-description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT)"
+version = "1.1.0"
+description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT); Llama-3.1-8B base/Instruct probe subpackage llama8b_it_base_probe"
 readme = "RELEASE_NOTES.md"
 requires-python = ">=3.9"
 dependencies = ["pyyaml>=6.0", "numpy>=1.24"]
@@ -33,6 +33,8 @@ packages = [
   "sae_ethos_pipeline.analyze", "sae_ethos_pipeline.calibrate", "sae_ethos_pipeline.gates",
   "sae_ethos_pipeline.generate", "sae_ethos_pipeline.harness", "sae_ethos_pipeline.model_io",
   "sae_ethos_pipeline.probe", "sae_ethos_pipeline.replay", "sae_ethos_pipeline.resample",
+  "sae_ethos_pipeline.llama8b_it_base_probe", "sae_ethos_pipeline.llama8b_it_base_probe.model_io",
+  "sae_ethos_pipeline.llama8b_it_base_probe.stats",
 ]
 include-package-data = false
 
@@ -44,10 +46,25 @@ include-package-data = false
 "sae_ethos_pipeline.gates" = ["CHANGELOG.md"]
 "sae_ethos_pipeline.model_io" = ["fixtures/*"]
 "sae_ethos_pipeline.analyze" = ["*.md"]
+"sae_ethos_pipeline.llama8b_it_base_probe" = ["*.md", "pod/*.sh"]
+"sae_ethos_pipeline.llama8b_it_base_probe.model_io" = ["fixtures/*.jinja", "fixtures/*.md"]
 
 [tool.setuptools.exclude-package-data]
 # claude-mem writes placeholder CLAUDE.md files beside touched paths; they are editor droppings, not part of the release
 "*" = ["CLAUDE.md"]
+
+# Llama-3.1-8B adapters as PLUG-INS (not built-in model_io.FAMILIES): resolved by model_io.get once the pipeline is
+# installed. The values are top-level names, resolvable after `import sae_ethos_pipeline` (the pipeline's import root).
+[project.entry-points."sae_ethos_pipeline.model_io"]
+llama3 = "llama8b_it_base_probe.model_io.llama3"
+llama3_base = "llama8b_it_base_probe.model_io.llama3_base"
+
+[project.scripts]
+llama-probe-capture = "sae_ethos_pipeline.llama8b_it_base_probe.cli:capture"
+llama-probe-manifest = "sae_ethos_pipeline.llama8b_it_base_probe.cli:manifest"
+llama-probe-fetch-tokenizers = "sae_ethos_pipeline.llama8b_it_base_probe.cli:fetch_tokenizers"
+llama-probe-pods = "sae_ethos_pipeline.llama8b_it_base_probe.cli:pods"
+llama-probe-run = "sae_ethos_pipeline.llama8b_it_base_probe.cli:run"
 
 [tool.pipeline]
 # the intended order (enforced by pipeline/Makefile, not by this table); moved here from the 0.1.0 scaffold pipeline/pyproject.toml
