@@ -1,0 +1,6 @@
+{
+ "rules": "2026-10-07.1",
+ "paraphrases_file": "pipeline/config/item7b_paraphrases.yaml",
+ "paraphrases_sha256": "768525a07c7ce562c8cd3c98925822c264e3dd00c33325ff2b521555ee7ee78a",
+ "note": "written before any Phase B episode; harness.run_item7b refuses to run if the file's sha differs"
+}

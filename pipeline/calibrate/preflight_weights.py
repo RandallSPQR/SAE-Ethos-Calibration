@@ -41,7 +41,9 @@ def _models_yaml():
 def default_repos(cfg):
     """(repo_id, revision, allow_patterns) for everything a run loads. The SAE release maps to its HF repo
     and one layer folder; the oracle is the whole adapter repo."""
-    tm, sae, orc = cfg["target_model"], cfg["sae"], cfg["oracle"]
+    tm, sae, orc = cfg["target_model"], cfg.get("sae"), cfg.get("oracle")
+    if not sae:      # a readout-only profile (the lineup's Qwen3.5, since 1.2.0) has no SAE and no oracle
+        return [(tm["hf_id"], tm.get("revision"), ["*.json", "*.safetensors", "tokenizer*"])]
     # The SAE's HF location comes from models.yaml (sae.hf_repo / sae.hf_folder). Fallback = the mapping the
     # config documents: release "<name>-canonical" -> repo google/<name>; sae_id "L/W/canonical" -> folder
     # "L/W/average_l0_<published.l0>". A hardcoded literal here once verified an artifact the config could

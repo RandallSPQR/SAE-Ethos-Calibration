@@ -1,3 +1,101 @@
+# sae-ethos-pipeline v1.2.0: the StPT / Missing Piece five-model lineup (2026-10-31)
+
+**Additive.** v1.2.0 adds the `lineup` subpackage and the Qwen3.5 pair. Existing behaviour does not change: the SAE
+studies' serving (`calibrate/pod_bootstrap.sh`, vLLM 0.11.0) and every existing profile are untouched. A study pinned to
+v1.0.0 or v1.1.0 is unaffected.
+
+**Locked.** This is the shared pipeline of Stigmergic Phase Transitions (StPT, rung 1) and Missing Piece. Both studies
+pin tag `v1.2.0` and its commit hash in every manifest (`lineup.manifest.identity_block`, `check_pin`). Any change to
+a pinned value, a serializer or the serving stack is a new version and a logged deviation in the shared coordination
+record. Nothing is edited in place.
+
+## The lineup (`pipeline/lineup/lineup.yaml`)
+
+| model | profile | family | revision | weight_hash | chat_template_hash | identity |
+|---|---|---|---|---|---|---|
+| Llama-3.1-8B-Instruct | `models_llama-3.1-8b-it.yaml` | llama3 | 0e9e39f249a1 | 495b73750141622d | e10ca381b1ccc5cf | pod-pinned 2026-10-10 |
+| Gemma-2-9B-IT | `models.yaml` | gemma2 | 11c9b309abf7 | 7055bc8c5f456ced | ecd6ae513fe103f0 | pod-pinned 2026-09-18 |
+| Gemma-3-27B-IT | `models_gemma-3-27b-it.yaml` | gemma3 | 005ad3404e59 | 34f745e7c6ef5b7b | 7de1c58e208eda46 | pod-pinned 2026-09-29 |
+| **Qwen3.5-9B** (thinking off) | `models_qwen3.5-9b.yaml` (new) | qwen3_5 (new) | c202236235762 | 4b570a1e6e5db4b9 | a4aee8afcf2e0711 | metadata-pinned 2026-10-31 |
+| **Qwen3.5-27B** (thinking off) | `models_qwen3.5-27b.yaml` (new) | qwen3_5 (new) | fc05daec18b0 | 5e536c8708a9430b | a4aee8afcf2e0711 | metadata-pinned 2026-10-31 |
+
+- **The Qwen pair is pencilled** in both briefs. Both are dense (no `num_experts`) and share one hybrid architecture:
+  3 Gated DeltaNet layers to 1 full-attention layer, 32 layers at 9B and 64 at 27B. So the size contrast does not also
+  change architecture, and the brief's mixture-of-experts confound does not arise.
+- **How the Qwen weight hashes were pinned.** `lineup.identity.weight_hash_from_files` applies the exact
+  `preflight_weights` identity to the revision's recorded per-file hashes from the HF API.
+  - Check: it reproduces all three pod-measured pins exactly (`tests/test_lineup.py`, against the snapshot in
+    `tests/data/hf_identity_2026-10-31.json`).
+  - Check: it equals `preflight_weights.verify_repo` on a fake snapshot.
+  - Still to do: the box re-hash of the Qwen bytes (`pod/serve_lineup.sh`) is the S0 step, not yet run.
+- **Live check (`lineup-identity offline`, 2026-10-31).** All five revisions resolve, and every weight_hash and
+  chat_template_hash recomputes to its pin. Report: `pipeline/lineup/identity_reports/offline_2026-10-31.json`.
+
+## What is new
+
+- **`qwen3_5` serializer** (`lineup/model_io/qwen3_5.py`, entry point `qwen3_5`). It writes ChatML with thinking
+  OFF; the generation prompt ends `<think>\n\n</think>\n\n`, and there is no BOS. Tests check it equals Qwen's own
+  template (`enable_thinking=False`) on 11 conversations × with/without a generation prompt, as strings and as token
+  ids. The template fixture is OID-verified (`fixtures/PROVENANCE.md`). Tokenizer files are fetched at the pinned
+  revision and identity-checked by `lineup-fetch-tokenizers` (gitignored).
+- **Identity checks** (`lineup-identity local|offline`; box: `pod/serve_lineup.sh`).
+  - Local: `lineup.yaml` agrees with every profile, and every serializer is registered.
+  - Offline: the HF API recomputation above.
+  - Box: `preflight_weights --hash`, `check_tokenizer`, `template_agreement`, an 8-request bit-identity probe, and the
+    exact-fallback consistency check.
+- **One serving stack for all five models** (`lineup.yaml serving`; `lineup-serve-cmd NAME`; venv `venv_vllm_lineup`).
+  - Pins: vLLM 0.19.1, torch 2.10.0, transformers 5.5.3, tokenizers 0.22.2, huggingface-hub 1.10.2. vLLM 0.11.0
+    cannot serve Qwen3.5. At 0.19.1 the vLLM registry carries all five architectures, and the other pins are vLLM's
+    own test pins at that tag.
+  - Flags: batch size 1 (`--max-num-seqs 1`), prefix caching off, no prompt chunking, `--logprobs-mode raw_logprobs`,
+    `--seed 0`, bf16. Multimodal checkpoints are served text-only.
+  - All five are served in bf16. This includes Gemma-2-9B, which the closed SAE study served in fp32: that served
+    dtype is part of that study's instrument, not of the lineup.
+  - "Deterministic kernels" is established per model and GPU type by the box probe, not assumed.
+- **Exact binary readout** (`lineup.readout`).
+  - It sends the canonical token ids to `/v1/completions` and takes the top-20 raw logprobs keyed by token id.
+  - An option outside the top 20 is read exactly by a second request restricted with `allowed_token_ids`.
+  - It reports the non-option mass, `logit_AB`, and the top 20 for audit.
+  - Decision noise and sampling are the study's protocol, not the pipeline's.
+- **Identity block** (`lineup.manifest`, `lineup-identity-block NAME`). Every run manifest embeds the pipeline version,
+  commit and tag; the lineup sha256; the model's pins; the profile sha256; the serializer source sha256; and the
+  serving pins. `check_pin` refuses a run on any other commit or on a dirty checkout.
+- **Profiles:** `config/models_qwen3.5-9b.yaml`, `config/models_qwen3.5-27b.yaml`. They carry no SAE or oracle. Hooks
+  (resid_post at depth 0.25/0.5/0.75) were read from transformers 5.17 and vLLM 0.19.1 source; no activation has been
+  captured yet.
+
+## Changed existing files (additive)
+
+- `modelcfg.template_agreement` passes the profile's optional `target_model.chat_template_kwargs` to
+  `apply_chat_template` (Qwen needs `enable_thinking=False`). Without it, the call is unchanged.
+- `calibrate/preflight_weights.default_repos` accepts a profile without `sae` or `oracle` (it verifies the target only).
+  Profiles with an SAE are unchanged.
+- `pyproject.toml` and `__init__.py`: version 1.2.0, the new packages, the `qwen3_5` entry point, and the console
+  scripts `lineup-identity`, `lineup-serve-cmd`, `lineup-identity-block` and `lineup-fetch-tokenizers`.
+- `.gitignore`: the Qwen tokenizer fixtures.
+
+## Tests (CPU, 2026-10-31, Python 3.13, transformers 5.17.0)
+
+- `pytest pipeline/lineup/tests`: 59 pass.
+- `model_io.test_registry`: 6/6. `model_io.test_gemma3`: 12/12. `test_modelcfg`: 24/24 (the two `model_env_*` checks
+  pass from this interpreter).
+- `pytest pipeline/llama8b_it_base_probe/tests/test_model_io.py`: 30 pass. This covers `template_agreement` after the
+  change above.
+- The rest of the Llama suite needs torch and was not re-run; its code is unchanged.
+
+## Release check
+
+A wheel was built from the tagged tree and installed in a clean venv. It imports `sae_ethos_pipeline` (1.2.0) and
+`lineup` (five models), resolves `qwen3_5` through the entry point, and ships `lineup.yaml`, the template fixture and
+`pod/serve_lineup.sh`. It ships no tests and no data.
+
+## Not done in this release (no GPU spend)
+
+- The box identity check (`pod/serve_lineup.sh`) has not run for any model on the new serving stack.
+- Until it runs, the Qwen weight hashes are metadata-pinned, and the serving determinism of all five models on vLLM
+  0.19.1 is unverified.
+- It is the first step of each study's S0.
+
 # sae-ethos-pipeline v1.1.0 — Llama-3.1-8B probe subpackage (2026-10-20)
 
 **Additive.** v1.1.0 adds new files and changes no existing behaviour. A study pinned to v1.0.0 is unaffected until it

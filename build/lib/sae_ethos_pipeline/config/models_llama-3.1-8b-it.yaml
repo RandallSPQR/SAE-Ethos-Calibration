@@ -1,0 +1,134 @@
+# Model profile: Llama-3.1-8B-Instruct + Goodfire SAE l19. Selected with MODEL_PROFILE=llama-3.1-8b-it, or MODEL_PROFILE_FILE=
+# (llama8b_it_base_probe.profile_path("llama-3.1-8b-it")); read through sae_ethos_pipeline's modelcfg, nowhere else.
+# Every value below was read from its primary source on 2026-10-09 (HF API / repo files; gated meta-llama files verified
+# byte-identical to ungated mirrors by git blob OID, model_io/fixtures/PROVENANCE.md). Weight hashes were pinned on a pod
+# by calibrate/preflight_weights.py --hash on 2026-10-10. Extracted unchanged in value from the trust-geometry study
+# (p0-gates @ 620b3da); study-only blocks removed.
+
+family: llama3
+
+roles:
+  auditor: "anthropic/claude-sonnet-4-6"
+  judge:   "anthropic/claude-opus-4-6"
+  target:  "openai-api/local/llama-3.1-8b-instruct"
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "llama-3.1-8b-instruct"
+
+target_model:
+  hf_id: "meta-llama/Llama-3.1-8B-Instruct"   # LlamaForCausalLM, 32 layers, d 4096 (config.json); gated (manual approval)
+  base_hf_id: "meta-llama/Llama-3.1-8B"
+  revision: "0e9e39f249a16976918f6564b8830bc894c89659"        # main, lastModified 2024-09-25
+  base_revision: "d04e592bb4f6aa9cfee91e2e20afa771667e1d4b"   # main, lastModified 2024-10-16
+  weight_hash: "495b73750141622d"            # PINNED 2026-10-10 by calibrate/preflight_weights --hash (pod dfyi1gao2mbylq, 11/11 files sha256)
+  # sha256[:16] of tokenizer_config.json's chat_template at the revision (blob db88166e2bc4), as provenance computes it
+  chat_template_hash: "e10ca381b1ccc5cf"
+  dtype: "bfloat16"
+  # tokenizer: bos <|begin_of_text|> 128000; eos_token <|eot_id|> 128009; <|end_of_text|> 128001; <|eom_id|> 128008.
+  # modelcfg.check_tokenizer requires this list == {id(END_OF_TURN), tokenizer.eos_token_id} = {128009}. vLLM also
+  # stops on generation_config.json's eos_token_id [128001, 128008, 128009]; the extra two cannot be listed here
+  # without failing that check, and neither can appear in tool-free single-turn prompts.
+  stop_token_ids: [128009]
+
+serve:
+  dtype: "bfloat16"
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  extra_args: "--no-enable-prefix-caching"
+  attention_backend: null
+
+replay:
+  dtype: "float32"                           # pipeline rules 2026-09-29.1/.2: served bf16, replayed fp32 (G1 mixed mode)
+  device_map: "cuda"                         # ~32 GB fp32 on one A6000 48 GB
+  attn_implementation: "eager"
+  layers_path: "model.layers"                # count-checked against num_hidden_layers (32) by modelcfg.decoder_layers
+  identity_ref: "hf_hidden_states"
+  hf_auto_class: "AutoModelForCausalLM"
+  pins: {transformers: "5.17.0", nnsight: "0.7.0", accelerate: "1.15.0", torch: "2.8.0"}
+
+neuronpedia:
+  model_id: "llama3.1-8b-it"
+  source: "19-resid-post-gf"                 # SAELens pretrained_saes.yaml, release goodfire-llama-3.1-8b-instruct
+
+sae:
+  release: "goodfire-llama-3.1-8b-instruct"  # SAELens release name (pretrained_saes.yaml, main 2026-10-09)
+  sae_id: "layer_19"
+  is_it_release: true
+  hf_repo: "Goodfire/Llama-3.1-8B-Instruct-SAE-l19"
+  hf_folder: ""                              # single file at repo root: Llama-3.1-8B-Instruct-SAE-l19.pth (2,147,764,320 B, f32)
+  revision: "f6775a221e47b44233af4bac2c7b65189265519a"        # main, lastModified 2025-01-11
+  weights_hash: "4cc8708c0e03094f"           # PINNED 2026-10-10 by preflight --hash (pod dfyi1gao2mbylq, 1/1 file sha256)
+  layer: 19
+  # resid_post of 0-based block 19 = HF model.model.layers[19] output = hidden_states[20]. Goodfire's own card does not
+  # state pre/post or the index base, and its example notebook is behind a Google sign-in (unread). Source for this
+  # value is SAELens' loader ("hook_name": "blocks.19.hook_resid_post") and Neuronpedia's id "19-resid-post-gf": a
+  # SECONDARY source. G2 must establish it by reproducing L0 = 91 here and rejecting the decoys below (in particular
+  # layers.19.input_resid = hidden_states[19]); until then the hook is a hypothesis, as the 9B profile says of its own.
+  saelens_hook_name: "blocks.19.hook_resid_post"
+  hook_point: "blocks.19.hook_resid_post"
+  # Same-shape decoys G2 must reject. The Gemma profiles' 4th decoy,
+  # hidden_states_only (post_feedforward_layernorm output), has no Llama counterpart: a Llama block has no post-FFN norm,
+  # and its output already includes the residual adds.
+  hook_candidates:
+    - "layers.19.input_resid"                # resid_pre = hidden_states[19], the decoy identity must separate
+    - "layers.19.mlp_output"
+    - "layers.19.attn_output"
+  published:
+    l0: 91                                   # model card: "achieves an L0 count of 91"; SAELens l0: 91
+    fvu: null                                # not published
+    tol: 0.15
+    dataset: "lmsys/lmsys-chat-1m"           # model card: "activations harvested from Llama-3.1-8B-Instruct on LMSYS-Chat-1M"
+    # G2 reads LMSYS-Chat-1M if the HF account has accepted its terms (gated; not accepted as of 2026-10-09), else
+    # HuggingFaceH4/ultrachat_200k, and records which. L0 vs 91 is reported, not gated, either way.
+    g2_fallback_dataset: "HuggingFaceH4/ultrachat_200k"
+    context_size: 1024                       # not published; the pipeline's G2 context, chosen and reported
+  d_in: 4096
+  d_sae: 65536
+  license: "llama3.1"
+
+oracle:
+  hf_id: null
+  dropped: "no activation oracle in this profile; G5 is dropped"
+
+calibration:
+  g0_max_tokens: 32
+  g1_max_tokens: 96
+  g2_max_tokens: 1024
+  code_feature_index: null                   # G3 not configured; null -> skipped and reported as missing
+  code_feature_label: null
+  extra_feature_indices: []
+
+probe:
+  layer_candidates: [15, 19, 28]
+
+# ---- probe hooks (read by projects, ignored by modelcfg). HARD-CODED from primary sources; never computed.
+# Convention, both paths: layer i = 0-based index into model.model.layers; resid_post(i) = the residual stream LEAVING
+# block i. HF transformers 5.17 LlamaDecoderLayer.forward returns one tensor that already includes the residual adds
+# (modeling_llama.py: `hidden_states = residual + hidden_states; return hidden_states`), so resid_post(i) is
+# model.model.layers[i].output == output_hidden_states[i + 1]. vLLM's Llama layer returns (hidden, residual) separately,
+# so on vLLM resid_post(i) = out[0] + out[1] (the Gemma-2 lesson; GLP's glp_save.py does exactly this).
+hooks:
+  sae_l19:
+    layer: 19
+    point: resid_post
+    hf: "model.model.layers[19].output"
+    hf_hidden_states_index: 20
+    vllm: "model.model.layers[19].output[0] + output[1]"
+    model: instruct
+    verified_by: "SECONDARY (SAELens loader, Neuronpedia id); G2 L0/decoy check pending"
+  resid_l15:
+    layer: 15
+    point: resid_post
+    hf: "model.model.layers[15].output"
+    hf_hidden_states_index: 16
+    vllm: "model.model.layers[15].output[0] + output[1]"
+    note: "the layer of the GLP prior glp-llama8b-d6 (trained on base activations)"
+  resid_l28:
+    layer: 28
+    point: resid_post
+    hf: "model.model.layers[28].output"
+    hf_hidden_states_index: 29
+    vllm: "model.model.layers[28].output[0] + output[1]"
+    note: "the layer of Wurgaft et al.'s Llama-3.1-8B manifold steering (base model)"

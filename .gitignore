@@ -53,3 +53,7 @@ pipeline/results/t4_27b_2026-10-02_probe_transfer*/**/activations.npz
 
 # pod tarballs and copy-back archives (tools/runpod_watch/ship.sh, fetch.sh)
 .ship/
+
+# lineup (1.2.0): Qwen3.5 tokenizer fixtures, rebuilt by lineup-fetch-tokenizers (identity-checked)
+pipeline/lineup/model_io/fixtures/tokenizers/
+sae_ethos_pipeline.egg-info/

@@ -1,0 +1,146 @@
+# Model profile: Gemma-3-27B-IT + Gemma Scope 2 (27B parameterization, 2026-09-29). Selected by MODEL_PROFILE=gemma-3-27b-it;
+# read through modelcfg.py, nowhere else. Every value below was read from its primary source on 2026-09-29 (HF API / repo files, the
+# gated repo's config verified byte-identical to an ungated mirror by git blob OID; SAELens pretrained_saes.yaml; Neuronpedia).
+# Box-side identities (weight hashes, chat template hash) were pinned 2026-09-29 from the first 27B pod's preflight.
+
+family: gemma3
+
+roles:
+  auditor: "anthropic/claude-sonnet-4-6"
+  judge:   "anthropic/claude-opus-4-6"
+  target:  "openai-api/local/gemma-3-27b-it"
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "gemma-3-27b-it"
+
+target_model:
+  hf_id: "google/gemma-3-27b-it"             # Gemma3ForConditionalGeneration (text + a 27-layer SigLIP tower); used for text
+  base_hf_id: "google/gemma-3-27b-pt"
+  revision: "005ad3404e59d6023443cb575daa05336842228a"        # main 2025-03-21; 12 bf16 shards, 54.86 GB
+  base_revision: "9fe3c4ebc93fbadb14913801536d022054ef11cc"
+  # PINNED 2026-09-29 by calibrate/preflight_weights.py --hash on the EUR-IS-1 volume (pod z3r7h2qvgy6w7d): 23/23 files
+  # sha256-verified against the revision's LFS metadata; chat template hash read from the verified snapshot
+  weight_hash: "34f745e7c6ef5b7b"
+  chat_template_hash: "7de1c58e208eda46"
+  dtype: "bfloat16"                          # the SERVING dtype (rules 2026-09-29.2); replay dtype is replay.dtype
+  # <end_of_turn> = 106, <eos> = 1 (generation_config eos_token_id [1, 106]); <bos> = 2, <pad> = 0, <start_of_turn> = 105.
+  # NOT Gemma-2's 107: modelcfg.check_tokenizer refuses to load if the tokenizer disagrees.
+  stop_token_ids: [106, 1]
+
+serve:                                       # calibrate/model_env.sh -> vllm serve
+  dtype: "bfloat16"
+  max_model_len: 8192                        # same context as the 9B study (context_overflow is a treatment)
+  tensor_parallel_size: 1
+  extra_args: "--no-enable-prefix-caching"   # as the 9B drivers; KV headroom (~17 GB after 55 GB of weights) measured at G0
+  attention_backend: null                    # vLLM default for bf16 (the 9B's TRITON_ATTN was for fp32 serving)
+
+replay:
+  dtype: "float32"                           # rules 2026-09-29.1/.2
+  device_map: "auto"                         # ~110 GB fp32: split over 2 x A100 80 GB (layers run in sequence)
+  attn_implementation: "eager"
+  layers_path: "model.language_model.layers" # Gemma3ForConditionalGeneration nests the text decoder; count-checked (62)
+  # TransformerLens is not a usable reference here: HookedTransformer was removed in TL 4.x, and TL 3.9's gemma-3-27b cfg
+  # sets no attn_scale (defaults to sqrt(128) where HF uses query_pre_attn_scalar 168). transformers' own
+  # output_hidden_states, read without nnsight, is the identity reference; the manifest names it.
+  identity_ref: "hf_hidden_states"
+  # registered as image-text-to-text: nnsight loads it as VisionLanguageModel (LanguageModel refuses it), and the identity
+  # reference uses the same auto class; the text decoder is model.language_model.layers either way
+  hf_auto_class: "AutoModelForImageTextToText"
+  # runtime pins (2026-10-05, item 6b (4)): the replay venv on the volume runs these; the item 6 pod failed because the local
+  # smoke had used transformers 4.57. probe.steer_backend.TorchBackend STOPs when the installed versions differ; the local
+  # 4B smoke runs with the same pins (probe/smoke_steer_4b.py docstring)
+  pins: {transformers: "5.17.0", nnsight: "0.7.0", accelerate: "1.15.0", torch: "2.8.0"}
+
+# Neuronpedia ids for the chosen SAE (labels are descriptive, not evidence)
+neuronpedia:
+  model_id: "gemma-3-27b-it"
+  source: "40-gemmascope-2-res-16k"
+
+sae:
+  # DECIDED 2026-09-29 (Randall): PRIMARY layer 40 (0.645 depth), 16k, L0 "medium" (60), from the curated resid_post set
+  # (Neuronpedia dashboards). Closest curated depth to Fan et al.'s probe layer (48/80 = 0.60), so the probe track and the
+  # SAE can be read at one layer. The 9B's depth (0.74) is layer 45/46, in resid_post_all (L0 20/120, no medium, no
+  # dashboards). Gemma Scope 2 has no "canonical" set: the folder is named. Secondary: sae_secondary below.
+  release: "gemma-scope-2-27b-it-res"
+  sae_id: "layer_40_width_16k_l0_medium"
+  is_it_release: true
+  hf_repo: "google/gemma-scope-2-27b-it"
+  hf_folder: "resid_post/layer_40_width_16k_l0_medium"
+  revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"          # main 2026-01-13
+  params_sha256: "11f1469706357f234f02ca09f8ba11fbca12f5b8d151981b8c1e1a3dd5380389"   # LFS sha256 of params.safetensors (F32)
+  weights_hash: "bf36348749ff3ccb"            # PINNED 2026-09-29 (preflight, 3/3 files sha256-verified, pod z3r7h2qvgy6w7d)
+  layer: 40
+  saelens_hook_name: "blocks.40.hook_resid_post"   # SAELens derives it from the folder; HF point = model.layers.40.output
+  hook_point: "blocks.40.hook_resid_post"
+  hook_candidates:
+    - "layers.40.hidden_states_only"
+    - "layers.40.mlp_output"
+    - "layers.40.attn_output"
+    - "layers.40.input_resid"
+  published:
+    l0: 60                                    # the folder's config.json ("l0": 60); G2 reports L0, gates identity + decoys
+    fvu: null
+    tol: 0.15
+    # Google's training data for Gemma Scope 2 is UNVERIFIED (technical report not read); SAELens' loader carries the pile
+    # as a placeholder. G2's L0-vs-published comparison is reported, not gated, so this is a reading, not a criterion.
+    dataset: "monology/pile-uncopyrighted"
+    context_size: 1024
+
+# DECIDED 2026-09-29 (Randall): a PRE-REGISTERED SECONDARY layer, 53 (0.855 depth), same width/L0 family. Captured in the
+# primary replay's forward pass into features_L53/ (not pooled with layer 40), G2-checked on its own (SAE_ROLE=secondary),
+# and reported whatever layer 40 shows: a layer-robustness reading and a lexical-leak check (late layers carry more
+# next-token content), not a rescue for a null at 40.
+sae_secondary:
+  release: "gemma-scope-2-27b-it-res"
+  sae_id: "layer_53_width_16k_l0_medium"
+  is_it_release: true
+  hf_repo: "google/gemma-scope-2-27b-it"
+  hf_folder: "resid_post/layer_53_width_16k_l0_medium"
+  revision: "5c58dd4cddd52cef653059d85e12a86bf6222a28"
+  params_sha256: "a3492cd5ec2d00f3aa36e4fdb9d3e61d1137453c9228c5af964e5114f3c5e62b"
+  weights_hash: "fb0c3869a77afe92"            # PINNED 2026-09-29 (preflight, 3/3 files sha256-verified, pod z3r7h2qvgy6w7d)
+  layer: 53
+  saelens_hook_name: "blocks.53.hook_resid_post"
+  hook_point: "blocks.53.hook_resid_post"
+  hook_candidates:
+    - "layers.53.hidden_states_only"
+    - "layers.53.mlp_output"
+    - "layers.53.attn_output"
+    - "layers.53.input_resid"
+  published: {l0: 60, fvu: null, tol: 0.15, dataset: "monology/pile-uncopyrighted", context_size: 1024}
+  neuronpedia: {model_id: "gemma-3-27b-it", source: "53-gemmascope-2-res-16k"}
+  calibration: {code_feature_index: null, code_feature_label: null, extra_feature_indices: [],
+                anchors: {json_structure: {feature: 13119, label: "json structures"},
+                          code: {feature: 12420, label: "function definitions", extras: [10212]}}}   # pre-registered 2026-09-30
+
+oracle:
+  hf_id: null
+  dropped: "no activation oracle exists for Gemma-3-27B-IT; G5 is dropped (the 9B's oracle failed on real spans: paired 0.33)"
+
+calibration:
+  g0_max_tokens: 32
+  g1_max_tokens: 96
+  g2_max_tokens: 1024
+  # G3 needs a MATCHED anchor on this SAE (a JSON-structure feature for tool blocks; a code feature on read_file results),
+  # chosen on Neuronpedia before G3 runs. null -> G3 is skipped and reported as missing.
+  code_feature_index: null
+  code_feature_label: null
+  extra_feature_indices: []
+  # PRE-REGISTERED 2026-09-30 from Neuronpedia labels and top-activating examples ALONE (no data of ours): matched anchors
+  # for a two-anchor G3 (proposed, not applied; G3 stays NOT_EVALUABLE until it is). Rejected: 10341 "json format" and
+  # 53/7440 "JSON format" fire on the WORD json in a request (mention, not structure).
+  anchors:
+    json_structure: {feature: 342, label: "json keys", evidence: "top activations inside ```json { \"filters\": [ {"}
+    # gate rules 2026-09-30.5 (Randall 2026-09-30): 13740 retired: exactly 0 in all 18 read_file windows holding a Python
+    # `def` on the 27B T3 spans (its top examples are Lisp/LaTeX). Replacement chosen from Neuronpedia top activations alone:
+    # 7437 fires at the end of Python def signatures (a def near the max in 11 of its top 20). Rejected: 3474 (argument
+    # lists / calls), 2585 (prose describing functions: mention).
+    code: {feature: 7437, label: "Python function signatures", evidence: "top activations end Python def lines",
+           extras: [15887], retired: {13740: "zero on all 18 def windows (2026-09-30.4 re-run)"}}
+
+probe:
+  # the 9B's [20, 26, 31] of 42 are depth 0.48 / 0.62 / 0.74; the same depths of 62, plus 40 (the SAE layer, so the
+  # Fan-style direction and SAE features can be compared at one layer). Re-swept, not carried.
+  layer_candidates: [30, 38, 40, 46]
