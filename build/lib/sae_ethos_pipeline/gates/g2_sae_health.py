@@ -1,0 +1,178 @@
+"""G2 sae_health + HOOK-POINT IDENTIFICATION.
+
+Two failure modes, not one:
+ (a) health — variance-explained / L0 on OUR IT-chat transcripts must be acceptable (the SAE was
+     trained on pretraining text; degradation is expected but bounded).
+ (b) WRONG HOOK — Gemma Scope was trained on ONE residual tensor. Several tensors in the same block
+     share its shape and yield plausible-but-meaningless sparse codes. Attaching to the wrong one is a
+     silent error that would quietly ruin the SAE/oracle comparison. So G2 requires that the CHOSEN
+     hook reproduces Google's published FVU/L0 within tolerance AND that every decoy candidate does
+     NOT. Reproducing the published numbers is the only positive proof the hook is the trained one.
+
+Rules 2026-09-16.2 (see gates/CHANGELOG.md):
+  hook identification = VARIANCE EXPLAINED with a required absolute margin over EVERY decoy
+      (g2_decoy_ve_margin_min). L0 is a weak discriminator against resid_pre by construction (the stream
+      changes slowly across one block), so a published-L0 match is REPORTED, not gated.
+  tensor identity (when present in the report) = the captured tensor must match an independent
+      implementation's `blocks.31.hook_resid_post` (TransformerLens, no weight processing) RELATIONALLY:
+      per-position cosine >= g2_identity_min_cos (0.999) and per-position relative norm difference <=
+      g2_identity_max_norm_rel (1e-2). Element-wise bf16 atol would fail a correct hook on kernel-order
+      noise accumulated over 31 layers; run the stage in fp32 to hold the tolerance with a clear
+      conscience. Beating decoys shows "best of the candidates offered"; identity shows "right".
+  encode integrity (when present) = fraction of active features below their own JumpReLU threshold == 0.
+  health = var_explained >= g2_var_explained_min and l0 <= g2_l0_max.
+
+Real run reads features/sae_health.json:
+    {"chosen": {"hook", "var_explained", "l0", ...}, "candidates": [...], "published": {...},
+     "identity": {"max_rel_err": .., "ref": "transformerlens:blocks.31.hook_resid_post"}   (optional)
+     "jumprelu_below_threshold_frac": 0.0                                                    (optional)
+     "per_doc_l0": [...]}                                                                    (optional)
+fixture proves the identification logic on synthetic numbers."""
+import json
+from pathlib import Path
+from ._common import GateResult, load_run_cfg, GATE_RULES_VERSION
+
+NAME = "G2_sae_health"
+NEEDS_GPU = True
+
+
+def _matches_published(ve, l0, pub):
+    """True if (fvu, l0) sit within relative tolerance of the published values. fvu = 1 - var_explained.
+    If only one of the two numbers is published, match on that one (the report says which)."""
+    if pub.get("fvu") is None and pub.get("l0") is None:
+        return None                                  # can't verify without any numbers
+    tol = pub.get("tol", 0.15)
+    ok = True
+    if pub.get("fvu") is not None:
+        fvu = 1.0 - ve
+        ok = ok and abs(fvu - pub["fvu"]) <= tol * max(pub["fvu"], 1e-6)
+    if pub.get("l0") is not None:
+        ok = ok and abs(l0 - pub["l0"]) <= tol * max(pub["l0"], 1e-6)
+    return ok
+
+
+def _evaluate(report, g):
+    pub = report["published"]
+    chosen = report["chosen"]
+    health_ok = chosen["var_explained"] >= g["g2_var_explained_min"] and chosen["l0"] <= g["g2_l0_max"]
+    margin = g.get("g2_decoy_ve_margin_min", 0.10)
+    # Scaled copies of the chosen tensor are a SENSITIVITY probe, not alternative hooks: the SAE reconstructs
+    # a x1.2 copy slightly BETTER (0.768 vs 0.757 on run 2), so VE cannot see a scale error at all and the
+    # identity check is the arbiter for scale. They are reported, and L0 (59/86/118) is the number that moves.
+    all_c = report.get("candidates", [])
+    scaled = [c for c in all_c if "_x" in c["hook"].rsplit("/", 1)[-1] and c["hook"].startswith(chosen["hook"])]
+    cands = [c for c in all_c if c not in scaled]
+    worst_gap = min((chosen["var_explained"] - c["var_explained"] for c in cands), default=None)
+    chosen_match = _matches_published(chosen["var_explained"], chosen["l0"], pub)     # REPORTED, not gated
+    ident = report.get("identity")
+    ident_ok = None
+    if ident is not None:
+        ident_ok = (ident.get("min_cos") is not None and ident.get("max_norm_rel") is not None
+                    and ident["min_cos"] >= g.get("g2_identity_min_cos", 0.999)
+                    and ident["max_norm_rel"] <= g.get("g2_identity_max_norm_rel", 0.01))
+    # rules 2026-09-30.2 (Randall): a same-shape decoy is rejected by the VE margin OR by tensor identity. At depths where
+    # one block moves the stream less than the SAE's reconstruction error (Gemma-3-27B layers 40/53: the block input
+    # reconstructs within 0.004 of the output), VE cannot separate input from output; identity can (chosen at cosine
+    # 0.999995 to the independent reference, block input at 0.990). Identity rejects a decoy when the chosen hook passes
+    # identity AND the decoy's minimum cosine to the reference is below the identity tolerance. The margin is unchanged.
+    tol_cos = g.get("g2_identity_min_cos", 0.999)
+    decoy_cos = {}
+    if ident is not None and ident.get("cross_nnpost_vs_tlpre_min_cos") is not None:
+        for c in cands:
+            if c["hook"].endswith(".input_resid"):
+                decoy_cos[c["hook"]] = ident["cross_nnpost_vs_tlpre_min_cos"]
+    per_decoy = {}
+    for c in cands:
+        by_ve = chosen["var_explained"] - c["var_explained"] >= margin
+        dc = decoy_cos.get(c["hook"])
+        by_id = ident_ok is True and dc is not None and dc < tol_cos
+        per_decoy[c["hook"]] = "ve" if by_ve else ("identity (min cos %.4f)" % dc if by_id else "NOT rejected")
+    decoys_reject = bool(cands) and all(v != "NOT rejected" for v in per_decoy.values())
+    jr = report.get("jumprelu_below_threshold_frac")
+    jr_ok = None if jr is None else (jr == 0.0)
+    detail = {"rules": GATE_RULES_VERSION, "chosen_hook": chosen["hook"], "var_explained": round(chosen["var_explained"], 3),
+              "l0": round(chosen["l0"], 1), "published_l0": pub.get("l0"), "matches_published": chosen_match,
+              "decoy_ve_worst_gap": None if worst_gap is None else round(worst_gap, 3), "decoy_margin_min": margin,
+              "decoys_rejected": decoys_reject, "decoy_rejected_by": per_decoy, "identity_ok": ident_ok, "jumprelu_ok": jr_ok, "health_ok": health_ok}
+    if scaled:
+        detail["ve_scale_sensitivity"] = {c["hook"].rsplit("_", 1)[-1]: {"ve": round(c["var_explained"], 3), "l0": round(c["l0"], 1)} for c in scaled}
+        detail["ve_detects_scale"] = all(chosen["var_explained"] - c["var_explained"] >= margin for c in scaled)
+    if ident is not None:
+        detail["identity_min_cos"] = ident.get("min_cos")
+        detail["identity_max_norm_rel"] = ident.get("max_norm_rel")
+        detail["identity_dtype"] = ident.get("dtype")
+    if report.get("per_doc_l0"):
+        pd = sorted(report["per_doc_l0"])
+        detail["per_doc_l0_median"] = round(pd[len(pd) // 2], 1)
+        detail["per_doc_l0_range"] = [round(pd[0], 1), round(pd[-1], 1)]
+    if pub.get("fvu") is None:
+        detail["fvu_unpublished"] = True
+    # rules 2026-09-29.3 (audit B.2-2): identity is REQUIRED. An absent identity block used to pass with a warning (the
+    # T3 white-box store's G2 did); a new model or hook is identified by tensor identity or not at all.
+    ok = bool(health_ok and decoys_reject and (ident_ok is True) and (jr_ok is not False))
+    if ident is None:
+        detail["error"] = "no tensor-identity check in report (run t1_ladder --stage identity, or replay --identity-from)"
+    return ok, detail
+
+
+def run(cfg, paths):
+    g = load_run_cfg()
+    p = Path(paths["features"]) / "sae_health.json"
+    if not p.exists():
+        return GateResult(NAME, False, {"error": "features/sae_health.json missing (run replay --go)"})
+    rep = json.loads(p.read_text())
+    # the identity stage writes the post-vs-pre cross-check's minimum into identity_report.json; older sae_health files
+    # carry only its median, so read the minimum from the report beside it (rules 2026-09-30.2)
+    ir = Path(paths["features"]) / "identity_report.json"
+    if rep.get("identity") is not None and rep["identity"].get("cross_nnpost_vs_tlpre_min_cos") is None and ir.exists():
+        rep["identity"]["cross_nnpost_vs_tlpre_min_cos"] = (json.loads(ir.read_text()).get("cross_nnpost_vs_tlpre") or {}).get("min_cos")
+    ok, detail = _evaluate(rep, g)
+    return GateResult(NAME, ok, detail)
+
+
+def fixture():
+    g = load_run_cfg()
+    report = {
+        "published": {"fvu": None, "l0": 76, "tol": 0.15},
+        "chosen": {"hook": "blocks.31.hook_resid_post", "var_explained": 0.73, "l0": 101},
+        "candidates": [
+            {"hook": "layers.31.input_resid", "var_explained": 0.60, "l0": 79},     # L0 "matches" but VE 0.13 below
+            {"hook": "layers.31.mlp_output", "var_explained": -1090.0, "l0": 18},
+            {"hook": "blocks.31.hook_resid_post_x0.8", "var_explained": 0.717, "l0": 59},   # scale probe, not a decoy
+            {"hook": "blocks.31.hook_resid_post_x1.2", "var_explained": 0.768, "l0": 118},  # VE cannot see scale
+        ],
+        "identity": {"min_cos": 0.9998, "max_norm_rel": 0.003, "ref": "transformerlens:blocks.31.hook_resid_post", "dtype": "float32"},
+        "jumprelu_below_threshold_frac": 0.0, "per_doc_l0": [70, 80, 95, 100, 110, 300],
+    }
+    ok, detail = _evaluate(report, g)
+    # a decoy within the VE margin makes the hook ambiguous -> blocked (even though its L0 is far off)
+    amb = json.loads(json.dumps(report)); amb["candidates"][0] = {"hook": "near", "var_explained": 0.68, "l0": 300}
+    ok_amb, _ = _evaluate(amb, g)
+    # identity failure blocks even with a comfortable VE margin
+    bad_id = json.loads(json.dumps(report)); bad_id["identity"]["min_cos"] = 0.97      # resid_pre-like: same scale, wrong direction
+    ok_id, _ = _evaluate(bad_id, g)
+    # rules 2026-09-30.2: a decoy inside the VE margin is rejected by identity (27B layer-40 numbers) ...
+    deep = json.loads(json.dumps(report)); deep["candidates"][0] = {"hook": "layers.40.input_resid", "var_explained": 0.736, "l0": 60}
+    deep["identity"] = {"min_cos": 0.9999954, "max_norm_rel": 0.0022, "cross_nnpost_vs_tlpre_min_cos": 0.9901}
+    ok_deep, det_deep = _evaluate(deep, g)
+    # ... but not when identity cannot separate the decoy either (cross-check above the tolerance: no teeth) ...
+    blind = json.loads(json.dumps(deep)); blind["identity"]["cross_nnpost_vs_tlpre_min_cos"] = 0.9995
+    ok_blind, _ = _evaluate(blind, g)
+    # ... and a wrongly chosen hook (the block input read as the output) fails identity, so nothing rescues it
+    wrong = json.loads(json.dumps(deep)); wrong["identity"]["min_cos"] = 0.9901
+    ok_wrong, _ = _evaluate(wrong, g)
+    # identity ABSENT blocks (rules 2026-09-29.3)
+    no_id = json.loads(json.dumps(report)); no_id.pop("identity")
+    ok_noid, _ = _evaluate(no_id, g)
+    # encode integrity failure blocks
+    bad_jr = json.loads(json.dumps(report)); bad_jr["jumprelu_below_threshold_frac"] = 0.05
+    ok_jr, _ = _evaluate(bad_jr, g)
+    # L0 mismatch alone does NOT block (reported only)
+    return GateResult(NAME + "[fixture]", ok and not ok_amb and not ok_id and not ok_noid and not ok_jr
+                      and ok_deep and not ok_blind and not ok_wrong,
+                      {"ve_margin_passes": ok, "ambiguous_ve_blocked": not ok_amb, "identity_blocks": not ok_id,
+                       "absent_identity_blocks": not ok_noid, "deep_decoy_rejected_by_identity": ok_deep,
+                       "identity_without_teeth_blocks": not ok_blind, "wrong_hook_still_fails": not ok_wrong,
+                       "jumprelu_blocks": not ok_jr, "l0_reported_not_gated": detail["matches_published"] is False,
+                       "scaled_copies_not_decoys": detail.get("ve_detects_scale") is False and ok,
+                       "rules": GATE_RULES_VERSION})

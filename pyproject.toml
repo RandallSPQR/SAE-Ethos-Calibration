@@ -1,7 +1,7 @@
 # The installable code release of pipeline/ (RELEASE_NOTES.md). Installs as ONE top-level package, sae_ethos_pipeline,
 # whose directory is pipeline/. Importing it puts that directory on sys.path, so the pipeline's own absolute imports
 # (`import modelcfg`, `from harness import ...`) resolve exactly as they do on a pod (cwd pipeline/).
-#   pip install "git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.0.0"
+#   pip install "git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.2.0"
 #   pip install "sae-ethos-pipeline[replay] @ git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.0.0"
 # Deliberately excluded: runs/, results/, model weights, the rendered scenario builds and every dataset.
 [build-system]
@@ -10,8 +10,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sae-ethos-pipeline"
-version = "1.1.0"
-description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT); Llama-3.1-8B base/Instruct probe subpackage llama8b_it_base_probe"
+version = "1.2.0"
+description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT); Llama-3.1-8B base/Instruct probe subpackage llama8b_it_base_probe; the StPT / Missing Piece five-model lineup (Qwen3.5-9B/27B added)"
 readme = "RELEASE_NOTES.md"
 requires-python = ">=3.9"
 dependencies = ["pyyaml>=6.0", "numpy>=1.24"]
@@ -35,6 +35,7 @@ packages = [
   "sae_ethos_pipeline.probe", "sae_ethos_pipeline.replay", "sae_ethos_pipeline.resample",
   "sae_ethos_pipeline.llama8b_it_base_probe", "sae_ethos_pipeline.llama8b_it_base_probe.model_io",
   "sae_ethos_pipeline.llama8b_it_base_probe.stats",
+  "sae_ethos_pipeline.lineup", "sae_ethos_pipeline.lineup.model_io",
 ]
 include-package-data = false
 
@@ -48,6 +49,8 @@ include-package-data = false
 "sae_ethos_pipeline.analyze" = ["*.md"]
 "sae_ethos_pipeline.llama8b_it_base_probe" = ["*.md", "pod/*.sh"]
 "sae_ethos_pipeline.llama8b_it_base_probe.model_io" = ["fixtures/*.jinja", "fixtures/*.md"]
+"sae_ethos_pipeline.lineup" = ["*.yaml", "pod/*.sh"]
+"sae_ethos_pipeline.lineup.model_io" = ["fixtures/*.jinja", "fixtures/*.md"]
 
 [tool.setuptools.exclude-package-data]
 # claude-mem writes placeholder CLAUDE.md files beside touched paths; they are editor droppings, not part of the release
@@ -58,6 +61,7 @@ include-package-data = false
 [project.entry-points."sae_ethos_pipeline.model_io"]
 llama3 = "llama8b_it_base_probe.model_io.llama3"
 llama3_base = "llama8b_it_base_probe.model_io.llama3_base"
+qwen3_5 = "lineup.model_io.qwen3_5"
 
 [project.scripts]
 llama-probe-capture = "sae_ethos_pipeline.llama8b_it_base_probe.cli:capture"
@@ -65,6 +69,10 @@ llama-probe-manifest = "sae_ethos_pipeline.llama8b_it_base_probe.cli:manifest"
 llama-probe-fetch-tokenizers = "sae_ethos_pipeline.llama8b_it_base_probe.cli:fetch_tokenizers"
 llama-probe-pods = "sae_ethos_pipeline.llama8b_it_base_probe.cli:pods"
 llama-probe-run = "sae_ethos_pipeline.llama8b_it_base_probe.cli:run"
+lineup-identity = "sae_ethos_pipeline.lineup.identity:main"
+lineup-serve-cmd = "sae_ethos_pipeline.lineup.serve:main"
+lineup-identity-block = "sae_ethos_pipeline.lineup.manifest:main"
+lineup-fetch-tokenizers = "sae_ethos_pipeline.lineup.model_io.fetch_tokenizers:main"
 
 [tool.pipeline]
 # the intended order (enforced by pipeline/Makefile, not by this table); moved here from the 0.1.0 scaffold pipeline/pyproject.toml

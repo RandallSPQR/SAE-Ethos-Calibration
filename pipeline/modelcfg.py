@@ -215,8 +215,11 @@ def template_agreement(tok) -> dict:
     conv = [{"role": "system", "content": "You are a careful assistant."}, {"role": "user", "content": "Say hi."},
             {"role": "assistant", "content": "Hi."}, {"role": "user", "content": "Again."}]
     ours = serializer().serialize_messages(conv)
+    # a profile may name template kwargs the official template needs to render the canonical prompt (Qwen3.5:
+    # enable_thinking=False, since 1.2.0); absent, the call is exactly as before
+    kw = dict(target().get("chat_template_kwargs") or {})
     try:
-        theirs = tok.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
+        theirs = tok.apply_chat_template(conv, tokenize=False, add_generation_prompt=True, **kw)
     except Exception as e:  # noqa: BLE001
         return {"agree": None, "error": type(e).__name__ + ": " + str(e)[:120]}
     bos = getattr(tok, "bos_token", "") or ""

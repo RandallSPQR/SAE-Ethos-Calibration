@@ -1,0 +1,91 @@
+# The shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece. sae-ethos-pipeline 1.2.0.
+# LOCKED at the v1.2.0 tag. Every StPT / Missing Piece run manifest records this file's sha256 together with the pipeline
+# tag and commit (lineup.manifest.identity_block). Any change to a value here, to a serializer, or to the serving stack is a
+# NEW pipeline version and a logged deviation in the shared coordination record; nothing is edited in place.
+#
+# Identity status per model:
+#   pod_pinned      weight_hash measured on a pod by calibrate/preflight_weights.py --hash (bytes re-read)
+#   metadata_pinned weight_hash computed from the revision's recorded per-file identities on the HF API, by the same
+#                   function; the S0 box check re-hashes the bytes and must reproduce it before anything is served
+# lineup.identity.offline_check recomputes every weight_hash and chat_template_hash below from the HF API at the pinned
+# revision; on 2026-10-31 all five matched, including the three pod-measured pins (results in RELEASE_NOTES.md).
+
+lineup_version: "1.2.0"
+locked: true
+
+models:
+  - name: llama-3.1-8b-it
+    display: Llama-3.1-8B-Instruct
+    profile: models_llama-3.1-8b-it.yaml
+    family: llama3
+    hf_id: meta-llama/Llama-3.1-8B-Instruct
+    revision: 0e9e39f249a16976918f6564b8830bc894c89659
+    weight_hash: 495b73750141622d
+    chat_template_hash: e10ca381b1ccc5cf
+    identity_status: pod_pinned            # 2026-10-10, pod dfyi1gao2mbylq (pipeline 1.1.0)
+    size_class: "~8B"
+    note: "Paper 1 continuity; known comprehension risk (brief); gated repo (template fixture via OID-verified mirror)"
+  - name: gemma-2-9b-it
+    display: Gemma-2-9B-IT
+    profile: models.yaml
+    family: gemma2
+    hf_id: google/gemma-2-9b-it
+    revision: 11c9b309abf73637e4b6f9a3fa1e92e615547819
+    weight_hash: 7055bc8c5f456ced
+    chat_template_hash: ecd6ae513fe103f0
+    identity_status: pod_pinned            # 2026-09-18 (pipeline 1.0.0)
+    size_class: "~9B"
+  - name: gemma-3-27b-it
+    display: Gemma-3-27B-IT
+    profile: models_gemma-3-27b-it.yaml
+    family: gemma3
+    hf_id: google/gemma-3-27b-it
+    revision: 005ad3404e59d6023443cb575daa05336842228a
+    weight_hash: 34f745e7c6ef5b7b
+    chat_template_hash: 7de1c58e208eda46
+    identity_status: pod_pinned            # 2026-09-29, pod z3r7h2qvgy6w7d (pipeline 1.0.0)
+    size_class: "~27B"
+  - name: qwen3.5-9b
+    display: Qwen3.5-9B (thinking off)
+    profile: models_qwen3.5-9b.yaml
+    family: qwen3_5
+    hf_id: Qwen/Qwen3.5-9B
+    revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+    weight_hash: 4b570a1e6e5db4b9
+    chat_template_hash: a4aee8afcf2e0711
+    identity_status: metadata_pinned       # 2026-10-31; S0 box re-hash pending
+    size_class: "~9B"
+    note: "PENCILLED in both briefs. Dense; same architecture as the 27B (no mixture-of-experts confound)"
+  - name: qwen3.5-27b
+    display: Qwen3.5-27B (thinking off)
+    profile: models_qwen3.5-27b.yaml
+    family: qwen3_5
+    hf_id: Qwen/Qwen3.5-27B
+    revision: fc05daec18b0a78c049392ed2e771dde82bdf654
+    weight_hash: 5e536c8708a9430b
+    chat_template_hash: a4aee8afcf2e0711
+    identity_status: metadata_pinned       # 2026-10-31; S0 box re-hash pending
+    size_class: "~27B"
+    note: "PENCILLED in both briefs. Dense, 64 layers"
+
+# One serving stack for all five models, in its own venv (venv_vllm_lineup), beside and independent of the SAE studies'
+# vLLM 0.11.0 (calibrate/pod_bootstrap.sh, unchanged). vLLM 0.11.0 cannot serve Qwen3.5 (no Qwen3_5ForConditionalGeneration
+# in its registry); 0.19.1 is the release chosen: it serves all five architectures (registry checked at the v0.19.1 tag),
+# and its transformers / tokenizers / huggingface-hub pins are the versions vLLM's own test requirements use at that tag.
+serving:
+  python: "3.11"
+  pins: {vllm: "0.19.1", torch: "2.10.0", transformers: "5.5.3", tokenizers: "0.22.2", huggingface-hub: "1.10.2"}
+  batch_size: 1                            # --max-num-seqs 1: one sequence in flight, so no cross-request batching effects
+  determinism:
+    flags: ["--max-num-seqs 1", "--no-enable-prefix-caching", "--max-num-batched-tokens 8192", "--seed 0",
+            "--logprobs-mode raw_logprobs", "--dtype bfloat16"]
+    env: {CUBLAS_WORKSPACE_CONFIG: ":4096:8", PYTHONHASHSEED: "0", TOKENIZERS_PARALLELISM: "false"}
+    # The box check (lineup.identity box) requires bit-identical readouts over repeated identical requests before a
+    # model is used; "deterministic kernels" is established there, per model and GPU type, not assumed.
+    repeat_probe: {requests: 8, require: "bit-identical logprobs for the readout tokens"}
+  readout:
+    endpoint: "/v1/completions"            # prompt = the canonical serializer's token ids; the server's template is never used
+    max_tokens: 1
+    top_logprobs: 20
+    temperature: 0.0
+    exact_fallback: "allowed_token_ids"    # an option outside the top 20 is read exactly by a second request restricted to it

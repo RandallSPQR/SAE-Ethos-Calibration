@@ -1,0 +1,82 @@
+# Model profile: Qwen3.5-27B (thinking off), lineup member since sae-ethos-pipeline 1.2.0. Selected with
+# MODEL_PROFILE=qwen3.5-27b or MODEL_PROFILE_FILE=lineup.profile_path("qwen3.5-27b"); read through modelcfg, nowhere else.
+# Every value below was read from its primary source on 2026-10-31 (HF API at the pinned revision; lineup/model_io/fixtures/
+# PROVENANCE.md). weight_hash is computed exactly as calibrate/preflight_weights.py computes it, from the revision's recorded
+# per-file identities (LFS sha256 for the 11 safetensors shards and tokenizer.json, git blob sha1 for the json files); the same
+# computation reproduces the three pod-measured pins of the other lineup models exactly (lineup/identity.py, test_lineup.py).
+# The on-box preflight (--hash) re-reads the bytes and must return the same value before anything is served.
+# No SAE and no oracle: this profile serves readout and generation for StPT / Missing Piece, not the SAE ladder.
+
+family: qwen3_5
+
+endpoint:
+  base_url: "http://localhost:8000/v1"
+  api_key_env: "LOCAL_API_KEY"
+  served_model_name: "qwen3.5-27b"
+
+target_model:
+  hf_id: "Qwen/Qwen3.5-27B"                 # Qwen3_5ForConditionalGeneration, dense, 64 layers (3:1 Gated DeltaNet : full attention), d 5120
+  revision: "fc05daec18b0a78c049392ed2e771dde82bdf654"        # main, lastModified 2026-04-24
+  weight_hash: "5e536c8708a9430b"            # HF-metadata identity, 2026-10-31; box re-hash at S0
+  chat_template_hash: "a4aee8afcf2e0711"     # sha256[:16] of tokenizer_config.json's chat_template (= chat_template.jinja, blob a585dec894e6)
+  chat_template_kwargs: {enable_thinking: false}   # the official template needs this to render our prompt (modelcfg.template_agreement)
+  dtype: "bfloat16"
+  # tokenizer: no BOS; eos_token <|im_end|> 248046; pad <|endoftext|> 248044. modelcfg.check_tokenizer requires this list ==
+  # {id(END_OF_TURN), tokenizer.eos_token_id} = {248046}.
+  stop_token_ids: [248046]
+
+serve:                                       # the LINEUP serving stack (lineup.yaml serving), not calibrate/run_serve.sh's vLLM 0.11.0
+  dtype: "bfloat16"
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  # batch size 1, no prefix cache, no chunking of a prompt, raw logprobs, text only (the vision tower is never fed)
+  extra_args: "--max-num-seqs 1 --max-num-batched-tokens 8192 --no-enable-prefix-caching --logprobs-mode raw_logprobs --limit-mm-per-prompt.image 0 --limit-mm-per-prompt.video 0"
+  attention_backend: null
+  gpu: "1 x 80 GB (A100/H100)"
+
+replay:
+  dtype: "float32"
+  device_map: "auto"
+  attn_implementation: "eager"
+  layers_path: "model.language_model.layers"   # Qwen3_5ForConditionalGeneration.model (Qwen3_5Model).language_model.layers; count-checked (64)
+  identity_ref: "hf_hidden_states"
+  hf_auto_class: "AutoModelForImageTextToText"
+  pins: {transformers: "5.17.0", torch: "2.10.0"}
+
+sae: null
+oracle:
+  hf_id: null
+  dropped: "no activation oracle; G5 not applicable"
+
+probe:
+  layer_candidates: [16, 32, 48]                     # depth 0.25 / 0.5 / 0.75; chosen by depth, nothing carried from another model
+
+# ---- hooks (read by projects, ignored by modelcfg). From transformers 5.17 modeling_qwen3_5.py and vLLM 0.19.1 qwen3_5.py.
+# layer i = 0-based index into the text decoder; resid_post(i) = the residual stream LEAVING block i. transformers'
+# Qwen3_5DecoderLayer.forward returns one tensor that already includes both residual adds, so resid_post(i) is
+# model.model.language_model.layers[i].output == output_hidden_states[i + 1]. vLLM's Qwen3_5DecoderLayer (a
+# Qwen3NextDecoderLayer) returns (hidden_states, residual), so on vLLM resid_post(i) = out[0] + out[1] under
+# model.language_model.model.layers[i]. Layers 3, 7, 11, ... are the full-attention layers (full_attention_interval 4).
+# Status: read from source; no activation has been captured from this model yet.
+hooks:
+  resid_l16:
+    layer: 16
+    point: resid_post
+    hf: "model.model.language_model.layers[16].output"
+    hf_hidden_states_index: 17
+    vllm: "model.language_model.model.layers[16].output[0] + output[1]"
+    verified_by: "source reading only; box check pending"
+  resid_l32:
+    layer: 32
+    point: resid_post
+    hf: "model.model.language_model.layers[32].output"
+    hf_hidden_states_index: 33
+    vllm: "model.language_model.model.layers[32].output[0] + output[1]"
+    verified_by: "source reading only; box check pending"
+  resid_l48:
+    layer: 48
+    point: resid_post
+    hf: "model.model.language_model.layers[48].output"
+    hf_hidden_states_index: 49
+    vllm: "model.language_model.model.layers[48].output[0] + output[1]"
+    verified_by: "source reading only; box check pending"
