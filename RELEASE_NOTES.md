@@ -1,4 +1,19 @@
-# sae-ethos-pipeline v1.2.1: deterministic serving across server starts (2026-11-01)
+# REJECTED CANDIDATE, NOT RELEASED: do not install this branch (2026-11-01)
+
+The confirmation run (StPT gate S0, pod s5itxbomssdjz1, this branch's commit ffc4902a1db0 installed from GitHub, 3 cold
+server starts per model on an RTX PRO 6000 Blackwell) failed:
+
+| model | across cold starts | ms per call |
+|---|---|---|
+| Llama-3.1-8B | identical | 28.0 |
+| Gemma-2-9B | drifts (0.125) | 37.8 |
+| Qwen3.5-9B | drifts (0.080) | 34.4 |
+| Gemma-3-27B | cannot start: FLASH_ATTN is invalid for its multimodal configuration ('partial multimodal token full attention not supported') | none |
+| Qwen3.5-27B | identical | 85.8 |
+
+No `v1.2.1` tag exists. The studies stay on v1.2.0. The text below is the candidate as proposed, kept as the record.
+
+# (candidate) sae-ethos-pipeline v1.2.1: deterministic serving across server starts (2026-11-01)
 
 **Supersedes v1.2.0 for StPT and Missing Piece.** Studies pinned to v1.2.0 stay valid as records, but data for either
 study is collected only under v1.2.1. Models, revisions, weight hashes, serializers and readout are unchanged; only the
@@ -36,7 +51,7 @@ Per call, at batch size 1 (restart test): Llama-8B 15.4 → 28.4 ms, Qwen3.5-9B 
 
 ## Confirmation on all five models (GPU, this commit installed from GitHub)
 
-CONFIRMATION PENDING: filled in from the confirmation run before the tag is set.
+FAILED: see the top of this file.
 
 # sae-ethos-pipeline v1.2.0: the StPT / Missing Piece five-model lineup (2026-10-31)
 
