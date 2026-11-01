@@ -1,3 +1,43 @@
+# sae-ethos-pipeline v1.2.1: deterministic serving across server starts (2026-11-01)
+
+**Supersedes v1.2.0 for StPT and Missing Piece.** Studies pinned to v1.2.0 stay valid as records, but data for either
+study is collected only under v1.2.1. Models, revisions, weight hashes, serializers and readout are unchanged; only the
+serving flags and one pod-script line change.
+
+## Why
+
+StPT gate S0 (2026-10-31, RTX PRO 6000 Blackwell) found the v1.2.0 stack bit-identical WITHIN a server start but not
+ACROSS starts. Four of five models moved by 1–2 bf16 steps on the A/B logit, up to 0.25 nats. A restart test with
+every compile and autotune cache cleared before each start screened four settings on Llama-3.1-8B and Qwen3.5-9B:
+
+| setting | Llama-8B | Qwen3.5-9B |
+|---|---|---|
+| autotuning off (inductor max-autotune, coordinate descent, FlashInfer) | drifts | drifts |
+| `--enforce-eager` | identical | drifts |
+| `VLLM_BATCH_INVARIANT=1` + `--attention-backend FLASH_ATTN` | drifts | drifts |
+| **both of the above** | **identical** | **identical** |
+
+Records: https://github.com/RandallSPQR/Stigmergic-Phase-Transitions/tree/main/gates/S0 (`S0_REPORT.md` 4b, artifacts).
+
+## What changes
+
+- **`lineup.yaml`:**
+  - serving flags gain `--enforce-eager` and `--attention-backend FLASH_ATTN`, and env gains `VLLM_BATCH_INVARIANT=1`;
+  - `gpu_type` names the GPU type on which determinism is established;
+  - the Qwen pair's identity status becomes `pod_pinned`, because its bytes were re-hashed to the pins on GPU at S0;
+  - `lineup_version` becomes 1.2.1.
+- **`pipeline/lineup/pod/serve_lineup.sh`:** calls the `lineup-serve-cmd` console script. In 1.2.0 it called
+  `python -m lineup.serve`, which cannot import `lineup` from an installed copy.
+- Version 1.2.1 (`pyproject.toml`, `__init__.py`); lineup docstring; tests assert the new flags.
+
+## Cost
+
+Per call, at batch size 1 (restart test): Llama-8B 15.4 → 28.4 ms, Qwen3.5-9B 25.7 → 34.5 ms.
+
+## Confirmation on all five models (GPU, this commit installed from GitHub)
+
+CONFIRMATION PENDING: filled in from the confirmation run before the tag is set.
+
 # sae-ethos-pipeline v1.2.0: the StPT / Missing Piece five-model lineup (2026-10-31)
 
 **Additive.** v1.2.0 adds the `lineup` subpackage and the Qwen3.5 pair. Existing behaviour does not change: the SAE

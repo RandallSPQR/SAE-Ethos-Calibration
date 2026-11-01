@@ -40,7 +40,7 @@ r = {"check_tokenizer": modelcfg.check_tokenizer(tok), "template_agreement": mod
 json.dump(r, open(sys.argv[1], "w"), indent=1); print(json.dumps(r))
 sys.exit(0 if r["template_agreement"].get("agree") else 9)
 PYX
-CMD=$(LINEUP_VLLM_PYTHON=$VPY $PY -m lineup.serve "$M")
+CMD=$(LINEUP_VLLM_PYTHON=$VPY "$(dirname "$PY")/lineup-serve-cmd" "$M")   # 1.2.1: `python -m lineup.serve` cannot import lineup from an installed copy
 bash -c "$CMD" > "$OUT/logs/vllm_$M.log" 2>&1 & VPID=$!
 for _ in $(seq 1 360); do curl -s localhost:8000/v1/models >/dev/null 2>&1 && break; kill -0 $VPID || { tail -30 "$OUT/logs/vllm_$M.log"; exit 3; }; sleep 5; done
 $PY - "$M" "$OUT/box_identity_$M.json" "$OUT" <<'PYX'

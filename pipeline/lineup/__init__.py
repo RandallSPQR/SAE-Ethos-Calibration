@@ -15,7 +15,7 @@ What it adds (additive; nothing existing changes behaviour):
   manifest     the identity block every StPT / Missing Piece run manifest embeds (pipeline version + commit, model,
                serving stack)
 
-The lineup is LOCKED at the 1.2.0 tag: any change to a pinned value, the serializer or the serving stack is a new
+The lineup is LOCKED at the 1.2.1 tag (1.2.0 superseded: serving flags): any change to a pinned value, the serializer or the serving stack is a new
 pipeline version and a logged deviation in the shared coordination record (RELEASE_NOTES.md).
 """
 from pathlib import Path

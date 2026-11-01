@@ -20,7 +20,7 @@ SNAP = json.loads((Path(__file__).parent / "data" / "hf_identity_2026-10-31.json
 
 def test_five_models():
     assert list(lineup.models()) == ["llama-3.1-8b-it", "gemma-2-9b-it", "gemma-3-27b-it", "qwen3.5-9b", "qwen3.5-27b"]
-    assert lineup.lineup()["locked"] is True and lineup.lineup()["lineup_version"] == lineup.version() == "1.2.0"
+    assert lineup.lineup()["locked"] is True and lineup.lineup()["lineup_version"] == lineup.version() == "1.2.1"
 
 
 def test_local_check():
@@ -73,6 +73,8 @@ def test_serve_command(name):
         assert f in argv
     assert argv[argv.index("--max-num-seqs") + 1] == "1"
     assert argv[argv.index("--logprobs-mode") + 1] == "raw_logprobs"
+    assert "--enforce-eager" in argv and argv[argv.index("--attention-backend") + 1] == "FLASH_ATTN"      # 1.2.1
+    assert serve.env()["VLLM_BATCH_INVARIANT"] == "1"
     assert argv[argv.index("--revision") + 1] == lineup.models()[name]["revision"]
     prof = yaml.safe_load(lineup.profile_path(name).read_text())
     mm = (prof.get("replay") or {}).get("hf_auto_class") == "AutoModelForImageTextToText"
@@ -89,7 +91,7 @@ def test_serve_command(name):
 @pytest.mark.parametrize("name", list(lineup.models()))
 def test_identity_block(name):
     b = manifest.identity_block(name)
-    assert b["pipeline"]["version"] == "1.2.0"
+    assert b["pipeline"]["version"] == "1.2.1"
     assert b["model"]["weight_hash"] == lineup.models()[name]["weight_hash"]
     assert b["serializer"]["family"] == lineup.models()[name]["family"]
     assert len(b["lineup"]["sha256"]) == 64 and b["serving"]["batch_size"] == 1

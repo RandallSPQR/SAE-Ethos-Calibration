@@ -1,5 +1,5 @@
-# The shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece. sae-ethos-pipeline 1.2.0.
-# LOCKED at the v1.2.0 tag. Every StPT / Missing Piece run manifest records this file's sha256 together with the pipeline
+# The shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece. sae-ethos-pipeline 1.2.1.
+# LOCKED at the v1.2.1 tag (supersedes v1.2.0: serving flags for cross-start determinism; RELEASE_NOTES.md). Every StPT / Missing Piece run manifest records this file's sha256 together with the pipeline
 # tag and commit (lineup.manifest.identity_block). Any change to a value here, to a serializer, or to the serving stack is a
 # NEW pipeline version and a logged deviation in the shared coordination record; nothing is edited in place.
 #
@@ -10,7 +10,7 @@
 # lineup.identity.offline_check recomputes every weight_hash and chat_template_hash below from the HF API at the pinned
 # revision; on 2026-10-31 all five matched, including the three pod-measured pins (results in RELEASE_NOTES.md).
 
-lineup_version: "1.2.0"
+lineup_version: "1.2.1"
 locked: true
 
 models:
@@ -53,7 +53,7 @@ models:
     revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
     weight_hash: 4b570a1e6e5db4b9
     chat_template_hash: a4aee8afcf2e0711
-    identity_status: metadata_pinned       # 2026-10-31; S0 box re-hash pending
+    identity_status: pod_pinned            # metadata pin 2026-10-31; bytes re-hashed to it on GPU 2026-10-31 (StPT gate S0)
     size_class: "~9B"
     note: "PENCILLED in both briefs. Dense; same architecture as the 27B (no mixture-of-experts confound)"
   - name: qwen3.5-27b
@@ -64,7 +64,7 @@ models:
     revision: fc05daec18b0a78c049392ed2e771dde82bdf654
     weight_hash: 5e536c8708a9430b
     chat_template_hash: a4aee8afcf2e0711
-    identity_status: metadata_pinned       # 2026-10-31; S0 box re-hash pending
+    identity_status: pod_pinned            # metadata pin 2026-10-31; bytes re-hashed to it on GPU 2026-10-31 (StPT gate S0)
     size_class: "~27B"
     note: "PENCILLED in both briefs. Dense, 64 layers"
 
@@ -78,8 +78,15 @@ serving:
   batch_size: 1                            # --max-num-seqs 1: one sequence in flight, so no cross-request batching effects
   determinism:
     flags: ["--max-num-seqs 1", "--no-enable-prefix-caching", "--max-num-batched-tokens 8192", "--seed 0",
-            "--logprobs-mode raw_logprobs", "--dtype bfloat16"]
-    env: {CUBLAS_WORKSPACE_CONFIG: ":4096:8", PYTHONHASHSEED: "0", TOKENIZERS_PARALLELISM: "false"}
+            "--logprobs-mode raw_logprobs", "--dtype bfloat16",
+            # 1.2.1: without these two (and VLLM_BATCH_INVARIANT below), logprobs moved by 1-2 bf16 steps (up to 0.25
+            # nats) across server starts for 4 of 5 models; with them, bit-identical across cold starts (RELEASE_NOTES.md)
+            "--enforce-eager", "--attention-backend FLASH_ATTN"]
+    env: {CUBLAS_WORKSPACE_CONFIG: ":4096:8", PYTHONHASHSEED: "0", TOKENIZERS_PARALLELISM: "false",
+          VLLM_BATCH_INVARIANT: "1"}
+    # established on this GPU type only (per model: within a start and across cold starts); another type needs the
+    # box check again
+    gpu_type: "NVIDIA RTX PRO 6000 Blackwell Server Edition"
     # The box check (lineup.identity box) requires bit-identical readouts over repeated identical requests before a
     # model is used; "deterministic kernels" is established there, per model and GPU type, not assumed.
     repeat_probe: {requests: 8, require: "bit-identical logprobs for the readout tokens"}

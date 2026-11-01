@@ -1,7 +1,7 @@
 # The installable code release of pipeline/ (RELEASE_NOTES.md). Installs as ONE top-level package, sae_ethos_pipeline,
 # whose directory is pipeline/. Importing it puts that directory on sys.path, so the pipeline's own absolute imports
 # (`import modelcfg`, `from harness import ...`) resolve exactly as they do on a pod (cwd pipeline/).
-#   pip install "git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.2.0"
+#   pip install "git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.2.1"
 #   pip install "sae-ethos-pipeline[replay] @ git+https://github.com/RandallSPQR/SAE-Ethos-Calibration@v1.0.0"
 # Deliberately excluded: runs/, results/, model weights, the rendered scenario builds and every dataset.
 [build-system]
@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sae-ethos-pipeline"
-version = "1.2.0"
+version = "1.2.1"
 description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT); Llama-3.1-8B base/Instruct probe subpackage llama8b_it_base_probe; the StPT / Missing Piece five-model lineup (Qwen3.5-9B/27B added)"
 readme = "RELEASE_NOTES.md"
 requires-python = ">=3.9"
