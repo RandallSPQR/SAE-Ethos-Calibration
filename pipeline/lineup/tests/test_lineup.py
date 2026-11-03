@@ -20,7 +20,7 @@ SNAP = json.loads((Path(__file__).parent / "data" / "hf_identity_2026-10-31.json
 
 def test_five_models():
     assert list(lineup.models()) == ["llama-3.1-8b-it", "gemma-2-9b-it", "gemma-3-27b-it", "qwen3.5-9b", "qwen3.5-27b"]
-    assert lineup.lineup()["locked"] is True and lineup.lineup()["lineup_version"] == lineup.version() == "1.2.0"
+    assert lineup.lineup()["locked"] is True and lineup.lineup()["lineup_version"] == lineup.version() == "1.3.0"
 
 
 def test_local_check():
@@ -89,9 +89,41 @@ def test_serve_command(name):
 @pytest.mark.parametrize("name", list(lineup.models()))
 def test_identity_block(name):
     b = manifest.identity_block(name)
-    assert b["pipeline"]["version"] == "1.2.0"
+    assert b["pipeline"]["version"] == "1.3.0"
     assert b["model"]["weight_hash"] == lineup.models()[name]["weight_hash"]
     assert b["serializer"]["family"] == lineup.models()[name]["family"]
     assert len(b["lineup"]["sha256"]) == 64 and b["serving"]["batch_size"] == 1
     with pytest.raises(RuntimeError):
         manifest.check_pin(b, "v1.2.0", "0" * 40)
+
+
+
+# ---- 1.3.0 serving modes ----
+@pytest.mark.parametrize("name", list(lineup.models()))
+def test_strict_mode_is_the_1_2_0_command(name):
+    """The default mode must serve exactly as 1.2.0: the flag list equals serving.determinism.flags."""
+    import lineup
+    assert serve.mode_flags("strict") == lineup.lineup()["serving"]["determinism"]["flags"]
+    assert serve.vllm_argv(name, python="py") == serve.vllm_argv(name, python="py", mode="strict")
+    assert serve.env() == dict(lineup.lineup()["serving"]["determinism"]["env"])
+
+
+@pytest.mark.parametrize("mode", ["throughput", "throughput_invariant"])
+def test_throughput_modes_change_only_named_flags(mode):
+    strict, m = serve.mode_flags("strict"), serve.mode_flags(mode)
+    assert "--enable-prefix-caching" in m and "--no-enable-prefix-caching" not in m
+    assert "--max-num-seqs 32" in m and "--max-num-seqs 1" not in m
+    kept = [f for f in strict if f.split()[0] not in ("--max-num-seqs", "--no-enable-prefix-caching")]
+    assert all(f in m for f in kept)
+    argv = serve.vllm_argv("gemma-2-9b-it", python="py", mode=mode)
+    flags = [a for a in argv if a.startswith("--")]
+    assert len(flags) == len(set(flags)), flags
+    assert (serve.env(mode).get("VLLM_BATCH_INVARIANT") == "1") == (mode == "throughput_invariant")
+
+
+def test_identity_block_records_mode():
+    b = manifest.identity_block("qwen3.5-9b", mode="throughput")
+    assert b["serving"]["mode"] == "throughput" and b["serving"]["batch_size"] == 32
+    assert manifest.identity_block("qwen3.5-9b")["serving"]["mode"] == "strict"
+    with pytest.raises(KeyError):
+        serve.mode_flags("nope")

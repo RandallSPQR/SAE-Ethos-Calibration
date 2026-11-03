@@ -1,4 +1,5 @@
-# The shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece. sae-ethos-pipeline 1.2.0.
+# The shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece. sae-ethos-pipeline 1.3.0
+# (1.2.0 + serving modes; the default mode "strict" serves exactly as 1.2.0 did).
 # LOCKED at the v1.2.0 tag. Every StPT / Missing Piece run manifest records this file's sha256 together with the pipeline
 # tag and commit (lineup.manifest.identity_block). Any change to a value here, to a serializer, or to the serving stack is a
 # NEW pipeline version and a logged deviation in the shared coordination record; nothing is edited in place.
@@ -10,7 +11,7 @@
 # lineup.identity.offline_check recomputes every weight_hash and chat_template_hash below from the HF API at the pinned
 # revision; on 2026-10-31 all five matched, including the three pod-measured pins (results in RELEASE_NOTES.md).
 
-lineup_version: "1.2.0"
+lineup_version: "1.3.0"
 locked: true
 
 models:
@@ -83,6 +84,21 @@ serving:
     # The box check (lineup.identity box) requires bit-identical readouts over repeated identical requests before a
     # model is used; "deterministic kernels" is established there, per model and GPU type, not assumed.
     repeat_probe: {requests: 8, require: "bit-identical logprobs for the readout tokens"}
+  # Serving modes (1.3.0, additive). "strict" is the 1.2.0 determinism flag set above and stays the default; a study
+  # that pins 1.3.0 without naming a mode serves exactly as under 1.2.0. The other modes are OPT-IN, for Missing
+  # Piece's cost reduction (owner 2026-11-03), and each must pass that study's GPU validation (prefix caching on vs
+  # off; batched vs sequential; batch invariance) per model and GPU type before any use. A mode is recorded in every
+  # identity block (lineup.manifest.identity_block(name, mode)).
+  modes:
+    strict: {}
+    throughput:                            # prefix caching on, up to 32 sequences in flight
+      replace_flags: {"--max-num-seqs": "--max-num-seqs 32", "--no-enable-prefix-caching": "--enable-prefix-caching"}
+      add_flags: ["--enable-prompt-tokens-details"]
+      env: {}
+    throughput_invariant:                  # as throughput, plus vLLM batch-invariant kernels (beta; FA/Triton attention)
+      replace_flags: {"--max-num-seqs": "--max-num-seqs 32", "--no-enable-prefix-caching": "--enable-prefix-caching"}
+      add_flags: ["--enable-prompt-tokens-details", "--attention-backend FLASH_ATTN"]
+      env: {VLLM_BATCH_INVARIANT: "1"}
   readout:
     endpoint: "/v1/completions"            # prompt = the canonical serializer's token ids; the server's template is never used
     max_tokens: 1

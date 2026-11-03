@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sae-ethos-pipeline"
-version = "1.2.0"
+version = "1.3.0"
 description = "Transgression-calibration pipeline for open-weight chat models: T3 agent harness, labeler, gates, provenance, replay and text-effect analyses (Gemma-2-9B-IT, Gemma-3-27B-IT); Llama-3.1-8B base/Instruct probe subpackage llama8b_it_base_probe; the StPT / Missing Piece five-model lineup (Qwen3.5-9B/27B added)"
 readme = "RELEASE_NOTES.md"
 requires-python = ">=3.9"

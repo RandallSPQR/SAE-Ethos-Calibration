@@ -1,3 +1,36 @@
+# sae-ethos-pipeline v1.3.0 (PROPOSED, not tagged): serving modes (2026-11-03)
+
+**Additive; the default serves exactly as v1.2.0.** v1.3.0 adds named serving modes to the lineup. Mode `strict`, the
+default, is the v1.2.0 determinism flag set unchanged: `lineup-serve-cmd NAME` and `identity_block(NAME)` give the same
+command and flags as v1.2.0, apart from the version string and the new `serving.mode` field. A study pinned to v1.2.0
+is unaffected. (Named v1.3.0, not v1.2.1: v1.2.1 is the rejected restart-drift candidate, coordination A6.)
+
+**Why.** Missing Piece's cost reduction (owner, 2026-11-03). Its multi-turn games re-read long contexts on every call,
+and run thousands of games; prefix caching and batched serving cut GPU time several-fold.
+
+**What is new.**
+- `lineup.yaml serving.modes`:
+  - `strict`: no change (batch size 1, prefix caching off).
+  - `throughput`: `--enable-prefix-caching`, `--max-num-seqs 32`, `--enable-prompt-tokens-details` (the server reports
+    prefix-cache hits per request).
+  - `throughput_invariant`: as `throughput`, plus vLLM's batch-invariant kernels (`VLLM_BATCH_INVARIANT=1`, beta) with
+    `--attention-backend FLASH_ATTN`.
+- `lineup-serve-cmd NAME --mode MODE`; `serve.mode_flags(mode)`, `serve.env(mode)`.
+- `identity_block(name, mode="strict")` records `serving.mode`, the mode's effective flags and env, and the batch size.
+
+**Not established; each study validates before use.** Neither non-strict mode is assumed deterministic:
+- Prefix caching can change logits by reusing KV computed under a different batch shape.
+- Batching makes numerics depend on what else is in flight, unless batch invariance holds.
+- vLLM documents batch invariance for compute capability >= 9.0 and tests it on H/B-series. The RTX PRO 6000 Blackwell
+  (sm_120) takes its untested fallback path, and the Qwen3.5 hybrid (Gated DeltaNet) layers are not on its tested list.
+
+Missing Piece's S0-GPU plan tests each mode per model on the D12 GPU type before any use.
+
+**Tests (CPU).**
+- `pytest pipeline/lineup/tests`: 43 pass, 24 skipped (tokenizer fixtures), the same skips as v1.2.0.
+- New: the strict mode equals the v1.2.0 flags and command for all five models; the throughput modes change only the
+  named flags; the identity block records the mode.
+
 # sae-ethos-pipeline v1.2.0: the StPT / Missing Piece five-model lineup (2026-10-31)
 
 **Additive.** v1.2.0 adds the `lineup` subpackage and the Qwen3.5 pair. Existing behaviour does not change: the SAE

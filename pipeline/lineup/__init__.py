@@ -1,5 +1,5 @@
 """lineup: the shared five-model lineup for Stigmergic Phase Transitions (StPT) and Missing Piece, added in
-sae-ethos-pipeline 1.2.0. Imported by its top-level name, like the rest of the pipeline:
+sae-ethos-pipeline 1.2.0 (serving modes from 1.3.0). Imported by its top-level name, like the rest of the pipeline:
 
     import sae_ethos_pipeline                  # activates the pipeline's import root
     import lineup

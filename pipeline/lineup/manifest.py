@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import lineup
+from lineup import serve
 
 
 def _sha(path: Path) -> str:
@@ -54,7 +55,7 @@ def pipeline_source() -> dict:
     return out
 
 
-def identity_block(name: str) -> dict:
+def identity_block(name: str, mode: str = "strict") -> dict:
     import sae_ethos_pipeline  # noqa: F401
     import model_io
     e = lineup.models()[name]
@@ -68,8 +69,10 @@ def identity_block(name: str) -> dict:
         "profile": {"file": e["profile"], "sha256": _sha(lineup.CONFIG / e["profile"])},
         "serializer": {"family": ser.FAMILY, "module": ser.__name__, "sha256": _sha(ser.__file__),
                        "generation_prompt": ser.GENERATION_PROMPT},
-        "serving": {"pins": ly["serving"]["pins"], "flags": ly["serving"]["determinism"]["flags"],
-                    "env": ly["serving"]["determinism"]["env"], "batch_size": ly["serving"]["batch_size"]},
+        "serving": {"pins": ly["serving"]["pins"], "mode": mode, "flags": serve.mode_flags(mode),
+                    "env": serve.env(mode),
+                    "batch_size": ly["serving"]["batch_size"] if mode == "strict" else
+                    int(next(f.split()[1] for f in serve.mode_flags(mode) if f.startswith("--max-num-seqs")))},
     }
 
 
